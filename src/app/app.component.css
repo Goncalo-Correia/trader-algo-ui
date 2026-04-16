@@ -1,0 +1,6 @@
+.app-shell {
+  min-height: 100vh;
+  padding: 24px;
+  background: #f5f7fa;
+  box-sizing: border-box;
+}

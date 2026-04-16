@@ -9,6 +9,10 @@
 }
 
 .chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 20px;
 }
 
@@ -28,9 +32,55 @@ h1 {
   line-height: 1.2;
 }
 
+.live-status {
+  margin: 10px 0 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.chart-controls {
+  min-width: 220px;
+  text-align: right;
+}
+
+.chart-controls label {
+  display: block;
+  margin-bottom: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-controls select {
+  width: 120px;
+  padding: 8px 10px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+}
+
 .chart-container {
   width: 100%;
   height: 520px;
+}
+
+.chart-wrapper {
+  position: relative;
+}
+
+.chart-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  pointer-events: none;
 }
 
 @media (max-width: 700px) {
@@ -38,8 +88,23 @@ h1 {
     padding: 16px;
   }
 
+  .chart-header {
+    display: block;
+  }
+
   h1 {
     font-size: 22px;
+  }
+
+  .live-status {
+    margin-top: 12px;
+    text-align: left;
+  }
+
+  .chart-controls {
+    margin-top: 16px;
+    min-width: 0;
+    text-align: left;
   }
 
   .chart-container {

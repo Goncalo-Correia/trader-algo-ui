@@ -1,26 +1,23 @@
-<section class="chart-panel">
-  <header class="chart-header">
-    <div>
-      <p class="eyebrow">Market View</p>
-      <h1>Lightweight Candlestick Chart</h1>
-    </div>
-    <div class="chart-controls">
-      <label for="interval-select">Interval</label>
-      <select
-        id="interval-select"
-        [value]="selectedInterval"
-        (change)="onIntervalChange($any($event.target).value)"
+<div class="chart-root">
+  <div class="toolbar">
+    <span class="symbol">{{ symbol }}</span>
+    <div class="interval-buttons" role="group" aria-label="Chart interval">
+      <button
+        *ngFor="let option of intervals"
+        [class.active]="option.value === selectedInterval"
+        [attr.aria-pressed]="option.value === selectedInterval"
+        (click)="onIntervalChange(option.value)"
       >
-        <option *ngFor="let interval of intervals" [value]="interval.value">
-          {{ interval.label }}
-        </option>
-      </select>
-      <p class="live-status">{{ liveStatus }}</p>
+        {{ option.label }}
+      </button>
     </div>
-  </header>
-
+    <div class="live-indicator" [class.connected]="isConnected" *ngIf="liveStatus">
+      <span class="live-dot"></span>
+      {{ liveStatus }}
+    </div>
+  </div>
   <div class="chart-wrapper">
     <div class="chart-container" #chartContainer></div>
-    <p class="chart-status" *ngIf="statusMessage">{{ statusMessage }}</p>
+    <div class="chart-status" *ngIf="statusMessage">{{ statusMessage }}</div>
   </div>
-</section>
+</div>

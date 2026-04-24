@@ -1,20 +1,7 @@
 <div class="chart-root">
-  <div class="toolbar">
-    <span class="symbol">{{ symbol }}</span>
-    <div class="interval-buttons" role="group" aria-label="Chart interval">
-      <button
-        *ngFor="let option of intervals"
-        [class.active]="option.value === selectedInterval"
-        [attr.aria-pressed]="option.value === selectedInterval"
-        (click)="onIntervalChange(option.value)"
-      >
-        {{ option.label }}
-      </button>
-    </div>
-    <div class="live-indicator" [class.connected]="isConnected" *ngIf="liveStatus">
-      <span class="live-dot"></span>
-      {{ liveStatus }}
-    </div>
+  <div class="live-indicator" [class.connected]="isConnected" *ngIf="liveStatus">
+    <span class="live-dot"></span>
+    {{ liveStatus }}
   </div>
   <div class="chart-wrapper">
     <div class="chart-container" #chartContainer></div>

@@ -1,18 +1,18 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CandleResponse } from './trader-algo-api.service';
+import { CandleResponse } from '../structures/candle';
 
-export type ChartInterval = '5m' | '1h';
+export type ChartInterval = string;
 
 @Injectable({
   providedIn: 'root'
 })
 export class LiveChartDataService {
-  private readonly candlesBaseUrl = 'ws://localhost:32768/ws/charts/BTC-USD/candles';
+  private readonly candlesBaseUrl = 'ws://localhost:32768/ws/charts';
 
-  streamCandles(interval: ChartInterval): Observable<CandleResponse> {
+  streamCandles(symbol: string, interval: ChartInterval): Observable<CandleResponse> {
     return new Observable<CandleResponse>(subscriber => {
-      const socket = new WebSocket(`${this.candlesBaseUrl}?interval=${encodeURIComponent(interval)}`);
+      const socket = new WebSocket(`${this.candlesBaseUrl}/${encodeURIComponent(symbol)}/candles?interval=${encodeURIComponent(interval)}`);
 
       socket.onmessage = event => {
         try {

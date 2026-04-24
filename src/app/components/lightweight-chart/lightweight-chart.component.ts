@@ -3,14 +3,17 @@ import {
   CandlestickData,
   CandlestickSeries,
   createChart,
+  createTextWatermark,
   IChartApi,
   ISeriesApi,
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
-import { Subscription } from 'rxjs';
-import { ChartInterval, LiveChartDataService } from '../../services/live-chart-data.service';
-import { CandleResponse, TraderAlgoApiService } from '../../services/trader-algo-api.service';
+import { forkJoin, Subscription } from 'rxjs';
+import { LiveChartDataService } from '../../services/live-chart-data.service';
+import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
+import { CandleResponse } from '../../structures/candle';
+import { IntervalResponse } from '../../structures/interval';
 
 @Component({
   selector: 'app-lightweight-chart',
@@ -34,22 +37,18 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     hour12: false,
   });
 
-  readonly symbol = 'BTC-USD';
-  readonly intervals: { label: string; value: ChartInterval }[] = [
-    { label: '5m', value: '5m' },
-    { label: '1H', value: '1h' },
-  ];
-
+  private selectedSymbol = '';
+  selectedInterval = '';
   isLoading = true;
-  statusMessage = 'Loading candles...';
+  statusMessage = 'Loading...';
   liveStatus = '';
   isConnected = false;
-  selectedInterval: ChartInterval = '1h';
 
   private chart?: IChartApi;
   private series?: ISeriesApi<'Candlestick'>;
   private candlesSubscription?: Subscription;
   private liveCandlesSubscription?: Subscription;
+  private intervalButtonEls: { code: string; element: HTMLButtonElement }[] = [];
 
   constructor(
     private readonly ngZone: NgZone,
@@ -96,8 +95,32 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       });
     });
 
-    this.loadCandles();
-    this.streamLiveCandles();
+    forkJoin({
+      symbols: this.traderAlgoApi.getSymbols(),
+      intervals: this.traderAlgoApi.getIntervals(),
+    }).subscribe({
+      next: ({ symbols, intervals }) => {
+        const defaultSymbol = symbols.find(s => s.isDefault) ?? symbols[0];
+        const defaultInterval = intervals.find(i => i.isDefault) ?? intervals[0];
+
+        this.selectedSymbol = defaultSymbol.code;
+        this.selectedInterval = defaultInterval.code;
+        this.statusMessage = 'Loading candles...';
+
+        this.ngZone.runOutsideAngular(() => {
+          this.showSymbolWatermark(this.selectedSymbol);
+          this.buildIntervalButtons(intervals.filter(i => i.isActive));
+        });
+
+        this.loadCandles();
+        this.streamLiveCandles();
+      },
+      error: err => {
+        console.error('Failed to load chart config.', err);
+        this.isLoading = false;
+        this.statusMessage = 'Failed to load chart configuration.';
+      },
+    });
   }
 
   ngOnDestroy(): void {
@@ -106,10 +129,10 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.chart?.remove();
   }
 
-  onIntervalChange(interval: ChartInterval): void {
-    if (interval === this.selectedInterval) return;
+  private onIntervalChange(code: string): void {
+    if (code === this.selectedInterval) return;
 
-    this.selectedInterval = interval;
+    this.selectedInterval = code;
     this.candlesSubscription?.unsubscribe();
     this.liveCandlesSubscription?.unsubscribe();
 
@@ -118,15 +141,74 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.statusMessage = 'Loading candles...';
     this.liveStatus = '';
 
-    this.ngZone.runOutsideAngular(() => this.series?.setData([]));
+    this.ngZone.runOutsideAngular(() => {
+      this.series?.setData([]);
+      this.updateIntervalButtonStyles();
+    });
 
     this.loadCandles();
     this.streamLiveCandles();
   }
 
+  private showSymbolWatermark(symbol: string): void {
+    createTextWatermark(this.chart!.panes()[0], {
+      horzAlign: 'left',
+      vertAlign: 'top',
+      lines: [{ text: symbol, color: 'rgba(209, 212, 220, 0.5)', fontSize: 18, fontFamily: 'inherit' }],
+    });
+  }
+
+  private buildIntervalButtons(intervals: IntervalResponse[]): void {
+    const container = this.chart!.chartElement();
+
+    const toolbar = document.createElement('div');
+    Object.assign(toolbar.style, {
+      position: 'absolute',
+      top: '8px',
+      left: '12px',
+      zIndex: '3',
+      display: 'flex',
+      gap: '2px',
+    });
+
+    this.intervalButtonEls = intervals.map(interval => {
+      const btn = document.createElement('button');
+      btn.textContent = interval.code;
+      this.applyIntervalButtonStyle(btn, interval.code === this.selectedInterval);
+      btn.addEventListener('click', () => {
+        this.ngZone.run(() => this.onIntervalChange(interval.code));
+      });
+      toolbar.appendChild(btn);
+      return { code: interval.code, element: btn };
+    });
+
+    container.appendChild(toolbar);
+  }
+
+  private applyIntervalButtonStyle(btn: HTMLButtonElement, active: boolean): void {
+    Object.assign(btn.style, {
+      height: '26px',
+      padding: '0 8px',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: active ? '#ffffff' : '#787b86',
+      background: active ? '#2962ff' : 'transparent',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+    });
+  }
+
+  private updateIntervalButtonStyles(): void {
+    for (const { code, element } of this.intervalButtonEls) {
+      this.applyIntervalButtonStyle(element, code === this.selectedInterval);
+    }
+  }
+
   private loadCandles(): void {
     this.candlesSubscription = this.traderAlgoApi
-      .getCandles({ symbol: this.symbol, interval: this.selectedInterval })
+      .getCandles({ symbol: this.selectedSymbol, interval: this.selectedInterval })
       .subscribe({
         next: candles => {
           this.isLoading = false;
@@ -152,7 +234,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
   private streamLiveCandles(): void {
     this.liveCandlesSubscription = this.liveChartData
-      .streamCandles(this.selectedInterval)
+      .streamCandles(this.selectedSymbol, this.selectedInterval)
       .subscribe({
         next: candle => {
           this.isConnected = true;

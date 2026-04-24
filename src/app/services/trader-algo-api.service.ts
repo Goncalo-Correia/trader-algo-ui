@@ -9,7 +9,7 @@ import { SymbolResponse } from '../structures/symbol';
   providedIn: 'root'
 })
 export class TraderAlgoApiService {
-  private readonly candlesUrl = 'http://localhost:32768/api/charts/candles';
+  private readonly candlesUrl = 'http://localhost:32770/api/charts/candles';
   private readonly intervalsUrl = 'http://localhost:32770/api/intervals';
   private readonly symbolsUrl = 'http://localhost:32770/api/symbols';
 

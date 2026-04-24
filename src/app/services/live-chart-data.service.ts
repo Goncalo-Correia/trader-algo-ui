@@ -8,11 +8,11 @@ export type ChartInterval = string;
   providedIn: 'root'
 })
 export class LiveChartDataService {
-  private readonly candlesBaseUrl = 'ws://localhost:32768/ws/charts';
+  private readonly candlesUrl = 'ws://localhost:32770/ws/charts/candles';
 
   streamCandles(symbol: string, interval: ChartInterval): Observable<CandleResponse> {
     return new Observable<CandleResponse>(subscriber => {
-      const socket = new WebSocket(`${this.candlesBaseUrl}/${encodeURIComponent(symbol)}/candles?interval=${encodeURIComponent(interval)}`);
+      const socket = new WebSocket(`${this.candlesUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`);
 
       socket.onmessage = event => {
         try {

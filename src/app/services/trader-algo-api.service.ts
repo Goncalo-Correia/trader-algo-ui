@@ -1,26 +1,17 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
-export interface CandleRequest {
-  symbol?: string;
-  interval?: string;
-}
-
-export interface CandleResponse {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
+import { CandleRequest, CandleResponse } from '../structures/candle';
+import { IntervalResponse } from '../structures/interval';
+import { SymbolResponse } from '../structures/symbol';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TraderAlgoApiService {
   private readonly candlesUrl = 'http://localhost:32768/api/charts/candles';
+  private readonly intervalsUrl = 'http://localhost:32770/api/intervals';
+  private readonly symbolsUrl = 'http://localhost:32770/api/symbols';
 
   constructor(private readonly http: HttpClient) { }
 
@@ -34,5 +25,13 @@ export class TraderAlgoApiService {
     });
 
     return this.http.get<CandleResponse[]>(this.candlesUrl, { params });
+  }
+
+  getIntervals(): Observable<IntervalResponse[]> {
+    return this.http.get<IntervalResponse[]>(this.intervalsUrl);
+  }
+
+  getSymbols(): Observable<SymbolResponse[]> {
+    return this.http.get<SymbolResponse[]>(this.symbolsUrl);
   }
 }

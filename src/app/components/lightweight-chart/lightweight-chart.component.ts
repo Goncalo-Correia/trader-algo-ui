@@ -6,6 +6,7 @@ import {
   createTextWatermark,
   IChartApi,
   ISeriesApi,
+  LogicalRange,
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
@@ -50,6 +51,15 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   private liveCandlesSubscription?: Subscription;
   private intervalButtonEls: { code: string; element: HTMLButtonElement }[] = [];
 
+  private lookback = 100;
+  private isLoadingMore = false;
+  private readonly onVisibleRangeChange = (range: LogicalRange | null) => {
+    if (!range || this.isLoadingMore || this.isLoading) return;
+    if (range.from <= 0) {
+      this.ngZone.run(() => this.loadMoreCandles());
+    }
+  };
+
   constructor(
     private readonly ngZone: NgZone,
     private readonly traderAlgoApi: TraderAlgoApiService,
@@ -93,6 +103,8 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
         wickUpColor: '#26a69a',
         wickDownColor: '#ef5350',
       });
+
+      this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
     });
 
     forkJoin({
@@ -126,6 +138,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.candlesSubscription?.unsubscribe();
     this.liveCandlesSubscription?.unsubscribe();
+    this.chart?.timeScale().unsubscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
     this.chart?.remove();
   }
 
@@ -138,6 +151,8 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
     this.isLoading = true;
     this.isConnected = false;
+    this.isLoadingMore = false;
+    this.lookback = 100;
     this.statusMessage = 'Loading candles...';
     this.liveStatus = '';
 
@@ -208,7 +223,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
   private loadCandles(): void {
     this.candlesSubscription = this.traderAlgoApi
-      .getCandles({ symbol: this.selectedSymbol, interval: this.selectedInterval })
+      .getCandles({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
       .subscribe({
         next: candles => {
           this.isLoading = false;
@@ -228,6 +243,27 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
           console.error('Failed to load candles.', err);
           this.isLoading = false;
           this.statusMessage = 'Failed to load candles.';
+        },
+      });
+  }
+
+  private loadMoreCandles(): void {
+    this.isLoadingMore = true;
+    this.lookback += 100;
+
+    this.traderAlgoApi
+      .getCandles({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
+      .subscribe({
+        next: candles => {
+          this.isLoadingMore = false;
+          if (candles.length === 0) return;
+          this.ngZone.runOutsideAngular(() => {
+            this.series?.setData(candles.map(c => this.toChartCandle(c)));
+          });
+        },
+        error: err => {
+          console.error('Failed to load more candles.', err);
+          this.isLoadingMore = false;
         },
       });
   }

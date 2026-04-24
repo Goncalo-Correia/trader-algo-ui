@@ -1,6 +1,7 @@
 export interface CandleRequest {
   symbol?: string;
   interval?: string;
+  lookback?: number;
 }
 
 export interface CandleResponse {

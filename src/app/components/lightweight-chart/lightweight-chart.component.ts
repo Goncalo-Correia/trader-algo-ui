@@ -47,6 +47,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
   private chart?: IChartApi;
   private series?: ISeriesApi<'Candlestick'>;
+  private predictSeries?: ISeriesApi<'Candlestick'>;
   private candlesSubscription?: Subscription;
   private liveCandlesSubscription?: Subscription;
   private intervalButtonEls: { code: string; element: HTMLButtonElement }[] = [];
@@ -102,6 +103,14 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
         borderVisible: false,
         wickUpColor: '#26a69a',
         wickDownColor: '#ef5350',
+      });
+
+      this.predictSeries = this.chart.addSeries(CandlestickSeries, {
+        upColor: '#2962ff',
+        downColor: '#ffd600',
+        borderVisible: false,
+        wickUpColor: '#2962ff',
+        wickDownColor: '#ffd600',
       });
 
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);

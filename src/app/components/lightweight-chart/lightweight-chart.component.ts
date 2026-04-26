@@ -50,7 +50,10 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   private predictSeries?: ISeriesApi<'Candlestick'>;
   private candlesSubscription?: Subscription;
   private liveCandlesSubscription?: Subscription;
+  private predictSubscription?: Subscription;
   private intervalButtonEls: { code: string; element: HTMLButtonElement }[] = [];
+  private predictButton?: HTMLButtonElement;
+  private isPredicting = false;
 
   private lookback = 100;
   private isLoadingMore = false;
@@ -147,6 +150,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.candlesSubscription?.unsubscribe();
     this.liveCandlesSubscription?.unsubscribe();
+    this.predictSubscription?.unsubscribe();
     this.chart?.timeScale().unsubscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
     this.chart?.remove();
   }
@@ -165,9 +169,14 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.statusMessage = 'Loading candles...';
     this.liveStatus = '';
 
+    this.predictSubscription?.unsubscribe();
+    this.isPredicting = false;
+
     this.ngZone.runOutsideAngular(() => {
       this.series?.setData([]);
+      this.predictSeries?.setData([]);
       this.updateIntervalButtonStyles();
+      this.applyPredictButtonStyle();
     });
 
     this.loadCandles();
@@ -206,7 +215,61 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       return { code: interval.code, element: btn };
     });
 
+    const separator = document.createElement('div');
+    Object.assign(separator.style, { width: '1px', background: '#2a2d3a', margin: '4px 6px' });
+    toolbar.appendChild(separator);
+
+    this.predictButton = document.createElement('button');
+    this.predictButton.textContent = 'Predict';
+    this.applyPredictButtonStyle();
+    this.predictButton.addEventListener('click', () => {
+      this.ngZone.run(() => this.runPredict());
+    });
+    toolbar.appendChild(this.predictButton);
+
     container.appendChild(toolbar);
+  }
+
+  private applyPredictButtonStyle(): void {
+    if (!this.predictButton) return;
+    Object.assign(this.predictButton.style, {
+      height: '26px',
+      padding: '0 10px',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: this.isPredicting ? '#787b86' : '#ffffff',
+      background: this.isPredicting ? 'transparent' : '#2962ff',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: this.isPredicting ? 'not-allowed' : 'pointer',
+      fontFamily: 'inherit',
+    });
+    this.predictButton.disabled = this.isPredicting;
+  }
+
+  private runPredict(): void {
+    if (this.isPredicting) return;
+
+    this.isPredicting = true;
+    this.ngZone.runOutsideAngular(() => this.applyPredictButtonStyle());
+
+    this.predictSubscription?.unsubscribe();
+    this.predictSubscription = this.traderAlgoApi
+      .predict({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
+      .subscribe({
+        next: candles => {
+          this.isPredicting = false;
+          this.ngZone.runOutsideAngular(() => {
+            this.predictSeries?.setData(candles.map(c => this.toChartCandle(c)));
+            this.applyPredictButtonStyle();
+          });
+        },
+        error: err => {
+          console.error('Predict request failed.', err);
+          this.isPredicting = false;
+          this.ngZone.runOutsideAngular(() => this.applyPredictButtonStyle());
+        },
+      });
   }
 
   private applyIntervalButtonStyle(btn: HTMLButtonElement, active: boolean): void {

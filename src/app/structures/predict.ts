@@ -10,7 +10,4 @@ export interface PredictRequest {
   sampleCount?: number;   // default: 1
 }
 
-export interface PredictResponse {
-  // TODO: populate once the API response shape is known
-  [key: string]: unknown;
-}
+export type PredictResponse = import('./candle').CandleResponse[];

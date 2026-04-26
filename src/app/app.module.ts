@@ -5,11 +5,13 @@ import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LightweightChartComponent } from './components/lightweight-chart/lightweight-chart.component';
+import { MultiChartComponent } from './components/multi-chart/multi-chart.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    LightweightChartComponent
+    LightweightChartComponent,
+    MultiChartComponent,
   ],
   imports: [
     BrowserModule,

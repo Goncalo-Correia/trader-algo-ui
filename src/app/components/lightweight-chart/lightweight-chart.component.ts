@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, NgZone, OnDestroy, ViewChild } from '@angular/core';
 import {
   CandlestickData,
   CandlestickSeries,
@@ -6,15 +6,17 @@ import {
   createTextWatermark,
   IChartApi,
   ISeriesApi,
+  ITextWatermarkPluginApi,
   LogicalRange,
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
-import { forkJoin, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { LiveChartDataService } from '../../services/live-chart-data.service';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { CandleResponse } from '../../structures/candle';
 import { IntervalResponse } from '../../structures/interval';
+import { SymbolResponse } from '../../structures/symbol';
 
 @Component({
   selector: 'app-lightweight-chart',
@@ -24,6 +26,11 @@ import { IntervalResponse } from '../../structures/interval';
 export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   @ViewChild('chartContainer', { static: true })
   private readonly chartContainer!: ElementRef<HTMLDivElement>;
+
+  @Input() initialSymbol = '';
+  @Input() initialInterval = '';
+  @Input() availableSymbols: SymbolResponse[] = [];
+  @Input() availableIntervals: IntervalResponse[] = [];
 
   private readonly timeLabelFormatter = new Intl.DateTimeFormat(undefined, {
     hour: '2-digit',
@@ -38,22 +45,30 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     hour12: false,
   });
 
-  private selectedSymbol = '';
+  readonly kronosButtons = [
+    { label: 'Mini P',  key: 'mini-precise'  },
+    { label: 'Mini D',  key: 'mini-diverse'  },
+    { label: 'Small P', key: 'small-precise' },
+    { label: 'Small D', key: 'small-diverse' },
+    { label: 'Base P',  key: 'base-precise'  },
+    { label: 'Base D',  key: 'base-diverse'  },
+  ];
+
+  selectedSymbol = '';
   selectedInterval = '';
   isLoading = true;
   statusMessage = 'Loading...';
   liveStatus = '';
   isConnected = false;
+  predictingKey: string | null = null;
 
   private chart?: IChartApi;
   private series?: ISeriesApi<'Candlestick'>;
   private predictSeries?: ISeriesApi<'Candlestick'>;
+  private watermark?: ITextWatermarkPluginApi<Time>;
   private candlesSubscription?: Subscription;
   private liveCandlesSubscription?: Subscription;
   private predictSubscription?: Subscription;
-  private intervalButtonEls: { code: string; element: HTMLButtonElement }[] = [];
-  private predictButton?: HTMLButtonElement;
-  private isPredicting = false;
 
   private lookback = 100;
   private isLoadingMore = false;
@@ -71,6 +86,10 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   ) {}
 
   ngAfterViewInit(): void {
+    this.selectedSymbol = this.initialSymbol;
+    this.selectedInterval = this.initialInterval;
+    this.statusMessage = 'Loading candles...';
+
     this.ngZone.runOutsideAngular(() => {
       this.chart = createChart(this.chartContainer.nativeElement, {
         autoSize: true,
@@ -117,34 +136,15 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       });
 
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
+      this.watermark = createTextWatermark(this.chart.panes()[0], {
+        horzAlign: 'left',
+        vertAlign: 'top',
+        lines: [{ text: this.selectedSymbol, color: 'rgba(209, 212, 220, 0.5)', fontSize: 18, fontFamily: 'inherit' }],
+      });
     });
 
-    forkJoin({
-      symbols: this.traderAlgoApi.getSymbols(),
-      intervals: this.traderAlgoApi.getIntervals(),
-    }).subscribe({
-      next: ({ symbols, intervals }) => {
-        const defaultSymbol = symbols.find(s => s.isDefault) ?? symbols[0];
-        const defaultInterval = intervals.find(i => i.isDefault) ?? intervals[0];
-
-        this.selectedSymbol = defaultSymbol.code;
-        this.selectedInterval = defaultInterval.code;
-        this.statusMessage = 'Loading candles...';
-
-        this.ngZone.runOutsideAngular(() => {
-          this.showSymbolWatermark(this.selectedSymbol);
-          this.buildIntervalButtons(intervals.filter(i => i.isActive));
-        });
-
-        this.loadCandles();
-        this.streamLiveCandles();
-      },
-      error: err => {
-        console.error('Failed to load chart config.', err);
-        this.isLoading = false;
-        this.statusMessage = 'Failed to load chart configuration.';
-      },
-    });
+    this.loadCandles();
+    this.streamLiveCandles();
   }
 
   ngOnDestroy(): void {
@@ -155,12 +155,60 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.chart?.remove();
   }
 
-  private onIntervalChange(code: string): void {
-    if (code === this.selectedInterval) return;
+  onSymbolSelect(event: Event): void {
+    const symbol = (event.target as HTMLSelectElement).value;
+    if (symbol === this.selectedSymbol) return;
+    this.selectedSymbol = symbol;
+    this.ngZone.runOutsideAngular(() => {
+      this.watermark?.applyOptions({
+        lines: [{ text: this.selectedSymbol, color: 'rgba(209, 212, 220, 0.5)', fontSize: 18, fontFamily: 'inherit' }],
+      });
+    });
+    this.resetAndReload();
+  }
 
+  onIntervalChange(code: string): void {
+    if (code === this.selectedInterval) return;
     this.selectedInterval = code;
+    this.resetAndReload();
+  }
+
+  runPredict(key: string): void {
+    if (this.predictingKey !== null) return;
+    this.predictingKey = key;
+    this.predictSubscription?.unsubscribe();
+    this.predictSubscription = this.kronosRequest(key).subscribe({
+      next: candles => {
+        this.predictingKey = null;
+        this.ngZone.runOutsideAngular(() => {
+          this.predictSeries?.setData(candles.map(c => this.toChartCandle(c)));
+        });
+      },
+      error: err => {
+        console.error('Predict request failed.', err);
+        this.predictingKey = null;
+      },
+    });
+  }
+
+  private kronosRequest(key: string): ReturnType<TraderAlgoApiService['kronosMiniPrecise']> {
+    const s = this.selectedSymbol;
+    const i = this.selectedInterval;
+    switch (key) {
+      case 'mini-precise':  return this.traderAlgoApi.kronosMiniPrecise(s, i);
+      case 'mini-diverse':  return this.traderAlgoApi.kronosMiniDiverse(s, i);
+      case 'small-precise': return this.traderAlgoApi.kronosSmallPrecise(s, i);
+      case 'small-diverse': return this.traderAlgoApi.kronosSmallDiverse(s, i);
+      case 'base-precise':  return this.traderAlgoApi.kronosBasePrecise(s, i);
+      case 'base-diverse':  return this.traderAlgoApi.kronosBaseDiverse(s, i);
+      default: throw new Error(`Unknown kronos variant: ${key}`);
+    }
+  }
+
+  private resetAndReload(): void {
     this.candlesSubscription?.unsubscribe();
     this.liveCandlesSubscription?.unsubscribe();
+    this.predictSubscription?.unsubscribe();
 
     this.isLoading = true;
     this.isConnected = false;
@@ -168,129 +216,15 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.lookback = 100;
     this.statusMessage = 'Loading candles...';
     this.liveStatus = '';
-
-    this.predictSubscription?.unsubscribe();
-    this.isPredicting = false;
+    this.predictingKey = null;
 
     this.ngZone.runOutsideAngular(() => {
       this.series?.setData([]);
       this.predictSeries?.setData([]);
-      this.updateIntervalButtonStyles();
-      this.applyPredictButtonStyle();
     });
 
     this.loadCandles();
     this.streamLiveCandles();
-  }
-
-  private showSymbolWatermark(symbol: string): void {
-    createTextWatermark(this.chart!.panes()[0], {
-      horzAlign: 'left',
-      vertAlign: 'top',
-      lines: [{ text: symbol, color: 'rgba(209, 212, 220, 0.5)', fontSize: 18, fontFamily: 'inherit' }],
-    });
-  }
-
-  private buildIntervalButtons(intervals: IntervalResponse[]): void {
-    const container = this.chart!.chartElement();
-
-    const toolbar = document.createElement('div');
-    Object.assign(toolbar.style, {
-      position: 'absolute',
-      top: '8px',
-      left: '12px',
-      zIndex: '3',
-      display: 'flex',
-      gap: '2px',
-    });
-
-    this.intervalButtonEls = intervals.map(interval => {
-      const btn = document.createElement('button');
-      btn.textContent = interval.code;
-      this.applyIntervalButtonStyle(btn, interval.code === this.selectedInterval);
-      btn.addEventListener('click', () => {
-        this.ngZone.run(() => this.onIntervalChange(interval.code));
-      });
-      toolbar.appendChild(btn);
-      return { code: interval.code, element: btn };
-    });
-
-    const separator = document.createElement('div');
-    Object.assign(separator.style, { width: '1px', background: '#2a2d3a', margin: '4px 6px' });
-    toolbar.appendChild(separator);
-
-    this.predictButton = document.createElement('button');
-    this.predictButton.textContent = 'Predict';
-    this.applyPredictButtonStyle();
-    this.predictButton.addEventListener('click', () => {
-      this.ngZone.run(() => this.runPredict());
-    });
-    toolbar.appendChild(this.predictButton);
-
-    container.appendChild(toolbar);
-  }
-
-  private applyPredictButtonStyle(): void {
-    if (!this.predictButton) return;
-    Object.assign(this.predictButton.style, {
-      height: '26px',
-      padding: '0 10px',
-      fontSize: '12px',
-      fontWeight: '600',
-      color: this.isPredicting ? '#787b86' : '#ffffff',
-      background: this.isPredicting ? 'transparent' : '#2962ff',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: this.isPredicting ? 'not-allowed' : 'pointer',
-      fontFamily: 'inherit',
-    });
-    this.predictButton.disabled = this.isPredicting;
-  }
-
-  private runPredict(): void {
-    if (this.isPredicting) return;
-
-    this.isPredicting = true;
-    this.ngZone.runOutsideAngular(() => this.applyPredictButtonStyle());
-
-    this.predictSubscription?.unsubscribe();
-    this.predictSubscription = this.traderAlgoApi
-      .predict({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
-      .subscribe({
-        next: candles => {
-          this.isPredicting = false;
-          this.ngZone.runOutsideAngular(() => {
-            this.predictSeries?.setData(candles.map(c => this.toChartCandle(c)));
-            this.applyPredictButtonStyle();
-          });
-        },
-        error: err => {
-          console.error('Predict request failed.', err);
-          this.isPredicting = false;
-          this.ngZone.runOutsideAngular(() => this.applyPredictButtonStyle());
-        },
-      });
-  }
-
-  private applyIntervalButtonStyle(btn: HTMLButtonElement, active: boolean): void {
-    Object.assign(btn.style, {
-      height: '26px',
-      padding: '0 8px',
-      fontSize: '12px',
-      fontWeight: '600',
-      color: active ? '#ffffff' : '#787b86',
-      background: active ? '#2962ff' : 'transparent',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontFamily: 'inherit',
-    });
-  }
-
-  private updateIntervalButtonStyles(): void {
-    for (const { code, element } of this.intervalButtonEls) {
-      this.applyIntervalButtonStyle(element, code === this.selectedInterval);
-    }
   }
 
   private loadCandles(): void {
@@ -299,12 +233,10 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       .subscribe({
         next: candles => {
           this.isLoading = false;
-
           if (candles.length === 0) {
             this.statusMessage = 'No data available.';
             return;
           }
-
           this.statusMessage = '';
           this.ngZone.runOutsideAngular(() => {
             this.series?.setData(candles.map(c => this.toChartCandle(c)));
@@ -322,7 +254,6 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   private loadMoreCandles(): void {
     this.isLoadingMore = true;
     this.lookback += 100;
-
     this.traderAlgoApi
       .getCandles({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
       .subscribe({

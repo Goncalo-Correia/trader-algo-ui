@@ -1,0 +1,9 @@
+<div class="multi-chart-grid" *ngIf="panes.length">
+  <app-lightweight-chart
+    *ngFor="let pane of panes"
+    [initialSymbol]="pane.symbol"
+    [initialInterval]="pane.interval"
+    [availableSymbols]="symbols"
+    [availableIntervals]="intervals"
+  ></app-lightweight-chart>
+</div>

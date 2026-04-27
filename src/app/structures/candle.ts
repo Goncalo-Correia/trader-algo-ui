@@ -11,4 +11,6 @@ export interface CandleResponse {
   low: number;
   close: number;
   volume: number;
+  buyVolume: number;
+  sellVolume: number;
 }

@@ -17,6 +17,22 @@
       >{{ interval.code }}</button>
       <div class="toolbar-separator"></div>
       <button
+        class="toolbar-btn"
+        [class.active]="showCurrentSession"
+        (click)="toggleCurrentSession()"
+      >D-OHLC</button>
+      <button
+        class="toolbar-btn"
+        [class.active]="showPreviousSession"
+        (click)="togglePreviousSession()"
+      >P-OHLC</button>
+      <button
+        class="toolbar-btn"
+        [class.active]="showVolumeProfile"
+        (click)="toggleVolumeProfile()"
+      >VP</button>
+      <div class="toolbar-separator"></div>
+      <button
         *ngFor="let btn of kronosButtons"
         class="toolbar-btn predict-btn"
         [class.predicting]="predictingKey === btn.key"

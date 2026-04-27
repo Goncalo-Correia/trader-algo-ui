@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CandleResponse } from '../structures/candle';
+import { environment } from '../../environments/environment';
 
 export type ChartInterval = string;
 
@@ -8,7 +9,7 @@ export type ChartInterval = string;
   providedIn: 'root'
 })
 export class LiveChartDataService {
-  private readonly candlesUrl = 'ws://localhost:32770/ws/charts/candles';
+  private readonly candlesUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/candles`;
 
   streamCandles(symbol: string, interval: ChartInterval): Observable<CandleResponse> {
     return new Observable<CandleResponse>(subscriber => {

@@ -3,11 +3,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { CandleRequest, CandleResponse } from '../structures/candle';
 import { IntervalResponse } from '../structures/interval';
+import { SessionOhlcvResponse, VolumeProfileLevel } from '../structures/session';
 import { SymbolResponse } from '../structures/symbol';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class TraderAlgoApiService {
-  private readonly baseUrl = 'http://localhost:32770';
+  private readonly baseUrl = environment.traderAlgoApi.baseUrl;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -51,6 +53,20 @@ export class TraderAlgoApiService {
 
   getSymbols(): Observable<SymbolResponse[]> {
     return this.http.get<SymbolResponse[]>(`${this.baseUrl}/api/symbols`);
+  }
+
+  getSessionVolumeProfile(symbol: string, buckets = 30): Observable<VolumeProfileLevel[]> {
+    return this.http.get<VolumeProfileLevel[]>(`${this.baseUrl}/api/session/volume-profile`, {
+      params: { symbol, buckets },
+    });
+  }
+
+  getCurrentSessionOhlcv(symbol: string): Observable<SessionOhlcvResponse> {
+    return this.http.get<SessionOhlcvResponse>(`${this.baseUrl}/api/session/current`, { params: { symbol } });
+  }
+
+  getPreviousSessionOhlcv(symbol: string): Observable<SessionOhlcvResponse> {
+    return this.http.get<SessionOhlcvResponse>(`${this.baseUrl}/api/session/previous`, { params: { symbol } });
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

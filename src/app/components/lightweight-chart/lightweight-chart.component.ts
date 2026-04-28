@@ -99,7 +99,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   // ── Private state ────────────────────────────────────────────────────────────
   private selectedSymbol = '';
   private _activeTrade: Trade | null = null;
-  private _adjustMode: 'stopLoss' | 'takeProfit' | null = null;
+  protected _adjustMode: 'stopLoss' | 'takeProfit' | null = null;
 
   private chart?: IChartApi;
   private series?: ISeriesApi<'Candlestick'>;
@@ -109,6 +109,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   private volumeSeries?: ISeriesApi<'Histogram'>;
   private deltaSeries?: ISeriesApi<'Histogram'>;
   private rsiSeries?: ISeriesApi<'Line'>;
+  private rsiMaSeries?: ISeriesApi<'Line'>;
   private rsiOverbought?: ISeriesApi<'Line'>;
   private rsiOversold?: ISeriesApi<'Line'>;
   private watermark?: ITextWatermarkPluginApi<Time>;
@@ -212,7 +213,8 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
       // Pane 2
       const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.rsiSeries     = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#b39ddb', lastValueVisible: true }, 2);
+      this.rsiSeries     = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#9c27b0', lastValueVisible: true }, 2);
+      this.rsiMaSeries   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ef5350' }, 2);
       this.rsiOversold   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
       this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
@@ -354,6 +356,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       this.volumeSeries?.setData([]);
       this.deltaSeries?.setData([]);
       this.rsiSeries?.setData([]);
+      this.rsiMaSeries?.setData([]);
       this.rsiOverbought?.setData([]);
       this.rsiOversold?.setData([]);
       this.volumeProfilePlugin?.setData([]);
@@ -387,7 +390,9 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
             this.sma100Series?.setData(this.computeSma(candles, 100));
             this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
             this.deltaSeries?.setData(candles.map(c => this.toDeltaBar(c)));
-            this.rsiSeries?.setData(this.computeRsi(candles));
+            const rsiData = this.computeRsi(candles);
+            this.rsiSeries?.setData(rsiData);
+            this.rsiMaSeries?.setData(this.computeRsiMa(rsiData));
             this.rsiOverbought?.setData(this.makeRefLine(candles, 70));
             this.rsiOversold?.setData(this.makeRefLine(candles, 30));
             this.chart?.timeScale().fitContent();
@@ -417,7 +422,9 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
             this.sma100Series?.setData(this.computeSma(candles, 100));
             this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
             this.deltaSeries?.setData(candles.map(c => this.toDeltaBar(c)));
-            this.rsiSeries?.setData(this.computeRsi(candles));
+            const rsiData = this.computeRsi(candles);
+            this.rsiSeries?.setData(rsiData);
+            this.rsiMaSeries?.setData(this.computeRsiMa(rsiData));
             this.rsiOverbought?.setData(this.makeRefLine(candles, 70));
             this.rsiOversold?.setData(this.makeRefLine(candles, 30));
           });
@@ -443,6 +450,8 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
             const lastRsi = this.lastRsiPoint(this.loadedCandles);
             if (lastRsi) {
               this.rsiSeries?.update(lastRsi);
+              const lastRsiMa = this.lastRsiMaPoint(this.loadedCandles);
+              if (lastRsiMa) this.rsiMaSeries?.update(lastRsiMa);
               this.rsiOverbought?.update({ time: lastRsi.time, value: 70 });
               this.rsiOversold?.update({ time: lastRsi.time, value: 30 });
             }
@@ -560,6 +569,21 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
   private lastRsiPoint(candles: CandleResponse[], period = 14): LineData<Time> | null {
     return this.computeRsi(candles, period).at(-1) ?? null;
+  }
+
+  private computeRsiMa(rsiData: LineData<Time>[], period = 9): LineData<Time>[] {
+    const result: LineData<Time>[] = [];
+    for (let i = period - 1; i < rsiData.length; i++) {
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) sum += rsiData[j].value;
+      result.push({ time: rsiData[i].time, value: sum / period });
+    }
+    return result;
+  }
+
+  private lastRsiMaPoint(candles: CandleResponse[], rsiPeriod = 14, maPeriod = 9): LineData<Time> | null {
+    const rsiData = this.computeRsi(candles, rsiPeriod);
+    return this.computeRsiMa(rsiData, maPeriod).at(-1) ?? null;
   }
 
   private rsiValue(avgGain: number, avgLoss: number): number {

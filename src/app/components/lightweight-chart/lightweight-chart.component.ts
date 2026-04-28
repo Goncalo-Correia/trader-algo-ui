@@ -3,13 +3,11 @@ import {
   CandlestickData,
   CandlestickSeries,
   createChart,
-  createTextWatermark,
   HistogramData,
   HistogramSeries,
   IChartApi,
   IPriceLine,
   ISeriesApi,
-  ITextWatermarkPluginApi,
   LineData,
   LineSeries,
   LineStyle,
@@ -43,13 +41,6 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   @Input() set symbol(value: string) {
     const changed = value !== this.selectedSymbol;
     this.selectedSymbol = value;
-    if (this.watermark) {
-      this.ngZone.runOutsideAngular(() =>
-        this.watermark?.applyOptions({
-          lines: [{ text: value, color: 'rgba(209,212,220,0.5)', fontSize: 18, fontFamily: 'inherit' }],
-        }),
-      );
-    }
     if (changed && this.chart) this.resetAndReload();
   }
 
@@ -86,6 +77,10 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   showCurrentSession  = true;
   showPreviousSession = true;
   showVolumeProfile   = true;
+  showVolume          = true;
+  showRsi             = true;
+  showMacd            = true;
+  showPredictMenu     = false;
 
   readonly kronosButtons = [
     { label: 'Mini P',  key: 'mini-precise'  },
@@ -112,7 +107,11 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   private rsiMaSeries?: ISeriesApi<'Line'>;
   private rsiOverbought?: ISeriesApi<'Line'>;
   private rsiOversold?: ISeriesApi<'Line'>;
-  private watermark?: ITextWatermarkPluginApi<Time>;
+  private macdLineSeries?:   ISeriesApi<'Line'>;
+  private macdSignalSeries?: ISeriesApi<'Line'>;
+  private macdHistSeries?:   ISeriesApi<'Histogram'>;
+  private macdZeroSeries?:   ISeriesApi<'Line'>;
+
   private volumeProfilePlugin?: VolumeProfilePlugin;
 
   private tradeEntryLine?: IPriceLine;
@@ -167,8 +166,8 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.ngZone.runOutsideAngular(() => {
       this.chart = createChart(this.chartContainer.nativeElement, {
         autoSize: true,
-        layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-        grid: { vertLines: { color: '#1e2433' }, horzLines: { color: '#1e2433' } },
+        layout: { background: { color: '#000000' }, textColor: '#d1d4dc' },
+        grid: { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
         rightPriceScale: { borderColor: '#2a2d3a' },
         timeScale: {
           borderColor: '#2a2d3a',
@@ -219,13 +218,16 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       this.rsiOversold   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
       this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
+      // Pane 3 — MACD
+      const macdOpts = { priceScaleId: 'macd', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
+      this.macdLineSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#2962ff', lastValueVisible: true }, 3);
+      this.macdSignalSeries = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#ff6d00', lastValueVisible: true }, 3);
+      this.macdHistSeries   = this.chart.addSeries(HistogramSeries, { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false }, 3);
+      this.macdZeroSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#4a4d5a' }, 3);
+      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
       this.chart.subscribeClick(this.onChartClickHandler);
-
-      this.watermark = createTextWatermark(this.chart.panes()[0], {
-        horzAlign: 'left', vertAlign: 'top',
-        lines: [{ text: this.selectedSymbol, color: 'rgba(209,212,220,0.5)', fontSize: 18, fontFamily: 'inherit' }],
-      });
     });
 
     this.loadCandles();
@@ -275,8 +277,37 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     );
   }
 
+  toggleVolume(): void {
+    this.showVolume = !this.showVolume;
+    this.ngZone.runOutsideAngular(() => {
+      const pane = this.chart?.panes()[1];
+      if (pane) pane.setStretchFactor(this.showVolume ? 1 : 0);
+    });
+  }
+
+  toggleRsi(): void {
+    this.showRsi = !this.showRsi;
+    this.ngZone.runOutsideAngular(() => {
+      const pane = this.chart?.panes()[2];
+      if (pane) pane.setStretchFactor(this.showRsi ? 1 : 0);
+    });
+  }
+
+  toggleMacd(): void {
+    this.showMacd = !this.showMacd;
+    this.ngZone.runOutsideAngular(() => {
+      const pane = this.chart?.panes()[3];
+      if (pane) pane.setStretchFactor(this.showMacd ? 1 : 0);
+    });
+  }
+
+  togglePredictMenu(): void {
+    this.showPredictMenu = !this.showPredictMenu;
+  }
+
   runPredict(key: string): void {
     if (this.predictingKey !== null) return;
+    this.showPredictMenu = false;
     this.predictingKey = key;
     this.predictSubscription?.unsubscribe();
     this.predictSubscription = this.kronosRequest(key).subscribe({
@@ -294,28 +325,36 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.clearTradeLines();
     if (!this.series) return;
 
-    const entryPrice = trade.entryPrice ?? trade.requestedPrice;
-    const isBuy      = trade.side === 'Buy';
+    const entryRef = trade.entryPrice ?? trade.requestedPrice;
+    const isBuy    = trade.side === 'Buy';
 
-    if (entryPrice !== null && entryPrice !== undefined) {
+    if (entryRef !== null && entryRef !== undefined) {
       this.tradeEntryLine = this.series.createPriceLine({
-        price: Number(entryPrice),
-        color: isBuy ? '#26a69a' : '#ef5350',
+        price: Number(entryRef),
+        color: '#ffd600',
         lineWidth: 1, lineStyle: LineStyle.Solid,
         axisLabelVisible: true, title: `${trade.side} Entry`,
       });
     }
-    if (trade.stopLoss !== null && trade.stopLoss !== undefined) {
+
+    // SL / TP are stored as positive unit offsets — compute absolute price levels.
+    if (trade.stopLoss !== null && trade.stopLoss !== undefined && entryRef !== null && entryRef !== undefined) {
+      const slPrice = isBuy
+        ? Number(entryRef) - Number(trade.stopLoss)
+        : Number(entryRef) + Number(trade.stopLoss);
       this.tradeSlLine = this.series.createPriceLine({
-        price: Number(trade.stopLoss),
-        color: '#ef5350', lineWidth: 1, lineStyle: LineStyle.Dashed,
+        price: slPrice,
+        color: '#ef5350', lineWidth: 1, lineStyle: LineStyle.Solid,
         axisLabelVisible: true, title: 'SL',
       });
     }
-    if (trade.takeProfit !== null && trade.takeProfit !== undefined) {
+    if (trade.takeProfit !== null && trade.takeProfit !== undefined && entryRef !== null && entryRef !== undefined) {
+      const tpPrice = isBuy
+        ? Number(entryRef) + Number(trade.takeProfit)
+        : Number(entryRef) - Number(trade.takeProfit);
       this.tradeTpLine = this.series.createPriceLine({
-        price: Number(trade.takeProfit),
-        color: '#26a69a', lineWidth: 1, lineStyle: LineStyle.Dashed,
+        price: tpPrice,
+        color: '#26a69a', lineWidth: 1, lineStyle: LineStyle.Solid,
         axisLabelVisible: true, title: 'TP',
       });
     }
@@ -359,6 +398,10 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       this.rsiMaSeries?.setData([]);
       this.rsiOverbought?.setData([]);
       this.rsiOversold?.setData([]);
+      this.macdLineSeries?.setData([]);
+      this.macdSignalSeries?.setData([]);
+      this.macdHistSeries?.setData([]);
+      this.macdZeroSeries?.setData([]);
       this.volumeProfilePlugin?.setData([]);
       this.clearSessionLines();
       // Re-render trade lines for current symbol after reload
@@ -395,6 +438,11 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
             this.rsiMaSeries?.setData(this.computeRsiMa(rsiData));
             this.rsiOverbought?.setData(this.makeRefLine(candles, 70));
             this.rsiOversold?.setData(this.makeRefLine(candles, 30));
+            const { macdLine, signalLine, histogram } = this.computeMacd(candles);
+            this.macdLineSeries?.setData(macdLine);
+            this.macdSignalSeries?.setData(signalLine);
+            this.macdHistSeries?.setData(histogram);
+            this.macdZeroSeries?.setData(this.makeRefLine(candles, 0));
             this.chart?.timeScale().fitContent();
           });
         },
@@ -427,6 +475,11 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
             this.rsiMaSeries?.setData(this.computeRsiMa(rsiData));
             this.rsiOverbought?.setData(this.makeRefLine(candles, 70));
             this.rsiOversold?.setData(this.makeRefLine(candles, 30));
+            const { macdLine, signalLine, histogram } = this.computeMacd(candles);
+            this.macdLineSeries?.setData(macdLine);
+            this.macdSignalSeries?.setData(signalLine);
+            this.macdHistSeries?.setData(histogram);
+            this.macdZeroSeries?.setData(this.makeRefLine(candles, 0));
           });
         },
         error: err => { console.error('Failed to load more candles.', err); this.isLoadingMore = false; },
@@ -454,6 +507,13 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
               if (lastRsiMa) this.rsiMaSeries?.update(lastRsiMa);
               this.rsiOverbought?.update({ time: lastRsi.time, value: 70 });
               this.rsiOversold?.update({ time: lastRsi.time, value: 30 });
+            }
+            const lastMacd = this.lastMacdPoints(this.loadedCandles);
+            if (lastMacd) {
+              this.macdLineSeries?.update(lastMacd.macd);
+              this.macdSignalSeries?.update(lastMacd.signal);
+              this.macdHistSeries?.update(lastMacd.hist);
+              this.macdZeroSeries?.update({ time: lastMacd.macd.time, value: 0 });
             }
           });
         },
@@ -493,9 +553,9 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   private applyVisibleSessionLines(): void {
     this.clearSessionLines();
     if (this.showCurrentSession && this.currentSession)
-      this.applySessionLines(this.currentSession, 'D', 'rgba(66,165,245,0.5)', LineStyle.Solid);
+      this.applySessionLines(this.currentSession, 'D', '#42a5f5', LineStyle.Solid);
     if (this.showPreviousSession && this.previousSession)
-      this.applySessionLines(this.previousSession, 'P', 'rgba(158,158,158,0.5)', LineStyle.Dashed);
+      this.applySessionLines(this.previousSession, 'P', '#9e9e9e', LineStyle.Dashed);
   }
 
   private applySessionLines(s: SessionOhlcvResponse, prefix: string, color: string, lineStyle: LineStyle): void {
@@ -519,7 +579,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
   }
 
   private toVolumeBar(c: CandleResponse): HistogramData<Time> {
-    return { time: this.toChartTime(c.time), value: c.volume, color: c.close >= c.open ? '#26a69a80' : '#ef535080' };
+    return { time: this.toChartTime(c.time), value: c.volume, color: c.close >= c.open ? '#26a69a' : '#ef5350' };
   }
 
   private toDeltaBar(c: CandleResponse): HistogramData<Time> {
@@ -588,6 +648,66 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
 
   private rsiValue(avgGain: number, avgLoss: number): number {
     return avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  }
+
+  private computeEma(values: number[], period: number): number[] {
+    if (values.length < period) return [];
+    const k = 2 / (period + 1);
+    const result: number[] = new Array(values.length).fill(NaN);
+    let seed = 0;
+    for (let i = 0; i < period; i++) seed += values[i];
+    result[period - 1] = seed / period;
+    for (let i = period; i < values.length; i++)
+      result[i] = values[i] * k + result[i - 1] * (1 - k);
+    return result;
+  }
+
+  private computeMacd(candles: CandleResponse[]): {
+    macdLine: LineData<Time>[]; signalLine: LineData<Time>[]; histogram: HistogramData<Time>[];
+  } {
+    if (candles.length < 34) return { macdLine: [], signalLine: [], histogram: [] };
+
+    const closes  = candles.map(c => c.close);
+    const ema12   = this.computeEma(closes, 12);
+    const ema26   = this.computeEma(closes, 26);
+    const macdRaw = closes.map((_, i) =>
+      isNaN(ema12[i]) || isNaN(ema26[i]) ? NaN : ema12[i] - ema26[i],
+    );
+
+    const firstValid  = macdRaw.findIndex(v => !isNaN(v));  // index 25
+    const signalRaw   = this.computeEma(macdRaw.slice(firstValid), 9);
+
+    const macdLine:   LineData<Time>[]     = [];
+    const signalLine: LineData<Time>[]     = [];
+    const histogram:  HistogramData<Time>[] = [];
+
+    for (let i = firstValid; i < candles.length; i++) {
+      const macdVal = macdRaw[i];
+      if (isNaN(macdVal)) continue;
+      const t = this.toChartTime(candles[i].time);
+      macdLine.push({ time: t, value: macdVal });
+
+      const sigVal = signalRaw[i - firstValid];
+      if (isNaN(sigVal)) continue;
+      signalLine.push({ time: t, value: sigVal });
+      const histVal  = macdVal - sigVal;
+      const prevHist = histogram.length > 0 ? histogram.at(-1)!.value : null;
+      const growing  = prevHist === null || (histVal >= 0 ? histVal >= prevHist : histVal <= prevHist);
+      const color    = histVal >= 0
+        ? (growing ? '#26a69a' : '#26a69a55')
+        : (growing ? '#ef5350' : '#ef535055');
+      histogram.push({ time: t, value: histVal, color });
+    }
+
+    return { macdLine, signalLine, histogram };
+  }
+
+  private lastMacdPoints(candles: CandleResponse[]): {
+    macd: LineData<Time>; signal: LineData<Time>; hist: HistogramData<Time>;
+  } | null {
+    const { macdLine, signalLine, histogram } = this.computeMacd(candles);
+    if (!macdLine.length || !signalLine.length || !histogram.length) return null;
+    return { macd: macdLine.at(-1)!, signal: signalLine.at(-1)!, hist: histogram.at(-1)! };
   }
 
   private makeRefLine(candles: CandleResponse[], value: number): LineData<Time>[] {

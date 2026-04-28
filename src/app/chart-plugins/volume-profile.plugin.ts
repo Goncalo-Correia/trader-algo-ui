@@ -65,20 +65,20 @@ class VolumeProfileRenderer implements IPrimitivePaneRenderer {
 
       context.lineWidth = 1;
 
-      // VAH — teal dashed
+      // VAH — white solid
       if (vahY !== null) {
-        context.strokeStyle = '#26a69a';
-        context.setLineDash([5, 4]);
+        context.strokeStyle = '#ffffff';
+        context.setLineDash([]);
         context.beginPath();
         context.moveTo(0, Math.round(vahY * verticalPixelRatio));
         context.lineTo(bitmapSize.width, Math.round(vahY * verticalPixelRatio));
         context.stroke();
       }
 
-      // VAL — red dashed
+      // VAL — white solid
       if (valY !== null) {
-        context.strokeStyle = '#ef5350';
-        context.setLineDash([5, 4]);
+        context.strokeStyle = '#ffffff';
+        context.setLineDash([]);
         context.beginPath();
         context.moveTo(0, Math.round(valY * verticalPixelRatio));
         context.lineTo(bitmapSize.width, Math.round(valY * verticalPixelRatio));

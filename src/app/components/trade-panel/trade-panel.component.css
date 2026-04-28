@@ -3,8 +3,8 @@
   flex-direction: column;
   width: 220px;
   flex-shrink: 0;
-  background: #1a1d29;
-  border-left: 1px solid #2a2d3a;
+  background: #1a1a1a;
+  border-left: 1px solid #2a2a2a;
   overflow-y: auto;
 }
 
@@ -159,6 +159,8 @@
 }
 .tp-detail-label { color: #787b86; }
 .tp-detail-value { color: #d1d4dc; text-align: right; font-variant-numeric: tabular-nums; }
+.tp-detail-value.pnl-pos { color: #26a69a; font-weight: 600; }
+.tp-detail-value.pnl-neg { color: #ef5350; font-weight: 600; }
 
 /* ── SL / TP rows ─────────────────────────────────────────────────────────── */
 
@@ -172,6 +174,7 @@
 .tp-level-label.sl { color: #ef5350; }
 .tp-level-label.tp { color: #26a69a; }
 .tp-level-value { flex: 1; color: #d1d4dc; font-variant-numeric: tabular-nums; }
+.tp-offset { font-size: 10px; color: #787b86; margin-left: 3px; }
 
 .tp-adj-btn {
   height: 22px;

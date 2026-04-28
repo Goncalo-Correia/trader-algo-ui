@@ -20,6 +20,7 @@ export interface Trade {
   closedAt:       number | null;
   closedPrice:    number | null;
   closeReason:    TradeCloseReason | null;
+  unrealizedPnl:  number | null;
 }
 
 export interface CreateTradeRequest {

@@ -18,13 +18,30 @@
 
       <div class="toolbar-separator"></div>
 
-      <button
-        *ngFor="let btn of kronosButtons"
-        class="toolbar-btn predict-btn"
-        [class.predicting]="predictingKey === btn.key"
-        [disabled]="predictingKey !== null"
-        (click)="runPredict(btn.key)"
-      >{{ btn.label }}</button>
+      <button class="toolbar-btn" [class.active]="showVolume" (click)="toggleVolume()">Vol</button>
+      <button class="toolbar-btn" [class.active]="showRsi"    (click)="toggleRsi()">RSI</button>
+      <button class="toolbar-btn" [class.active]="showMacd"   (click)="toggleMacd()">MACD</button>
+
+      <div class="toolbar-separator"></div>
+
+      <!-- Predict dropdown -->
+      <div class="predict-dropdown">
+        <button
+          class="toolbar-btn predict-btn"
+          [class.predicting]="predictingKey !== null"
+          [disabled]="predictingKey !== null"
+          (click)="togglePredictMenu()"
+        >{{ predictingKey !== null ? 'Predicting…' : 'Predict ▾' }}</button>
+
+        <div class="predict-menu" *ngIf="showPredictMenu">
+          <button
+            *ngFor="let btn of kronosButtons"
+            class="predict-menu-item"
+            [disabled]="predictingKey !== null"
+            (click)="runPredict(btn.key)"
+          >{{ btn.label }}</button>
+        </div>
+      </div>
     </div>
 
     <div class="live-indicator" [class.connected]="isConnected" *ngIf="liveStatus">

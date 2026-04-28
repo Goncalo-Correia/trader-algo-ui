@@ -10,7 +10,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: #131722;
+  background: #000000;
 }
 
 /* ── Toolbar ──────────────────────────────────────────────────────────────── */
@@ -21,8 +21,8 @@
   flex-shrink: 0;
   height: 38px;
   padding: 0 12px;
-  background: #1e222d;
-  border-bottom: 1px solid #2a2d3a;
+  background: #252525;
+  border-bottom: 1px solid #303030;
   gap: 8px;
 }
 
@@ -38,20 +38,56 @@
   padding: 0 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #787b86;
-  background: transparent;
+  color: #5b9bd5;
+  background: #0e1c2f;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
   transition: color 0.15s, background 0.15s;
 }
-.toolbar-btn:hover:not(:disabled) { color: #d1d4dc; }
-.toolbar-btn.active { color: #fff; background: #2962ff; }
+.toolbar-btn:hover:not(:disabled) { color: #90c4f4; background: #162840; }
+.toolbar-btn.active               { color: #ffffff; background: #2962ff; }
 
-.toolbar-btn.predict-btn          { padding: 0 10px; color: #fff; background: #2962ff; }
+.toolbar-btn.predict-btn          { padding: 0 10px; color: #ffffff; background: #2962ff; }
 .toolbar-btn.predict-btn.predicting,
-.toolbar-btn.predict-btn:disabled { color: #787b86; background: transparent; cursor: not-allowed; }
+.toolbar-btn.predict-btn:disabled { color: #3d6fa0; background: #0e1c2f; cursor: not-allowed; }
+
+/* ── Predict dropdown ─────────────────────────────────────────────────────── */
+
+.predict-dropdown {
+  position: relative;
+}
+
+.predict-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  background: #252525;
+  border: 1px solid #303030;
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 110px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
+
+.predict-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #5b9bd5;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.predict-menu-item:hover:not(:disabled) { background: #162840; color: #90c4f4; }
+.predict-menu-item:disabled             { color: #3d6fa0; cursor: not-allowed; }
 
 .toolbar-separator {
   width: 1px;

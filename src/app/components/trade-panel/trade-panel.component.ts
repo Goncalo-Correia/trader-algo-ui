@@ -103,6 +103,28 @@ export class TradePanelComponent implements OnDestroy {
     return this.activeTrade?.status === 'Pending' || this.activeTrade?.status === 'Active';
   }
 
+  /** Absolute SL price level (entry ± offset). Null if SL or entry not set. */
+  get absoluteSlPrice(): number | null {
+    const t = this.activeTrade;
+    if (!t || t.stopLoss === null || t.stopLoss === undefined) return null;
+    const entry = t.entryPrice ?? t.requestedPrice;
+    if (entry === null || entry === undefined) return null;
+    return t.side === 'Buy'
+      ? Number(entry) - Number(t.stopLoss)
+      : Number(entry) + Number(t.stopLoss);
+  }
+
+  /** Absolute TP price level (entry ± offset). Null if TP or entry not set. */
+  get absoluteTpPrice(): number | null {
+    const t = this.activeTrade;
+    if (!t || t.takeProfit === null || t.takeProfit === undefined) return null;
+    const entry = t.entryPrice ?? t.requestedPrice;
+    if (entry === null || entry === undefined) return null;
+    return t.side === 'Buy'
+      ? Number(entry) + Number(t.takeProfit)
+      : Number(entry) - Number(t.takeProfit);
+  }
+
   // ── Trade actions ────────────────────────────────────────────────────────────
 
   startTrade(): void {
@@ -174,6 +196,11 @@ export class TradePanelComponent implements OnDestroy {
   applyAdjustment(price: number): void {
     if (!this.activeTrade || !this.adjustMode) return;
 
+    const entryRef = this.activeTrade.entryPrice ?? this.activeTrade.requestedPrice;
+    if (entryRef === null || entryRef === undefined) return;
+
+    // Convert clicked absolute price to a positive unit offset from entry.
+    const offset  = Math.abs(price - Number(entryRef));
     const mode    = this.adjustMode;
     const prev    = mode === 'stopLoss' ? this.activeTrade.stopLoss : this.activeTrade.takeProfit;
     const tradeId = this.activeTrade.id;
@@ -183,13 +210,13 @@ export class TradePanelComponent implements OnDestroy {
     this.isUpdatingTrade = true;
     this.tradeError = '';
 
-    // Optimistic update
+    // Optimistic update (store offset, same as backend)
     this.activeTrade = mode === 'stopLoss'
-      ? { ...this.activeTrade, stopLoss:   price }
-      : { ...this.activeTrade, takeProfit: price };
+      ? { ...this.activeTrade, stopLoss:   offset }
+      : { ...this.activeTrade, takeProfit: offset };
     this.tradeChange.emit(this.activeTrade);
 
-    const payload: UpdateTradeRequest = mode === 'stopLoss' ? { stopLoss: price } : { takeProfit: price };
+    const payload: UpdateTradeRequest = mode === 'stopLoss' ? { stopLoss: offset } : { takeProfit: offset };
 
     this.traderAlgoApi.updateTrade(tradeId, payload).subscribe({
       next: trade => {

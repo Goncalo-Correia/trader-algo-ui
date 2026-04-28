@@ -91,12 +91,25 @@
 
       <span class="tp-detail-label">Qty</span>
       <span class="tp-detail-value">{{ activeTrade.quantity | number:'1.0-8' }}</span>
+
+      <ng-container *ngIf="activeTrade.unrealizedPnl !== null && activeTrade.unrealizedPnl !== undefined">
+        <span class="tp-detail-label">PNL</span>
+        <span class="tp-detail-value" [ngClass]="activeTrade.unrealizedPnl >= 0 ? 'pnl-pos' : 'pnl-neg'">
+          {{ activeTrade.unrealizedPnl >= 0 ? '+' : '' }}{{ activeTrade.unrealizedPnl | number:'1.2-4' }}
+        </span>
+      </ng-container>
     </div>
 
     <!-- SL -->
     <div class="tp-level-row">
       <span class="tp-level-label sl">SL</span>
-      <span class="tp-level-value">{{ activeTrade.stopLoss !== null ? (activeTrade.stopLoss | number:'1.2-8') : '—' }}</span>
+      <span class="tp-level-value">
+        <ng-container *ngIf="absoluteSlPrice !== null; else noSl">
+          {{ absoluteSlPrice | number:'1.2-8' }}
+          <span class="tp-offset">(±{{ activeTrade.stopLoss | number:'1.2-2' }})</span>
+        </ng-container>
+        <ng-template #noSl>—</ng-template>
+      </span>
       <button
         class="tp-adj-btn"
         [class.active]="adjustMode === 'stopLoss'"
@@ -108,7 +121,13 @@
     <!-- TP -->
     <div class="tp-level-row">
       <span class="tp-level-label tp">TP</span>
-      <span class="tp-level-value">{{ activeTrade.takeProfit !== null ? (activeTrade.takeProfit | number:'1.2-8') : '—' }}</span>
+      <span class="tp-level-value">
+        <ng-container *ngIf="absoluteTpPrice !== null; else noTp">
+          {{ absoluteTpPrice | number:'1.2-8' }}
+          <span class="tp-offset">(±{{ activeTrade.takeProfit | number:'1.2-2' }})</span>
+        </ng-container>
+        <ng-template #noTp>—</ng-template>
+      </span>
       <button
         class="tp-adj-btn"
         [class.active]="adjustMode === 'takeProfit'"

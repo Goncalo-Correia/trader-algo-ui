@@ -1,0 +1,234 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  flex-shrink: 0;
+  background: #1a1d29;
+  border-left: 1px solid #2a2d3a;
+  overflow-y: auto;
+}
+
+.tp-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px;
+}
+
+/* ── Symbol selector ──────────────────────────────────────────────────────── */
+
+.tp-symbol-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tp-symbol-select {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #d1d4dc;
+  background: #131722;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
+}
+.tp-symbol-select:focus { border-color: #2962ff; }
+
+/* ── Section label ────────────────────────────────────────────────────────── */
+
+.tp-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #787b86;
+}
+
+/* ── Toggle rows ──────────────────────────────────────────────────────────── */
+
+.tp-toggle-row {
+  display: flex;
+  gap: 4px;
+}
+
+.tp-toggle-btn {
+  flex: 1;
+  height: 28px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  background: transparent;
+  color: #787b86;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tp-toggle-btn:hover { color: #d1d4dc; border-color: #4a4d5a; }
+.tp-toggle-btn.buy.active   { background: #1a3a2a; color: #26a69a; border-color: #26a69a; }
+.tp-toggle-btn.sell.active  { background: #3a1a1a; color: #ef5350; border-color: #ef5350; }
+.tp-toggle-btn.active:not(.buy):not(.sell) { background: #252a3a; color: #d1d4dc; border-color: #2962ff; }
+
+/* ── Fields ───────────────────────────────────────────────────────────────── */
+
+.tp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tp-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #787b86;
+}
+.tp-optional { font-weight: 400; opacity: 0.6; }
+
+.tp-input {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #d1d4dc;
+  background: #131722;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.15s;
+  -moz-appearance: textfield;
+}
+.tp-input::-webkit-outer-spin-button,
+.tp-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.tp-input:focus { border-color: #2962ff; }
+.tp-input::placeholder { color: #4a4d5a; }
+
+/* ── Action buttons ───────────────────────────────────────────────────────── */
+
+.tp-action-btn {
+  width: 100%;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: opacity 0.15s;
+}
+.tp-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tp-action-btn.start-btn.buy-btn  { background: #26a69a; color: #fff; }
+.tp-action-btn.start-btn.sell-btn { background: #ef5350; color: #fff; }
+.tp-action-btn.stop-btn           { background: #2a2d3a; color: #ef5350; border: 1px solid #ef5350; }
+.tp-action-btn.stop-btn:not(:disabled):hover { background: #3a2020; }
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+
+.tp-badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.tp-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.tp-badge.active    { background: #1a3a2a; color: #26a69a; }
+.tp-badge.pending   { background: #2a2a1a; color: #f59e0b; }
+.tp-badge.closed,
+.tp-badge.cancelled { background: #2a2a2a; color: #787b86; }
+.tp-badge.buy       { background: #1a3a2a; color: #26a69a; }
+.tp-badge.sell      { background: #3a1a1a; color: #ef5350; }
+.tp-badge.neutral   { background: #252a3a; color: #818cf8; }
+
+/* ── Detail grid ──────────────────────────────────────────────────────────── */
+
+.tp-detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 12px;
+}
+.tp-detail-label { color: #787b86; }
+.tp-detail-value { color: #d1d4dc; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── SL / TP rows ─────────────────────────────────────────────────────────── */
+
+.tp-level-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.tp-level-label { width: 18px; font-size: 10px; font-weight: 700; text-transform: uppercase; flex-shrink: 0; }
+.tp-level-label.sl { color: #ef5350; }
+.tp-level-label.tp { color: #26a69a; }
+.tp-level-value { flex: 1; color: #d1d4dc; font-variant-numeric: tabular-nums; }
+
+.tp-adj-btn {
+  height: 22px;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #787b86;
+  background: transparent;
+  border: 1px solid #2a2d3a;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.tp-adj-btn:hover:not(:disabled) { color: #d1d4dc; border-color: #4a4d5a; }
+.tp-adj-btn.active               { color: #f59e0b; border-color: #f59e0b; background: #2a2a1a; }
+.tp-adj-btn:disabled             { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Adjust hint ──────────────────────────────────────────────────────────── */
+
+.tp-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #2a2a1a;
+  border: 1px solid #f59e0b44;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #f59e0b;
+}
+.tp-hint-cancel {
+  background: none;
+  border: none;
+  color: #f59e0b;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.tp-hint-cancel:hover { opacity: 1; }
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+
+.tp-divider { height: 1px; background: #2a2d3a; margin: 2px 0; }
+
+/* ── Messages ─────────────────────────────────────────────────────────────── */
+
+.tp-msg {
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
+.tp-msg.success { color: #26a69a; background: #1a3a2a; }
+.tp-msg.error   { color: #ef5350; background: #3a1a1a; }

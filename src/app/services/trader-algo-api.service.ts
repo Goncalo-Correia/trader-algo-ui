@@ -5,6 +5,7 @@ import { CandleRequest, CandleResponse } from '../structures/candle';
 import { IntervalResponse } from '../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../structures/session';
 import { SymbolResponse } from '../structures/symbol';
+import { CreateTradeRequest, Trade, UpdateTradeRequest } from '../structures/trade';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -67,6 +68,26 @@ export class TraderAlgoApiService {
 
   getPreviousSessionOhlcv(symbol: string): Observable<SessionOhlcvResponse> {
     return this.http.get<SessionOhlcvResponse>(`${this.baseUrl}/api/session/previous`, { params: { symbol } });
+  }
+
+  createTrade(payload: CreateTradeRequest): Observable<Trade> {
+    return this.http.post<Trade>(`${this.baseUrl}/api/trades`, payload);
+  }
+
+  stopTrade(id: number): Observable<Trade> {
+    return this.http.post<Trade>(`${this.baseUrl}/api/trades/${id}/stop`, {});
+  }
+
+  updateTrade(id: number, payload: UpdateTradeRequest): Observable<Trade> {
+    return this.http.patch<Trade>(`${this.baseUrl}/api/trades/${id}`, payload);
+  }
+
+  getActiveTrades(symbol: string): Observable<Trade[]> {
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/active`, { params: { symbol } });
+  }
+
+  getTradeHistory(symbol: string): Observable<Trade[]> {
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/history`, { params: { symbol } });
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

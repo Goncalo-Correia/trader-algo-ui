@@ -1,0 +1,138 @@
+<div class="tp-inner">
+
+  <!-- ── Symbol selector ─────────────────────────────────────────────────── -->
+  <div class="tp-symbol-section">
+    <label class="tp-section-label">Symbol</label>
+    <select class="tp-symbol-select" (change)="onSymbolChange($event)">
+      <option
+        *ngFor="let s of symbols"
+        [value]="s.code"
+        [selected]="s.code === selectedSymbol"
+      >{{ s.code }}</option>
+    </select>
+  </div>
+
+  <div class="tp-divider"></div>
+
+  <!-- ── New trade form ──────────────────────────────────────────────────── -->
+  <ng-container *ngIf="!hasActiveTrade">
+    <div class="tp-section-label">New Trade</div>
+
+    <!-- Side -->
+    <div class="tp-toggle-row">
+      <button class="tp-toggle-btn buy"  [class.active]="tradeDraft.side === 'Buy'"  (click)="tradeDraft.side = 'Buy'">Buy</button>
+      <button class="tp-toggle-btn sell" [class.active]="tradeDraft.side === 'Sell'" (click)="tradeDraft.side = 'Sell'">Sell</button>
+    </div>
+
+    <!-- Order type -->
+    <div class="tp-toggle-row">
+      <button
+        class="tp-toggle-btn"
+        [class.active]="tradeDraft.orderType === 'Market'"
+        (click)="tradeDraft.orderType = 'Market'; tradeDraft.limitPrice = null"
+      >Market</button>
+      <button
+        class="tp-toggle-btn"
+        [class.active]="tradeDraft.orderType === 'Limit'"
+        (click)="tradeDraft.orderType = 'Limit'"
+      >Limit</button>
+    </div>
+
+    <!-- Limit price -->
+    <div class="tp-field" *ngIf="tradeDraft.orderType === 'Limit'">
+      <label class="tp-label">Limit Price</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.limitPrice" placeholder="0.00" min="0" step="any">
+    </div>
+
+    <!-- Quantity -->
+    <div class="tp-field">
+      <label class="tp-label">Quantity</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.quantity" placeholder="0.00000000" min="0" step="any">
+    </div>
+
+    <!-- Stop loss -->
+    <div class="tp-field">
+      <label class="tp-label">Stop Loss <span class="tp-optional">(optional)</span></label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.stopLoss" placeholder="—" min="0" step="any">
+    </div>
+
+    <!-- Take profit -->
+    <div class="tp-field">
+      <label class="tp-label">Take Profit <span class="tp-optional">(optional)</span></label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.takeProfit" placeholder="—" min="0" step="any">
+    </div>
+
+    <!-- Submit -->
+    <button
+      class="tp-action-btn start-btn"
+      [class.buy-btn]="tradeDraft.side === 'Buy'"
+      [class.sell-btn]="tradeDraft.side === 'Sell'"
+      [disabled]="!tradeFormValid || isSubmittingTrade"
+      (click)="startTrade()"
+    >{{ isSubmittingTrade ? 'Starting…' : tradeDraft.side === 'Buy' ? 'Buy / Long' : 'Sell / Short' }}</button>
+
+    <div class="tp-msg success" *ngIf="tradeMessage">{{ tradeMessage }}</div>
+    <div class="tp-msg error"   *ngIf="tradeError">{{ tradeError }}</div>
+  </ng-container>
+
+  <!-- ── Active trade card ────────────────────────────────────────────────── -->
+  <ng-container *ngIf="hasActiveTrade && activeTrade">
+    <div class="tp-section-label">Active Trade</div>
+
+    <div class="tp-badge-row">
+      <span class="tp-badge" [ngClass]="activeTrade.status.toLowerCase()">{{ activeTrade.status }}</span>
+      <span class="tp-badge" [ngClass]="activeTrade.side.toLowerCase()">{{ activeTrade.side }}</span>
+      <span class="tp-badge neutral" *ngIf="activeTrade.orderType === 'Limit'">Limit</span>
+    </div>
+
+    <div class="tp-detail-grid">
+      <span class="tp-detail-label">Entry</span>
+      <span class="tp-detail-value">{{ (activeTrade.entryPrice ?? activeTrade.requestedPrice) | number:'1.2-8' }}</span>
+
+      <span class="tp-detail-label">Qty</span>
+      <span class="tp-detail-value">{{ activeTrade.quantity | number:'1.0-8' }}</span>
+    </div>
+
+    <!-- SL -->
+    <div class="tp-level-row">
+      <span class="tp-level-label sl">SL</span>
+      <span class="tp-level-value">{{ activeTrade.stopLoss !== null ? (activeTrade.stopLoss | number:'1.2-8') : '—' }}</span>
+      <button
+        class="tp-adj-btn"
+        [class.active]="adjustMode === 'stopLoss'"
+        [disabled]="isUpdatingTrade || isStoppingTrade"
+        (click)="enterAdjustMode('stopLoss')"
+      >Adjust</button>
+    </div>
+
+    <!-- TP -->
+    <div class="tp-level-row">
+      <span class="tp-level-label tp">TP</span>
+      <span class="tp-level-value">{{ activeTrade.takeProfit !== null ? (activeTrade.takeProfit | number:'1.2-8') : '—' }}</span>
+      <button
+        class="tp-adj-btn"
+        [class.active]="adjustMode === 'takeProfit'"
+        [disabled]="isUpdatingTrade || isStoppingTrade"
+        (click)="enterAdjustMode('takeProfit')"
+      >Adjust</button>
+    </div>
+
+    <!-- Adjust hint -->
+    <div class="tp-hint" *ngIf="adjustMode">
+      <span>Click any chart to set {{ adjustMode === 'stopLoss' ? 'Stop Loss' : 'Take Profit' }}</span>
+      <button class="tp-hint-cancel" (click)="cancelAdjustMode()">✕</button>
+    </div>
+
+    <div class="tp-divider"></div>
+
+    <button
+      class="tp-action-btn stop-btn"
+      [disabled]="isStoppingTrade || isUpdatingTrade"
+      (click)="stopActiveTrade()"
+    >{{ isStoppingTrade ? 'Closing…' : 'Close Trade' }}</button>
+
+    <div class="tp-msg success" *ngIf="tradeMessage">{{ tradeMessage }}</div>
+    <div class="tp-msg error"   *ngIf="tradeError">{{ tradeError }}</div>
+  </ng-container>
+
+</div>

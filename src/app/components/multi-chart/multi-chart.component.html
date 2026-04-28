@@ -1,9 +1,25 @@
-<div class="multi-chart-grid" *ngIf="panes.length">
-  <app-lightweight-chart
-    *ngFor="let pane of panes"
-    [initialSymbol]="pane.symbol"
-    [initialInterval]="pane.interval"
-    [availableSymbols]="symbols"
-    [availableIntervals]="intervals"
-  ></app-lightweight-chart>
+<div class="multi-chart-layout" *ngIf="panes.length">
+
+  <!-- 2 × 2 chart grid -->
+  <div class="chart-grid">
+    <app-lightweight-chart
+      *ngFor="let pane of panes"
+      [symbol]="selectedSymbol"
+      [initialInterval]="pane.interval"
+      [availableIntervals]="intervals"
+      [activeTrade]="activeTrade"
+      [adjustMode]="adjustMode"
+      (priceSelected)="onPriceSelected($event)"
+    ></app-lightweight-chart>
+  </div>
+
+  <!-- Single trade panel -->
+  <app-trade-panel
+    [symbols]="symbols"
+    [initialSymbol]="selectedSymbol"
+    (symbolChange)="onSymbolChange($event)"
+    (tradeChange)="onTradeChange($event)"
+    (adjustModeChange)="onAdjustModeChange($event)"
+  ></app-trade-panel>
+
 </div>

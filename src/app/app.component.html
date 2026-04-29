@@ -1,3 +1,11 @@
-<main class="app-shell">
-  <app-multi-chart></app-multi-chart>
-</main>
+<div class="app-shell">
+  <nav class="top-nav">
+    <span class="nav-brand">Trader</span>
+    <a class="nav-link" routerLink="/algo-trader" routerLinkActive="active">Algo Trader</a>
+    <a class="nav-link" routerLink="/charts"      routerLinkActive="active">Charts</a>
+    <a class="nav-link" routerLink="/deprecated"  routerLinkActive="active">Deprecated</a>
+  </nav>
+  <main class="page-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

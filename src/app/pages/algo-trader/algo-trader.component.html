@@ -1,11 +1,9 @@
-<div class="multi-chart-layout" *ngIf="panes.length">
+<div class="algo-trader-layout" *ngIf="selectedSymbol">
 
-  <!-- 2 × 2 chart grid -->
-  <div class="chart-grid">
+  <div class="chart-area">
     <app-chart
-      *ngFor="let pane of panes"
       [symbol]="selectedSymbol"
-      [initialInterval]="pane.interval"
+      [initialInterval]="defaultInterval"
       [availableIntervals]="intervals"
       [activeTrade]="activeTrade"
       [adjustMode]="adjustMode"
@@ -13,7 +11,6 @@
     ></app-chart>
   </div>
 
-  <!-- Single trade panel -->
   <app-trade-panel
     [symbols]="symbols"
     [initialSymbol]="selectedSymbol"

@@ -1,0 +1,7 @@
+<div class="deprecated-layout" *ngIf="selectedSymbol">
+  <app-lightweight-chart
+    [symbol]="selectedSymbol"
+    [initialInterval]="defaultInterval"
+    [availableIntervals]="intervals"
+  ></app-lightweight-chart>
+</div>

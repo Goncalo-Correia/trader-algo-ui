@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CandleRequest, CandleResponse } from '../structures/candle';
+import { CandleRequest, CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
 import { IntervalResponse } from '../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../structures/session';
 import { SymbolResponse } from '../structures/symbol';
@@ -22,6 +22,16 @@ export class TraderAlgoApiService {
       }
     });
     return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/charts/candles`, { params });
+  }
+
+  getCandlesWithIndicators(request: CandleRequest = {}): Observable<CandleWithIndicatorsResponse[]> {
+    let params = new HttpParams();
+    Object.entries(request).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params = params.set(key, String(value));
+      }
+    });
+    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/charts/candles/indicators`, { params });
   }
 
   kronosMiniPrecise(symbol: string, interval: string): Observable<CandleResponse[]> {

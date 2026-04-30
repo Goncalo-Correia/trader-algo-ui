@@ -5,7 +5,9 @@ import { CandleRequest, CandleResponse, CandleWithIndicatorsResponse } from '../
 import { IntervalResponse } from '../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../structures/session';
 import { SymbolResponse } from '../structures/symbol';
+import { CreateTradeBotRequest, TradeBot, UpdateTradeBotRequest } from '../structures/trade-bot';
 import { CreateTradeRequest, Trade, UpdateTradeRequest } from '../structures/trade';
+import { TradingAccount, CreateTradingAccountRequest, UpdateTradingAccountRequest } from '../structures/trading-account';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -92,12 +94,52 @@ export class TraderAlgoApiService {
     return this.http.patch<Trade>(`${this.baseUrl}/api/trades/${id}`, payload);
   }
 
-  getActiveTrades(symbol: string): Observable<Trade[]> {
-    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/active`, { params: { symbol } });
+  getActiveTrades(tradingAccountId: number): Observable<Trade[]> {
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/active`, { params: { tradingAccountId } });
   }
 
-  getTradeHistory(symbol: string): Observable<Trade[]> {
-    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/history`, { params: { symbol } });
+  getTradeHistory(tradingAccountId: number): Observable<Trade[]> {
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/history`, { params: { tradingAccountId } });
+  }
+
+  getTradingAccounts(): Observable<TradingAccount[]> {
+    return this.http.get<TradingAccount[]>(`${this.baseUrl}/api/trading-accounts`);
+  }
+
+  getTradingAccount(id: number): Observable<TradingAccount> {
+    return this.http.get<TradingAccount>(`${this.baseUrl}/api/trading-accounts/${id}`);
+  }
+
+  createTradingAccount(payload: CreateTradingAccountRequest): Observable<TradingAccount> {
+    return this.http.post<TradingAccount>(`${this.baseUrl}/api/trading-accounts`, payload);
+  }
+
+  updateTradingAccount(id: number, payload: UpdateTradingAccountRequest): Observable<TradingAccount> {
+    return this.http.patch<TradingAccount>(`${this.baseUrl}/api/trading-accounts/${id}`, payload);
+  }
+
+  getTradeBots(): Observable<TradeBot[]> {
+    return this.http.get<TradeBot[]>(`${this.baseUrl}/api/tradebots`);
+  }
+
+  getTradeBot(id: number): Observable<TradeBot> {
+    return this.http.get<TradeBot>(`${this.baseUrl}/api/tradebots/${id}`);
+  }
+
+  createTradeBot(payload: CreateTradeBotRequest): Observable<TradeBot> {
+    return this.http.post<TradeBot>(`${this.baseUrl}/api/tradebots`, payload);
+  }
+
+  updateTradeBot(id: number, payload: UpdateTradeBotRequest): Observable<TradeBot> {
+    return this.http.patch<TradeBot>(`${this.baseUrl}/api/tradebots/${id}`, payload);
+  }
+
+  enableTradeBot(id: number): Observable<TradeBot> {
+    return this.http.post<TradeBot>(`${this.baseUrl}/api/tradebots/${id}/enable`, {});
+  }
+
+  disableTradeBot(id: number): Observable<TradeBot> {
+    return this.http.post<TradeBot>(`${this.baseUrl}/api/tradebots/${id}/disable`, {});
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

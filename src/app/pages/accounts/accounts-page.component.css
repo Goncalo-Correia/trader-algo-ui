@@ -1,0 +1,214 @@
+:host {
+  display: block;
+  flex: 1;
+  min-height: 100%;
+  background: #000000;
+}
+
+.accounts-page {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  color: #d1d4dc;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+/* ── Create form ───────────────────────────────────────────────────────────── */
+
+.create-form {
+  background: #1a1a1a;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.form-grid {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #787b86;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-input,
+.field-select {
+  height: 32px;
+  padding: 0 10px;
+  background: #0e0e0e;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  color: #d1d4dc;
+  font-size: 13px;
+  outline: none;
+}
+
+.field-input:focus,
+.field-select:focus {
+  border-color: #2962ff;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+
+.btn-primary {
+  height: 30px;
+  padding: 0 14px;
+  background: #2962ff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover:not(:disabled) { background: #1a4fd6; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  height: 30px;
+  padding: 0 14px;
+  background: transparent;
+  color: #787b86;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-ghost:hover { color: #d1d4dc; border-color: #4a4d5a; }
+
+/* ── States ────────────────────────────────────────────────────────────────── */
+
+.loading-state,
+.empty-state {
+  font-size: 13px;
+  color: #787b86;
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* ── Grid ──────────────────────────────────────────────────────────────────── */
+
+.accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+/* ── Card ──────────────────────────────────────────────────────────────────── */
+
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: #1a1a1a;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.account-card:hover {
+  border-color: #2962ff;
+  background: #1e2130;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.account-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-active   { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
+.badge-inactive { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }
+
+.strategy-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #818cf8;
+  background: #818cf822;
+  border: 1px solid #818cf844;
+  border-radius: 4px;
+  padding: 1px 8px;
+  align-self: flex-start;
+}
+
+.card-amounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.amount-label {
+  font-size: 11px;
+  color: #787b86;
+}
+
+.amount-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d1d4dc;
+}
+
+.pnl-value.positive { color: #26a69a; }
+.pnl-value.negative { color: #ef5350; }

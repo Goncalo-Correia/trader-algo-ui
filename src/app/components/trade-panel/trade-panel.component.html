@@ -12,6 +12,115 @@
     </select>
   </div>
 
+  <!-- ── Account selector ───────────────────────────────────────────────── -->
+  <div class="tp-account-section">
+    <label class="tp-section-label">Account</label>
+    <select class="tp-symbol-select" [ngModel]="selectedAccountId" [ngModelOptions]="{standalone: true}" (ngModelChange)="onAccountChange($event)">
+      <option [ngValue]="null" disabled>— select account —</option>
+      <option *ngFor="let a of accounts" [ngValue]="a.id">{{ a.name }}</option>
+    </select>
+
+    <div class="tp-account-info" *ngIf="selectedAccount">
+      <div class="tp-account-row">
+        <span class="tp-detail-label">Strategy</span>
+        <span class="tp-detail-value">{{ selectedAccount.tradingStrategy }}</span>
+      </div>
+      <div class="tp-account-row">
+        <span class="tp-detail-label">Initial</span>
+        <span class="tp-detail-value">${{ selectedAccount.initialBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="tp-account-row">
+        <span class="tp-detail-label">Balance</span>
+        <span class="tp-detail-value"
+              [class.pnl-pos]="selectedAccount.currentBalance >= selectedAccount.initialBalance"
+              [class.pnl-neg]="selectedAccount.currentBalance < selectedAccount.initialBalance">
+          ${{ selectedAccount.currentBalance | number:'1.2-2' }}
+        </span>
+      </div>
+      <div class="tp-account-row">
+        <span class="tp-detail-label">PNL</span>
+        <span class="tp-detail-value"
+              [class.pnl-pos]="selectedAccount.currentBalance >= selectedAccount.initialBalance"
+              [class.pnl-neg]="selectedAccount.currentBalance < selectedAccount.initialBalance">
+          {{ (selectedAccount.currentBalance - selectedAccount.initialBalance) >= 0 ? '+' : '' }}${{ (selectedAccount.currentBalance - selectedAccount.initialBalance) | number:'1.2-2' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tp-bot-section" *ngIf="showTradeBot && selectedAccountId !== null">
+    <div class="tp-bot-header">
+      <span class="tp-section-label">Trade Bot</span>
+      <span class="tp-bot-status"
+            [class.enabled]="tradeBot?.isEnabled"
+            [class.disabled]="tradeBot && !tradeBot.isEnabled">
+        {{ tradeBotStatusLabel }}
+      </span>
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Bot Symbol</label>
+      <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.symbolCode" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+        <option *ngFor="let s of symbols" [ngValue]="s.code">{{ s.code }}</option>
+      </select>
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Bot Interval</label>
+      <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.intervalCode" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+        <option *ngFor="let i of intervals" [ngValue]="i.code">{{ i.displayName || i.code }}</option>
+      </select>
+    </div>
+
+    <div class="tp-toggle-row">
+      <button
+        class="tp-toggle-btn"
+        [class.active]="tradeBotDraft.orderType === 'Market'"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+        (click)="tradeBotDraft.orderType = 'Market'"
+      >Market</button>
+      <button
+        class="tp-toggle-btn"
+        [class.active]="tradeBotDraft.orderType === 'Limit'"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+        (click)="tradeBotDraft.orderType = 'Limit'"
+      >Limit</button>
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Bot Quantity</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.quantity" placeholder="0.00000000" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-bot-risk-grid">
+      <div class="tp-field">
+        <label class="tp-label">TP</label>
+        <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.takeProfit" placeholder="-" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+      </div>
+      <div class="tp-field">
+        <label class="tp-label">SL</label>
+        <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.stopLoss" placeholder="-" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+      </div>
+    </div>
+
+    <div class="tp-bot-actions">
+      <button
+        class="tp-adj-btn"
+        [disabled]="!tradeBotFormValid || isSavingBot || isTogglingBot"
+        (click)="saveTradeBot()"
+      >{{ isSavingBot ? 'Saving...' : 'Save' }}</button>
+      <button
+        class="tp-action-btn bot-toggle-btn"
+        [class.enabled]="tradeBot?.isEnabled"
+        [disabled]="!tradeBotFormValid || !canUseTradeBot || isSavingBot || isTogglingBot"
+        (click)="toggleTradeBot()"
+      >{{ isTogglingBot ? 'Working...' : tradeBot?.isEnabled ? 'Disable Bot' : 'Enable Bot' }}</button>
+    </div>
+
+    <div class="tp-msg success" *ngIf="botMessage">{{ botMessage }}</div>
+    <div class="tp-msg error" *ngIf="botError">{{ botError }}</div>
+  </div>
+
   <div class="tp-divider"></div>
 
   <!-- ── New trade form ──────────────────────────────────────────────────── -->
@@ -49,17 +158,16 @@
       <label class="tp-label">Quantity</label>
       <input class="tp-input" type="number" [(ngModel)]="tradeDraft.quantity" placeholder="0.00000000" min="0" step="any">
     </div>
+    <!-- Take profit -->
+    <div class="tp-field">
+      <label class="tp-label">Take Profit <span class="tp-optional">(optional)</span></label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.takeProfit" placeholder="-" min="0" step="any">
+    </div>
 
     <!-- Stop loss -->
     <div class="tp-field">
       <label class="tp-label">Stop Loss <span class="tp-optional">(optional)</span></label>
-      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.stopLoss" placeholder="—" min="0" step="any">
-    </div>
-
-    <!-- Take profit -->
-    <div class="tp-field">
-      <label class="tp-label">Take Profit <span class="tp-optional">(optional)</span></label>
-      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.takeProfit" placeholder="—" min="0" step="any">
+      <input class="tp-input" type="number" [(ngModel)]="tradeDraft.stopLoss" placeholder="-" min="0" step="any">
     </div>
 
     <!-- Submit -->
@@ -99,6 +207,23 @@
         </span>
       </ng-container>
     </div>
+    <!-- TP -->
+    <div class="tp-level-row">
+      <span class="tp-level-label tp">TP</span>
+      <span class="tp-level-value">
+        <ng-container *ngIf="absoluteTpPrice !== null; else noTp">
+          {{ absoluteTpPrice | number:'1.2-8' }}
+          <span class="tp-offset">(+/-{{ activeTrade.takeProfit | number:'1.2-2' }})</span>
+        </ng-container>
+        <ng-template #noTp>-</ng-template>
+      </span>
+      <button
+        class="tp-adj-btn"
+        [class.active]="adjustMode === 'takeProfit'"
+        [disabled]="isUpdatingTrade || isStoppingTrade"
+        (click)="enterAdjustMode('takeProfit')"
+      >Adjust</button>
+    </div>
 
     <!-- SL -->
     <div class="tp-level-row">
@@ -106,33 +231,15 @@
       <span class="tp-level-value">
         <ng-container *ngIf="absoluteSlPrice !== null; else noSl">
           {{ absoluteSlPrice | number:'1.2-8' }}
-          <span class="tp-offset">(±{{ activeTrade.stopLoss | number:'1.2-2' }})</span>
+          <span class="tp-offset">(+/-{{ activeTrade.stopLoss | number:'1.2-2' }})</span>
         </ng-container>
-        <ng-template #noSl>—</ng-template>
+        <ng-template #noSl>-</ng-template>
       </span>
       <button
         class="tp-adj-btn"
         [class.active]="adjustMode === 'stopLoss'"
         [disabled]="isUpdatingTrade || isStoppingTrade"
         (click)="enterAdjustMode('stopLoss')"
-      >Adjust</button>
-    </div>
-
-    <!-- TP -->
-    <div class="tp-level-row">
-      <span class="tp-level-label tp">TP</span>
-      <span class="tp-level-value">
-        <ng-container *ngIf="absoluteTpPrice !== null; else noTp">
-          {{ absoluteTpPrice | number:'1.2-8' }}
-          <span class="tp-offset">(±{{ activeTrade.takeProfit | number:'1.2-2' }})</span>
-        </ng-container>
-        <ng-template #noTp>—</ng-template>
-      </span>
-      <button
-        class="tp-adj-btn"
-        [class.active]="adjustMode === 'takeProfit'"
-        [disabled]="isUpdatingTrade || isStoppingTrade"
-        (click)="enterAdjustMode('takeProfit')"
       >Adjust</button>
     </div>
 

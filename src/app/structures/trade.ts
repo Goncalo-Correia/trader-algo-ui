@@ -19,8 +19,10 @@ export interface Trade {
   openedAt:       number | null;
   closedAt:       number | null;
   closedPrice:    number | null;
-  closeReason:    TradeCloseReason | null;
-  unrealizedPnl:  number | null;
+  closeReason:      TradeCloseReason | null;
+  pnl:              number | null;
+  unrealizedPnl:    number | null;
+  tradingAccountId: number | null;
 }
 
 export interface CreateTradeRequest {
@@ -32,6 +34,7 @@ export interface CreateTradeRequest {
   limitPrice?:  number;
   stopLoss?:    number;
   takeProfit?:  number;
+  tradingAccountId?: number;
 }
 
 export interface UpdateTradeRequest {

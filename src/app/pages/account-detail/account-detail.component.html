@@ -1,0 +1,127 @@
+<div class="detail-page">
+
+  <!-- ── Back ──────────────────────────────────────────────────────────────── -->
+  <a class="back-link" routerLink="/accounts">← Accounts</a>
+
+  <div class="loading-state" *ngIf="isLoading">Loading account…</div>
+
+  <ng-container *ngIf="!isLoading && account">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="account-header">
+      <div class="header-left">
+        <ng-container *ngIf="!editingName">
+          <h1 class="account-name">{{ accountName }}</h1>
+          <button class="icon-btn" title="Edit name" (click)="startEditName()">✏️</button>
+        </ng-container>
+        <ng-container *ngIf="editingName">
+          <input class="name-input" [(ngModel)]="nameInput" (keydown.enter)="saveName()" (keydown.escape)="cancelEditName()" autofocus />
+          <button class="btn-primary btn-sm" (click)="saveName()">Save</button>
+          <button class="btn-ghost btn-sm" (click)="cancelEditName()">Cancel</button>
+        </ng-container>
+      </div>
+      <div class="header-right">
+        <span class="strategy-tag">{{ account.tradingStrategy }}</span>
+        <span class="badge" [class.badge-active]="account.isActive" [class.badge-inactive]="!account.isActive">
+          {{ account.isActive ? 'Active' : 'Inactive' }}
+        </span>
+        <button class="btn-toggle-active"
+                [class.btn-deactivate]="account.isActive"
+                [class.btn-activate]="!account.isActive"
+                [disabled]="saving"
+                (click)="toggleActive()">
+          {{ saving ? '…' : account.isActive ? 'Set Inactive' : 'Set Active' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Stats ──────────────────────────────────────────────────────────── -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-label">Initial</span>
+        <span class="stat-value">${{ account.initialBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Current</span>
+        <span class="stat-value">${{ account.currentBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total PNL</span>
+        <span class="stat-value" [class.positive]="totalPnl >= 0" [class.negative]="totalPnl < 0">
+          {{ totalPnl >= 0 ? '+' : '' }}${{ totalPnl | number:'1.2-2' }}
+        </span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Trades</span>
+        <span class="stat-value">{{ trades.length }}</span>
+      </div>
+    </div>
+
+    <!-- ── PNL Chart ───────────────────────────────────────────────────────── -->
+    <div class="chart-section">
+      <div class="section-title">Cumulative PNL</div>
+      <div class="pnl-chart-wrap">
+        <div #pnlChartContainer class="pnl-chart"></div>
+        <div class="chart-empty" *ngIf="trades.length === 0">
+          No closed trades to display.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Trades table ───────────────────────────────────────────────────── -->
+    <div class="trades-section">
+      <div class="section-title">Trades</div>
+
+      <div class="empty-state" *ngIf="trades.length === 0">No trades linked to this account.</div>
+
+      <table class="trades-table" *ngIf="trades.length > 0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Symbol</th>
+            <th>Interval</th>
+            <th>Side</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Entry</th>
+            <th>Close</th>
+            <th>PNL</th>
+            <th>Opened</th>
+            <th>Closed</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let trade of sortedTrades">
+            <td class="td-id">{{ trade.id }}</td>
+            <td>{{ trade.symbolCode }}</td>
+            <td class="td-dim">{{ trade.intervalCode ?? '—' }}</td>
+            <td>
+              <span class="side-badge" [class.side-buy]="trade.side === 'Buy'" [class.side-sell]="trade.side === 'Sell'">
+                {{ trade.side }}
+              </span>
+            </td>
+            <td class="td-dim">{{ trade.orderType }}</td>
+            <td>
+              <span class="status-badge status-{{ trade.status | lowercase }}">{{ trade.status }}</span>
+            </td>
+            <td>{{ trade.entryPrice !== null ? (trade.entryPrice | number:'1.2-5') : '—' }}</td>
+            <td>{{ trade.closedPrice !== null ? (trade.closedPrice | number:'1.2-5') : '—' }}</td>
+            <td>
+              <ng-container *ngIf="getTradePnl(trade) !== null">
+                <span [class.positive]="getTradePnl(trade)! >= 0" [class.negative]="getTradePnl(trade)! < 0">
+                  {{ getTradePnl(trade)! >= 0 ? '+' : '' }}{{ getTradePnl(trade)! | number:'1.2-2' }}
+                </span>
+              </ng-container>
+              <ng-container *ngIf="getTradePnl(trade) === null">—</ng-container>
+            </td>
+            <td class="td-dim">{{ formatTs(trade.openedAt) }}</td>
+            <td class="td-dim">{{ formatTs(trade.closedAt) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </ng-container>
+
+  <div class="error-state" *ngIf="!isLoading && !account">Account not found.</div>
+</div>

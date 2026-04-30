@@ -12,6 +12,8 @@ import { TradePanelComponent } from './components/trade-panel/trade-panel.compon
 import { AlgoTraderPageComponent } from './pages/algo-trader/algo-trader.component';
 import { ChartsPageComponent } from './pages/charts/charts-page.component';
 import { DeprecatedPageComponent } from './pages/deprecated/deprecated.component';
+import { AccountsPageComponent } from './pages/accounts/accounts-page.component';
+import { AccountDetailComponent } from './pages/account-detail/account-detail.component';
 
 @NgModule({
   declarations: [
@@ -23,6 +25,8 @@ import { DeprecatedPageComponent } from './pages/deprecated/deprecated.component
     AlgoTraderPageComponent,
     ChartsPageComponent,
     DeprecatedPageComponent,
+    AccountsPageComponent,
+    AccountDetailComponent,
   ],
   imports: [
     BrowserModule,

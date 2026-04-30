@@ -51,7 +51,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this._activeTrade = trade;
     if (!this.chart) return;
     this.ngZone.runOutsideAngular(() => {
-      if (trade?.status === 'Pending' || trade?.status === 'Active') {
+      if (this.shouldRenderTradeLines(trade)) {
         this.renderTradeLines(trade);
       } else {
         this.clearTradeLines();
@@ -236,7 +236,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     this.streamLiveCandles();
 
     // Restore any trade lines that arrived before chart init
-    if (this._activeTrade?.status === 'Pending' || this._activeTrade?.status === 'Active') {
+    if (this.shouldRenderTradeLines(this._activeTrade)) {
       this.ngZone.runOutsideAngular(() => this.renderTradeLines(this._activeTrade!));
     }
   }
@@ -366,6 +366,12 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
     if (this.tradeTpLine)    { this.series?.removePriceLine(this.tradeTpLine);    this.tradeTpLine    = undefined; }
   }
 
+  private shouldRenderTradeLines(trade: Trade | null): trade is Trade {
+    return !!trade
+      && trade.symbolCode === this.selectedSymbol
+      && (trade.status === 'Pending' || trade.status === 'Active');
+  }
+
   // ── Load / reset ─────────────────────────────────────────────────────────────
 
   private resetAndReload(): void {
@@ -405,7 +411,7 @@ export class LightweightChartComponent implements AfterViewInit, OnDestroy {
       this.volumeProfilePlugin?.setData([]);
       this.clearSessionLines();
       // Re-render trade lines for current symbol after reload
-      if (this._activeTrade?.status === 'Pending' || this._activeTrade?.status === 'Active') {
+      if (this.shouldRenderTradeLines(this._activeTrade)) {
         this.renderTradeLines(this._activeTrade!);
       } else {
         this.clearTradeLines();

@@ -5,7 +5,10 @@
       "Bash(git add *)",
       "Bash(git checkout *)",
       "Bash(git merge *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -s http://localhost:32768/swagger/v1/swagger.json)",
+      "Bash(node -e ' *)",
+      "Bash(npx ng *)"
     ]
   }
 }

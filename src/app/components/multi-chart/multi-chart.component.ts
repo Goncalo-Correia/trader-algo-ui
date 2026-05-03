@@ -1,10 +1,9 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
 import { SymbolResponse } from '../../structures/symbol';
 import { Trade } from '../../structures/trade';
-import { TradePanelComponent } from '../trade-panel/trade-panel.component';
 
 interface PaneConfig {
   interval: string;
@@ -16,15 +15,12 @@ interface PaneConfig {
   styleUrls: ['./multi-chart.component.css'],
 })
 export class MultiChartComponent implements OnInit {
-  @ViewChild(TradePanelComponent) private readonly tradePanel!: TradePanelComponent;
-
   symbols:   SymbolResponse[]  = [];
   intervals: IntervalResponse[] = [];
   panes:     PaneConfig[]       = [];
 
   selectedSymbol = '';
   activeTrade:  Trade | null = null;
-  adjustMode: 'stopLoss' | 'takeProfit' | null = null;
 
   constructor(private readonly traderAlgoApi: TraderAlgoApiService) {}
 
@@ -42,7 +38,6 @@ export class MultiChartComponent implements OnInit {
         this.symbols   = activeSymbols;
         this.intervals = activeIntervals;
 
-        // Assign a distinct interval to each of the 4 panes (cycling if needed)
         this.panes = Array.from({ length: 4 }, (_, i) => ({
           interval: activeIntervals[i]?.code ?? defaultInterval.code,
         }));
@@ -53,25 +48,11 @@ export class MultiChartComponent implements OnInit {
     });
   }
 
-  // ── Event handlers from TradePanelComponent ─────────────────────────────────
-
   onSymbolChange(symbol: string): void {
     this.selectedSymbol = symbol;
   }
 
   onTradeChange(trade: Trade | null): void {
     this.activeTrade = trade;
-  }
-
-  onAdjustModeChange(mode: 'stopLoss' | 'takeProfit' | null): void {
-    this.adjustMode = mode;
-  }
-
-  // ── Event handler from LightweightChartComponent ─────────────────────────────
-
-  onPriceSelected(price: number): void {
-    // Forward to the trade panel, which owns the update logic
-    this.tradePanel.applyAdjustment(price);
-    // adjustMode will be cleared by the trade panel via adjustModeChange output
   }
 }

@@ -28,7 +28,8 @@
               "src/assets"
             ],
             "styles": [],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": ["highcharts"]
           },
           "configurations": {
             "production": {

@@ -1,13 +1,6 @@
-import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import {
-  AreaSeries,
-  createChart,
-  IChartApi,
-  ISeriesApi,
-  Time,
-  UTCTimestamp,
-} from 'lightweight-charts';
+import * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
 import { TradingAccount, UpdateTradingAccountRequest } from '../../structures/trading-account';
 import { Trade } from '../../structures/trade';
@@ -21,10 +14,7 @@ const NAMES_OVERRIDE_KEY = 'trader-account-names';
   templateUrl: './account-detail.component.html',
   styleUrls: ['./account-detail.component.css'],
 })
-export class AccountDetailComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('pnlChartContainer', { static: true })
-  private readonly pnlContainer!: ElementRef<HTMLDivElement>;
-
+export class AccountDetailComponent implements OnInit, OnDestroy {
   account: TradingAccount | null = null;
   trades: Trade[] = [];
   isLoading = true;
@@ -32,24 +22,35 @@ export class AccountDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   nameInput = '';
   saving = false;
 
+  pnlChartOptions: Highcharts.Options = this.buildEmptyChartOptions();
+
   private accountId!: number;
-  private chart?: IChartApi;
-  private areaSeries?: ISeriesApi<'Area'>;
-  private chartReady = false;
-  private pendingPnlData: { time: Time; value: number }[] | null = null;
+  private chartRef: Highcharts.Chart | null = null;
+  private pendingData: [number, number][] | null = null;
   private tradeBotEventSubscription?: Subscription;
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly api: TraderAlgoApiService,
     private readonly tradeBotEvents: TradeBotEventsService,
-    private readonly ngZone: NgZone,
   ) {}
 
   ngOnInit(): void {
     this.accountId = Number(this.route.snapshot.paramMap.get('id'));
     this.connectTradeBotEvents();
     this.loadAccountDetail();
+  }
+
+  ngOnDestroy(): void {
+    this.tradeBotEventSubscription?.unsubscribe();
+  }
+
+  onChartCreated(chart: Highcharts.Chart): void {
+    this.chartRef = chart;
+    if (this.pendingData) {
+      chart.series[0].setData(this.pendingData);
+      this.pendingData = null;
+    }
   }
 
   private loadAccountDetail(): void {
@@ -61,46 +62,10 @@ export class AccountDetailComponent implements OnInit, AfterViewInit, OnDestroy 
         this.account = account;
         this.trades  = trades;
         this.isLoading = false;
-        this.tryRenderChart();
+        this.applyPnlData();
       },
       error: () => { this.isLoading = false; },
     });
-  }
-
-  ngAfterViewInit(): void {
-    this.ngZone.runOutsideAngular(() => {
-      this.chart = createChart(this.pnlContainer.nativeElement, {
-        autoSize: true,
-        layout: { background: { color: '#141414' }, textColor: '#d1d4dc' },
-        grid: { vertLines: { color: '#1e2130' }, horzLines: { color: '#1e2130' } },
-        rightPriceScale: { borderColor: '#2a2d3a' },
-        timeScale: { borderColor: '#2a2d3a', timeVisible: true, secondsVisible: false },
-        crosshair: {
-          vertLine: { labelBackgroundColor: '#2962ff' },
-          horzLine: { labelBackgroundColor: '#2962ff' },
-        },
-      });
-
-      this.areaSeries = this.chart.addSeries(AreaSeries, {
-        lineColor: '#2962ff',
-        topColor: '#2962ff33',
-        bottomColor: 'transparent',
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: true,
-      });
-    });
-
-    this.chartReady = true;
-    if (this.pendingPnlData) {
-      this.applyPnlData(this.pendingPnlData);
-      this.pendingPnlData = null;
-    }
-  }
-
-  ngOnDestroy(): void {
-    this.tradeBotEventSubscription?.unsubscribe();
-    this.chart?.remove();
   }
 
   get accountName(): string {
@@ -161,16 +126,16 @@ export class AccountDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
-  private tryRenderChart(): void {
+  private applyPnlData(): void {
     const data = this.buildPnlData();
-    if (this.chartReady) {
-      this.applyPnlData(data);
+    if (this.chartRef) {
+      this.chartRef.series[0].setData(data);
     } else {
-      this.pendingPnlData = data;
+      this.pendingData = data;
     }
   }
 
-  private buildPnlData(): { time: Time; value: number }[] {
+  private buildPnlData(): [number, number][] {
     const closed = this.trades
       .filter(t => t.status === 'Closed' && t.closedAt !== null)
       .sort((a, b) => (a.closedAt ?? 0) - (b.closedAt ?? 0));
@@ -178,19 +143,61 @@ export class AccountDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     let cumulative = 0;
     return closed.map(t => {
       cumulative += t.pnl ?? 0;
-      return { time: this.toChartTime(t.closedAt!) as Time, value: cumulative };
+      const ms = t.closedAt! > 9_999_999_999 ? t.closedAt! : t.closedAt! * 1000;
+      return [ms, cumulative];
     });
   }
 
-  private applyPnlData(data: { time: Time; value: number }[]): void {
-    this.ngZone.runOutsideAngular(() => {
-      this.areaSeries?.setData(data);
-      if (data.length > 0) this.chart?.timeScale().fitContent();
-    });
-  }
-
-  private toChartTime(ms: number): UTCTimestamp {
-    return (ms > 9_999_999_999 ? Math.floor(ms / 1000) : ms) as UTCTimestamp;
+  private buildEmptyChartOptions(): Highcharts.Options {
+    return {
+      chart: {
+        type: 'area',
+        backgroundColor: '#141414',
+        animation: false,
+        style: { fontFamily: 'inherit' },
+        margin: [8, 8, 30, 50],
+      },
+      title: { text: '' },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      xAxis: {
+        type: 'datetime',
+        gridLineColor: '#1e2130',
+        lineColor: '#2a2d3a',
+        tickColor: '#2a2d3a',
+        labels: { style: { color: '#787b86', fontSize: '11px' } },
+      },
+      yAxis: {
+        gridLineColor: '#1e2130',
+        lineColor: '#2a2d3a',
+        labels: { style: { color: '#787b86', fontSize: '11px' }, align: 'left', x: 4 },
+        title: { text: '' },
+      },
+      tooltip: {
+        backgroundColor: '#1e2130',
+        borderColor: '#2a2d3a',
+        style: { color: '#d1d4dc', fontSize: '12px' },
+        valuePrefix: '$',
+        valueDecimals: 2,
+      },
+      series: [
+        {
+          type: 'area',
+          name: 'Cumulative PNL',
+          data: [],
+          color: '#2962ff',
+          fillColor: {
+            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+            stops: [
+              [0, 'rgba(41,98,255,0.25)'],
+              [1, 'rgba(41,98,255,0)'],
+            ],
+          },
+          lineWidth: 2,
+          marker: { enabled: false },
+        } as Highcharts.SeriesAreaOptions,
+      ],
+    };
   }
 
   private storedNames(): Record<number, string> {

@@ -8,8 +8,6 @@
       [initialInterval]="pane.interval"
       [availableIntervals]="intervals"
       [activeTrade]="activeTrade"
-      [adjustMode]="adjustMode"
-      (priceSelected)="onPriceSelected($event)"
     ></app-chart>
   </div>
 
@@ -19,7 +17,6 @@
     [initialSymbol]="selectedSymbol"
     (symbolChange)="onSymbolChange($event)"
     (tradeChange)="onTradeChange($event)"
-    (adjustModeChange)="onAdjustModeChange($event)"
   ></app-trade-panel>
 
 </div>

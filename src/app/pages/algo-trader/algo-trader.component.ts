@@ -1,7 +1,6 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
-import { TradePanelComponent } from '../../components/trade-panel/trade-panel.component';
 import { IntervalResponse } from '../../structures/interval';
 import { SymbolResponse } from '../../structures/symbol';
 import { Trade } from '../../structures/trade';
@@ -12,14 +11,11 @@ import { Trade } from '../../structures/trade';
   styleUrls: ['./algo-trader.component.css'],
 })
 export class AlgoTraderPageComponent implements OnInit {
-  @ViewChild(TradePanelComponent) private readonly tradePanel!: TradePanelComponent;
-
-  symbols:         SymbolResponse[]  = [];
-  intervals:       IntervalResponse[] = [];
-  selectedSymbol   = '';
-  defaultInterval  = '';
-  activeTrade:     Trade | null = null;
-  adjustMode:      'stopLoss' | 'takeProfit' | null = null;
+  symbols:        SymbolResponse[]  = [];
+  intervals:      IntervalResponse[] = [];
+  selectedSymbol  = '';
+  defaultInterval = '';
+  activeTrade:    Trade | null = null;
 
   constructor(private readonly traderAlgoApi: TraderAlgoApiService) {}
 
@@ -46,13 +42,5 @@ export class AlgoTraderPageComponent implements OnInit {
 
   onTradeChange(trade: Trade | null): void {
     this.activeTrade = trade;
-  }
-
-  onAdjustModeChange(mode: 'stopLoss' | 'takeProfit' | null): void {
-    this.adjustMode = mode;
-  }
-
-  onPriceSelected(price: number): void {
-    this.tradePanel.applyAdjustment(price);
   }
 }

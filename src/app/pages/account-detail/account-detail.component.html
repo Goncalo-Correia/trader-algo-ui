@@ -61,7 +61,10 @@
     <div class="chart-section">
       <div class="section-title">Cumulative PNL</div>
       <div class="pnl-chart-wrap">
-        <div #pnlChartContainer class="pnl-chart"></div>
+        <app-highcharts-chart
+          [options]="pnlChartOptions"
+          (chartCreated)="onChartCreated($event)"
+        ></app-highcharts-chart>
         <div class="chart-empty" *ngIf="trades.length === 0">
           No closed trades to display.
         </div>

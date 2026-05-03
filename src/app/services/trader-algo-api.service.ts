@@ -8,6 +8,7 @@ import { SymbolResponse } from '../structures/symbol';
 import { CreateTradeBotRequest, TradeBot, UpdateTradeBotRequest } from '../structures/trade-bot';
 import { CreateTradeRequest, Trade, UpdateTradeRequest } from '../structures/trade';
 import { TradingAccount, CreateTradingAccountRequest, UpdateTradingAccountRequest } from '../structures/trading-account';
+import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestRequest } from '../structures/backtest';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -140,6 +141,36 @@ export class TraderAlgoApiService {
 
   disableTradeBot(id: number): Observable<TradeBot> {
     return this.http.post<TradeBot>(`${this.baseUrl}/api/tradebots/${id}/disable`, {});
+  }
+
+  getBacktestCandles(req: BacktestCandleRequest): Observable<CandleResponse[]> {
+    const params = new HttpParams()
+      .set('symbol', req.symbol)
+      .set('interval', req.interval)
+      .set('from', req.from)
+      .set('to', req.to);
+    return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/backtests/candles`, { params });
+  }
+
+  getBacktestCandlesWithIndicators(req: BacktestCandleRequest): Observable<CandleWithIndicatorsResponse[]> {
+    const params = new HttpParams()
+      .set('symbol', req.symbol)
+      .set('interval', req.interval)
+      .set('from', req.from)
+      .set('to', req.to);
+    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/backtests/candles/indicators`, { params });
+  }
+
+  createBacktest(payload: CreateBacktestRequest): Observable<BacktestSummary> {
+    return this.http.post<BacktestSummary>(`${this.baseUrl}/api/backtests`, payload);
+  }
+
+  getBacktests(): Observable<BacktestSummary[]> {
+    return this.http.get<BacktestSummary[]>(`${this.baseUrl}/api/backtests`);
+  }
+
+  getBacktest(id: number): Observable<BacktestDetail> {
+    return this.http.get<BacktestDetail>(`${this.baseUrl}/api/backtests/${id}`);
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

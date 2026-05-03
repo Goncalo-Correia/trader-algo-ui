@@ -5,12 +5,18 @@ import { ChartsPageComponent } from './pages/charts/charts-page.component';
 import { DeprecatedPageComponent } from './pages/deprecated/deprecated.component';
 import { AccountsPageComponent } from './pages/accounts/accounts-page.component';
 import { AccountDetailComponent } from './pages/account-detail/account-detail.component';
+import { BacktestPageComponent } from './pages/backtest/backtest-page.component';
+import { BacktestsPageComponent } from './pages/backtests/backtests-page.component';
+import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail.component';
 
 const routes: Routes = [
   { path: 'algo-trader',    component: AlgoTraderPageComponent },
   { path: 'charts',         component: ChartsPageComponent },
   { path: 'accounts',       component: AccountsPageComponent },
   { path: 'accounts/:id',   component: AccountDetailComponent },
+  { path: 'backtest',       component: BacktestPageComponent },
+  { path: 'backtests',      component: BacktestsPageComponent },
+  { path: 'backtests/:id',  component: BacktestDetailComponent },
   { path: 'deprecated',     component: DeprecatedPageComponent },
   { path: '',               redirectTo: '/charts', pathMatch: 'full' },
 ];

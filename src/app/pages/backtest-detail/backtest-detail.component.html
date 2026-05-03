@@ -1,0 +1,128 @@
+<div class="detail-page">
+
+  <a class="back-link" routerLink="/backtests">← Backtests</a>
+
+  <div class="loading-state" *ngIf="isLoading">Loading backtest…</div>
+
+  <ng-container *ngIf="!isLoading && detail">
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <div class="detail-header">
+      <div class="header-left">
+        <h1 class="detail-title">Backtest #{{ detail.id }}</h1>
+        <span class="strategy-tag">{{ detail.strategyName }}</span>
+      </div>
+      <a class="btn-primary" routerLink="/backtest">Run New →</a>
+    </div>
+
+    <!-- ── Stats bar ─────────────────────────────────────────────────── -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-label">Symbol</span>
+        <span class="stat-value">{{ detail.symbolCode }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Interval</span>
+        <span class="stat-value">{{ detail.intervalCode }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">From</span>
+        <span class="stat-value">{{ formatDate(detail.from) }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">To</span>
+        <span class="stat-value">{{ formatDate(detail.to) }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Candles</span>
+        <span class="stat-value">{{ detail.candleCount }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Trades</span>
+        <span class="stat-value">{{ detail.trades.length }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Initial</span>
+        <span class="stat-value">${{ detail.initialBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Final</span>
+        <span class="stat-value">${{ detail.finalBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">PnL</span>
+        <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
+          {{ detail.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (detail.pnl | number:'1.2-2')) : '—' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- ── PnL Progression ───────────────────────────────────────────── -->
+    <div class="chart-section" *ngIf="detail.equityCurve.length">
+      <div class="section-title">PnL Progression</div>
+      <div class="chart-wrap">
+        <app-highcharts-chart [options]="equityChartOptions"></app-highcharts-chart>
+      </div>
+    </div>
+
+    <!-- ── Candle chart with trade markers ──────────────────────────── -->
+    <div class="chart-section" *ngIf="detail.candles.length">
+      <div class="section-title">Candle Chart</div>
+      <div class="chart-wrap chart-wrap-lg">
+        <app-highcharts-chart [options]="candleChartOptions" [useStock]="true"></app-highcharts-chart>
+      </div>
+    </div>
+
+    <!-- ── Trades table ──────────────────────────────────────────────── -->
+    <div class="trades-section">
+      <div class="section-title">Trades</div>
+      <div class="empty-state" *ngIf="detail.trades.length === 0">No trades executed.</div>
+      <table class="trades-table" *ngIf="detail.trades.length > 0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Side</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Entry</th>
+            <th>Close</th>
+            <th>Close Reason</th>
+            <th>PnL</th>
+            <th>Opened</th>
+            <th>Closed</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let trade of sortedTrades">
+            <td class="td-id">{{ trade.id }}</td>
+            <td>
+              <span class="side-badge" [class.side-buy]="trade.side === 'Buy'" [class.side-sell]="trade.side === 'Sell'">
+                {{ trade.side }}
+              </span>
+            </td>
+            <td class="td-dim">{{ trade.orderType }}</td>
+            <td>
+              <span class="status-badge status-{{ trade.status | lowercase }}">{{ trade.status }}</span>
+            </td>
+            <td>{{ trade.entryPrice !== null ? (trade.entryPrice | number:'1.2-5') : '—' }}</td>
+            <td>{{ trade.closedPrice !== null ? (trade.closedPrice | number:'1.2-5') : '—' }}</td>
+            <td class="td-dim">{{ trade.closeReason ?? '—' }}</td>
+            <td>
+              <ng-container *ngIf="getTradePnl(trade) !== null">
+                <span [class.positive]="getTradePnl(trade)! >= 0" [class.negative]="getTradePnl(trade)! < 0">
+                  {{ getTradePnl(trade)! >= 0 ? '+' : '' }}{{ getTradePnl(trade)! | number:'1.2-2' }}
+                </span>
+              </ng-container>
+              <span class="td-dim" *ngIf="getTradePnl(trade) === null">—</span>
+            </td>
+            <td class="td-dim">{{ formatTs(trade.openedAt) }}</td>
+            <td class="td-dim">{{ formatTs(trade.closedAt) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </ng-container>
+
+  <div class="error-state" *ngIf="!isLoading && !detail">Backtest not found.</div>
+</div>

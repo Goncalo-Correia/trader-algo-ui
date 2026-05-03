@@ -1,0 +1,100 @@
+<div class="backtest-layout">
+
+  <!-- ── Chart ──────────────────────────────────────────────────────────── -->
+  <div class="chart-area">
+    <div class="chart-wrap">
+      <app-backtest-chart
+        *ngIf="backtestCandles.length"
+        [candles]="backtestCandles"
+        [playbackTime]="activePlaybackTime"
+      ></app-backtest-chart>
+      <div class="chart-empty" *ngIf="!backtestCandles.length && !running">
+        Configure a backtest and click <strong>Run Backtest</strong> to start streaming.
+      </div>
+      <div class="chart-empty" *ngIf="!backtestCandles.length && running">
+        Connecting to backtest stream…
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Control Panel ──────────────────────────────────────────────────── -->
+  <div class="control-panel">
+
+    <div class="panel-section">
+      <div class="section-label">Symbol</div>
+      <select class="ctrl-select full-width" [(ngModel)]="selectedSymbol" [disabled]="running">
+        <option *ngFor="let s of symbols" [value]="s.code">{{ s.code }}</option>
+      </select>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Interval</div>
+      <select class="ctrl-select full-width" [(ngModel)]="selectedInterval" [disabled]="running">
+        <option *ngFor="let i of intervals" [value]="i.code">{{ i.displayName }}</option>
+      </select>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">From</div>
+      <input class="ctrl-date full-width" type="datetime-local" [(ngModel)]="fromDate" [disabled]="running" />
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">To</div>
+      <input class="ctrl-date full-width" type="datetime-local" [(ngModel)]="toDate" [disabled]="running" />
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Initial Balance ($)</div>
+      <input class="ctrl-input" type="number" [(ngModel)]="initialBalance" min="1" step="100" [disabled]="running" />
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Strategy</div>
+      <select class="ctrl-select full-width" [(ngModel)]="selectedStrategyId" [disabled]="running">
+        <option *ngFor="let s of strategies" [value]="s.id">{{ s.name }}</option>
+      </select>
+      <div class="section-hint">Active enabled trade bot determines strategy at runtime.</div>
+    </div>
+
+    <button class="btn-run"
+            [disabled]="running"
+            (click)="runBacktest()">
+      {{ running ? 'Running…' : 'Run Backtest' }}
+    </button>
+
+    <!-- Error -->
+    <div class="error-card" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <!-- Stream status -->
+    <div class="playback-status" *ngIf="running && backtestCandles.length">
+      <div class="status-row">
+        <span class="status-dot blink"></span>
+        <span>{{ backtestCandles.length }} candle{{ backtestCandles.length !== 1 ? 's' : '' }} received</span>
+      </div>
+      <div class="status-row dim" *ngIf="streamedCandleDate">{{ streamedCandleDate }}</div>
+    </div>
+
+    <!-- Final result -->
+    <div class="result-card" *ngIf="streamDone && backtestResult">
+      <div class="result-row">
+        <span class="result-label">Final PnL</span>
+        <span class="result-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
+          {{ backtestResult.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (backtestResult.pnl | number:'1.2-2')) : '—' }}
+        </span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Final Balance</span>
+        <span class="result-value">${{ backtestResult.finalBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Trades</span>
+        <span class="result-value">{{ backtestResult.tradeCount }}</span>
+      </div>
+      <a class="btn-view-report" [routerLink]="['/backtests', backtestResult.id]">View Report →</a>
+    </div>
+  </div>
+
+</div>

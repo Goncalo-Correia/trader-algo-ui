@@ -43,6 +43,33 @@ export class LiveChartDataService {
     });
   }
 
+  streamBacktest(backtestId: number): Observable<CandleWithIndicatorsResponse> {
+    return new Observable<CandleWithIndicatorsResponse>(subscriber => {
+      const socket = new WebSocket(
+        `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest?backtestId=${backtestId}`,
+      );
+
+      socket.onmessage = event => {
+        try {
+          const message = JSON.parse(String(event.data)) as CandleWithIndicatorsResponse | CandleWithIndicatorsResponse[];
+          const candles = Array.isArray(message) ? message : [message];
+          candles.forEach(candle => subscriber.next(candle));
+        } catch (error) {
+          subscriber.error(error);
+        }
+      };
+
+      socket.onerror = event => { subscriber.error(event); };
+      socket.onclose = () => { subscriber.complete(); };
+
+      return () => {
+        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        }
+      };
+    });
+  }
+
   streamCandlesWithIndicators(symbol: string, interval: ChartInterval): Observable<CandleWithIndicatorsResponse> {
     return new Observable<CandleWithIndicatorsResponse>(subscriber => {
       const socket = new WebSocket(

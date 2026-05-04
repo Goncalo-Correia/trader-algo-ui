@@ -1,8 +1,9 @@
 :host {
   display: block;
   flex: 1;
-  min-height: 100%;
+  min-height: 0;
   background: #000;
+  overflow-y: auto;
 }
 
 .detail-page {
@@ -11,6 +12,7 @@
   flex-direction: column;
   gap: 20px;
   color: #d1d4dc;
+  min-height: min-content;
 }
 
 .back-link {
@@ -81,6 +83,27 @@
 }
 .btn-primary:hover { background: #1a4fd6; }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-delete {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #ef535044;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ef535022;
+  color: #ef5350;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn-delete:hover:not(:disabled) { background: #ef535044; }
+.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── Stats bar ──────────────────────────────────────────────────────────── */
 
 .stats-bar {
@@ -117,8 +140,15 @@
   color: #fff;
 }
 
+.stat-link {
+  color: #818cf8;
+  text-decoration: none;
+}
+.stat-link:hover { text-decoration: underline; }
+
 .positive { color: #26a69a; }
 .negative { color: #ef5350; }
+.active-flag { color: #2962ff; }
 
 /* ── Chart sections ─────────────────────────────────────────────────────── */
 
@@ -141,10 +171,6 @@
 
 .chart-wrap {
   height: 220px;
-}
-
-.chart-wrap-lg {
-  height: 360px;
 }
 
 /* ── Trades section ─────────────────────────────────────────────────────── */

@@ -231,6 +231,12 @@
 .positive { color: #26a69a; }
 .negative { color: #ef5350; }
 
+.breakeven-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd600;
+}
+
 .btn-view-report {
   display: block;
   width: 100%;
@@ -267,6 +273,62 @@
   font-size: 10px;
   color: #4a4d5a;
   line-height: 1.4;
+}
+
+/* ── Toggle switch ──────────────────────────────────────────────────────── */
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-switch.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-track {
+  width: 32px;
+  height: 18px;
+  background: #2a2d3a;
+  border-radius: 9px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.toggle-switch input:checked + .toggle-track {
+  background: #2962ff;
+}
+
+.toggle-thumb {
+  width: 14px;
+  height: 14px;
+  background: #787b86;
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(14px);
+  background: #fff;
 }
 
 .ctrl-date.full-width {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
+import { BacktestStreamEvent } from '../structures/backtest';
 import { environment } from '../../environments/environment';
 
 export type ChartInterval = string;
@@ -43,17 +44,20 @@ export class LiveChartDataService {
     });
   }
 
-  streamBacktest(backtestId: number): Observable<CandleWithIndicatorsResponse> {
-    return new Observable<CandleWithIndicatorsResponse>(subscriber => {
+  streamBacktest(backtestId: number): Observable<BacktestStreamEvent> {
+    return new Observable<BacktestStreamEvent>(subscriber => {
       const socket = new WebSocket(
         `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest?backtestId=${backtestId}`,
       );
 
       socket.onmessage = event => {
         try {
-          const message = JSON.parse(String(event.data)) as CandleWithIndicatorsResponse | CandleWithIndicatorsResponse[];
-          const candles = Array.isArray(message) ? message : [message];
-          candles.forEach(candle => subscriber.next(candle));
+          const envelope = JSON.parse(String(event.data)) as { type: string; data: unknown };
+          if (envelope.type === 'candle') {
+            subscriber.next({ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse });
+          } else if (envelope.type === 'tradeBracketUpdate') {
+            subscriber.next({ type: 'tradeBracketUpdate', data: envelope.data as { tradeId: number; stopLoss: number | null; takeProfit: number | null } });
+          }
         } catch (error) {
           subscriber.error(error);
         }

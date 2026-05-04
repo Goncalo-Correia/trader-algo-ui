@@ -23,6 +23,7 @@ export interface Trade {
   pnl:              number | null;
   unrealizedPnl:    number | null;
   tradingAccountId: number | null;
+  backtestId:       number | null;
 }
 
 export interface CreateTradeRequest {

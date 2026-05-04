@@ -6,6 +6,7 @@
       [initialInterval]="defaultInterval"
       [availableIntervals]="intervals"
       [activeTrade]="activeTrade"
+      [tradingAccountId]="tradingAccountId"
     ></app-chart>
   </div>
 
@@ -17,6 +18,7 @@
     [showTradeBot]="true"
     (symbolChange)="onSymbolChange($event)"
     (tradeChange)="onTradeChange($event)"
+    (accountChange)="onAccountChange($event)"
   ></app-trade-panel>
 
 </div>

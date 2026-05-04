@@ -3,16 +3,19 @@ import {
   CandlestickData,
   CandlestickSeries,
   createChart,
+  createSeriesMarkers,
   HistogramData,
   HistogramSeries,
   IChartApi,
   IPriceLine,
   ISeriesApi,
+  ISeriesMarkersPluginApi,
   LineData,
   LineSeries,
   LineStyle,
   LogicalRange,
   MouseEventParams,
+  SeriesMarker,
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
@@ -61,6 +64,12 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this._adjustMode = mode;
   }
 
+  @Input() set tradingAccountId(id: number | null) {
+    if (id === this._tradingAccountId) return;
+    this._tradingAccountId = id;
+    this.loadTradeHistory();
+  }
+
   @Output() priceSelected = new EventEmitter<number>();
 
   // ── Public UI state ──────────────────────────────────────────────────────────
@@ -77,6 +86,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   showRsi             = true;
   showMacd            = true;
   showPredictMenu     = false;
+  showTrades          = true;
 
   readonly kronosButtons = [
     { label: 'Mini P',  key: 'mini-precise'  },
@@ -91,6 +101,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private selectedSymbol = '';
   private _activeTrade: Trade | null = null;
   protected _adjustMode: 'stopLoss' | 'takeProfit' | null = null;
+  private _tradingAccountId: number | null = null;
+  private historyTrades: Trade[] = [];
 
   private chart?: IChartApi;
   private series?: ISeriesApi<'Candlestick'>;
@@ -109,6 +121,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private macdZeroSeries?:   ISeriesApi<'Line'>;
 
   private volumeProfilePlugin?: VolumeProfilePlugin;
+  private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
 
   private tradeEntryLine?: IPriceLine;
   private tradeSlLine?:    IPriceLine;
@@ -126,6 +139,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private predictSubscription?:       Subscription;
   private sessionSubscription?:       Subscription;
   private volumeProfileSubscription?: Subscription;
+  private tradeHistorySubscription?:  Subscription;
 
   private lookback      = 100;
   private isLoadingMore = false;
@@ -230,6 +244,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.loadSessionOhlcv();
     this.loadVolumeProfile();
     this.streamLiveCandles();
+    this.loadTradeHistory();
 
     if (this.shouldRenderTradeLines(this._activeTrade)) {
       this.ngZone.runOutsideAngular(() => this.renderTradeLines(this._activeTrade!));
@@ -242,6 +257,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.predictSubscription?.unsubscribe();
     this.sessionSubscription?.unsubscribe();
     this.volumeProfileSubscription?.unsubscribe();
+    this.tradeHistorySubscription?.unsubscribe();
     this.chart?.timeScale().unsubscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
     this.chart?.unsubscribeClick(this.onChartClickHandler);
     this.chart?.remove();
@@ -294,6 +310,11 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       const pane = this.chart?.panes()[3];
       if (pane) pane.setStretchFactor(this.showMacd ? 1 : 0);
     });
+  }
+
+  toggleTrades(): void {
+    this.showTrades = !this.showTrades;
+    this.ngZone.runOutsideAngular(() => this.applyTradeMarkers());
   }
 
   togglePredictMenu(): void {
@@ -366,6 +387,66 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       && (trade.status === 'Pending' || trade.status === 'Active');
   }
 
+  // ── Trade history markers ────────────────────────────────────────────────────
+
+  private loadTradeHistory(): void {
+    this.tradeHistorySubscription?.unsubscribe();
+    if (this._tradingAccountId === null) {
+      this.historyTrades = [];
+      this.ngZone.runOutsideAngular(() => this.applyTradeMarkers());
+      return;
+    }
+    this.tradeHistorySubscription = this.traderAlgoApi.getTradeHistory(this._tradingAccountId).subscribe({
+      next: trades => {
+        this.historyTrades = trades;
+        this.ngZone.runOutsideAngular(() => this.applyTradeMarkers());
+      },
+      error: err => console.error('Failed to load trade history.', err),
+    });
+  }
+
+  private applyTradeMarkers(): void {
+    if (!this.series) return;
+    if (!this.tradeMarkersPlugin) {
+      this.tradeMarkersPlugin = createSeriesMarkers(this.series, []);
+    }
+    if (!this.showTrades) {
+      this.tradeMarkersPlugin.setMarkers([]);
+      return;
+    }
+    const markers: SeriesMarker<Time>[] = [];
+    const symbolTrades = this.historyTrades.filter(
+      t => t.symbolCode === this.selectedSymbol && t.status === 'Closed',
+    );
+    for (const t of symbolTrades) {
+      if (t.openedAt !== null && t.entryPrice !== null) {
+        const isBuy = t.side === 'Buy';
+        markers.push({
+          time: this.toChartTime(t.openedAt) as Time,
+          position: isBuy ? 'belowBar' : 'aboveBar',
+          color: isBuy ? '#26a69a' : '#ef5350',
+          shape: isBuy ? 'arrowUp' : 'arrowDown',
+          text: t.side,
+          size: 1,
+        });
+      }
+      if (t.closedAt !== null && t.closedPrice !== null) {
+        const isBuy = t.side === 'Buy';
+        const pnlText = t.pnl !== null ? ` ${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}` : '';
+        markers.push({
+          time: this.toChartTime(t.closedAt) as Time,
+          position: isBuy ? 'aboveBar' : 'belowBar',
+          color: '#f59e0b',
+          shape: 'circle',
+          text: `✕${pnlText}`,
+          size: 1,
+        });
+      }
+    }
+    markers.sort((a, b) => (a.time as number) - (b.time as number));
+    this.tradeMarkersPlugin.setMarkers(markers);
+  }
+
   // ── Load / reset ─────────────────────────────────────────────────────────────
 
   private resetAndReload(): void {
@@ -374,6 +455,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.predictSubscription?.unsubscribe();
     this.sessionSubscription?.unsubscribe();
     this.volumeProfileSubscription?.unsubscribe();
+    this.tradeHistorySubscription?.unsubscribe();
 
     this.isLoading           = true;
     this.isConnected         = false;
@@ -404,6 +486,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.macdZeroSeries?.setData([]);
       this.volumeProfilePlugin?.setData([]);
       this.clearSessionLines();
+      this.tradeMarkersPlugin?.setMarkers([]);
       if (this.shouldRenderTradeLines(this._activeTrade)) {
         this.renderTradeLines(this._activeTrade!);
       } else {
@@ -415,6 +498,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.loadSessionOhlcv();
     this.loadVolumeProfile();
     this.streamLiveCandles();
+    this.loadTradeHistory();
   }
 
   private loadCandles(): void {
@@ -454,6 +538,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   private applyAllSeries(candles: CandleWithIndicatorsResponse[], fitContent: boolean): void {
     this.series?.setData(candles.map(c => this.toChartCandle(c)));
+    this.applyTradeMarkers();
     this.sma20Series?.setData(
       candles.filter(c => c.sma_20 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma_20! })),
     );

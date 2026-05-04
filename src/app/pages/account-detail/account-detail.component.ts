@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
 import { TradingAccount, UpdateTradingAccountRequest } from '../../structures/trading-account';
@@ -21,6 +21,7 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   editingName = false;
   nameInput = '';
   saving = false;
+  deleting = false;
 
   pnlChartOptions: Highcharts.Options = this.buildEmptyChartOptions();
 
@@ -31,6 +32,7 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly route: ActivatedRoute,
+    private readonly router: Router,
     private readonly api: TraderAlgoApiService,
     private readonly tradeBotEvents: TradeBotEventsService,
   ) {}
@@ -101,6 +103,15 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
 
   cancelEditName(): void {
     this.editingName = false;
+  }
+
+  deleteAccount(): void {
+    if (this.deleting || !confirm('Delete this account and all its trades?')) return;
+    this.deleting = true;
+    this.api.deleteTradingAccount(this.accountId).subscribe({
+      next: () => this.router.navigate(['/accounts']),
+      error: () => { this.deleting = false; },
+    });
   }
 
   toggleActive(): void {

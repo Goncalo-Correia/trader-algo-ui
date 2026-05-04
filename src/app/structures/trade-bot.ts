@@ -1,19 +1,21 @@
 import { IntervalResponse } from './interval';
 import { SymbolResponse } from './symbol';
-import { TradeOrderType } from './trade';
+import { TradingStrategy } from './trading-account';
 
 export interface TradeBot {
   id: number;
-  tradingAccountId: number;
-  symbolId: number;
-  intervalId: number;
+  tradingAccountId: number | null;
+  tradingAccountName?: string | null;
+  backtestId: number | null;
+  tradingStrategy: TradingStrategy;
+  symbolId?: number;
+  intervalId?: number;
   isEnabled: boolean;
   quantity: number;
   stopLoss: number | null;
   takeProfit: number | null;
-  orderType: TradeOrderType;
   createdAt: number | string;
-  updatedAt: number | string | null;
+  updatedAt: number | string;
   lastSignalAt: number | string | null;
   symbol?: SymbolResponse | null;
   interval?: IntervalResponse | null;
@@ -30,20 +32,18 @@ export interface CreateTradeBotRequest {
   quantity: number;
   stopLoss?: number | null;
   takeProfit?: number | null;
-  orderType: TradeOrderType;
   isEnabled?: boolean;
 }
 
 export interface UpdateTradeBotRequest {
-  symbolCode?: string;
-  intervalCode?: string;
+  symbolCode: string;
+  intervalCode: string;
   symbolId?: number;
   intervalId?: number;
-  quantity?: number;
-  stopLoss?: number | null;
-  takeProfit?: number | null;
-  orderType?: TradeOrderType;
-  isEnabled?: boolean;
+  quantity: number;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  isEnabled: boolean;
 }
 
 export type TradeBotEventType =
@@ -55,10 +55,12 @@ export type TradeBotEventType =
 
 export interface TradeBotEvent {
   type: TradeBotEventType;
-  tradingAccountId: number;
+  tradingAccountId: number | null;
   tradeId?: number;
   symbolCode?: string;
   side?: string;
   status?: string;
   reason?: string;
+  message?: string;
+  createdAt?: number;
 }

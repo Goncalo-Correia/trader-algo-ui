@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestDetail } from '../../structures/backtest';
@@ -44,17 +44,21 @@ function darkThemeBase(): Highcharts.Options {
 export class BacktestDetailComponent implements OnInit {
   detail: BacktestDetail | null = null;
   isLoading = true;
+  deleting = false;
+  private backtestId!: number;
 
   equityChartOptions: Highcharts.Options = {};
   candleChartOptions: Highcharts.Options = {};
 
   constructor(
     private readonly route: ActivatedRoute,
+    private readonly router: Router,
     private readonly api: TraderAlgoApiService,
   ) {}
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    this.backtestId = id;
     this.api.getBacktest(id).subscribe({
       next: detail => {
         this.detail = detail;
@@ -62,6 +66,15 @@ export class BacktestDetailComponent implements OnInit {
         this.buildCharts(detail);
       },
       error: () => { this.isLoading = false; },
+    });
+  }
+
+  deleteBacktest(): void {
+    if (this.deleting || !confirm('Delete this backtest and all its trades?')) return;
+    this.deleting = true;
+    this.api.deleteBacktest(this.backtestId).subscribe({
+      next: () => this.router.navigate(['/backtests']),
+      error: () => { this.deleting = false; },
     });
   }
 

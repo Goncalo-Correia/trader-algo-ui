@@ -10,16 +10,23 @@ import {
 import {
   CandlestickSeries,
   createChart,
+  createSeriesMarkers,
   HistogramData,
   HistogramSeries,
   IChartApi,
+  IPriceLine,
   ISeriesApi,
+  ISeriesMarkersPluginApi,
+  LineStyle,
   LineSeries,
+  SeriesMarker,
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
 import { ActiveCandlePlugin } from '../../chart-plugins/active-candle.plugin';
+import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
+import { Trade } from '../../structures/trade';
 
 @Component({
   selector: 'app-backtest-chart',
@@ -35,17 +42,33 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     if (this.chart) this.ngZone.runOutsideAngular(() => this.applyAllSeries(data));
   }
 
+  @Input() set isNySessionOnly(value: boolean) {
+    this._isNySessionOnly = value;
+    if (this.chart) this.ngZone.runOutsideAngular(() => this.applySessionMarkers());
+  }
+
   @Input() set playbackTime(unixSeconds: number | null) {
     this._playbackTime = unixSeconds;
     if (this.chart) this.ngZone.runOutsideAngular(() => this.applyPlayback(unixSeconds));
   }
 
+  @Input() set trades(trades: Trade[]) {
+    this._trades = trades;
+    if (this.chart) this.ngZone.runOutsideAngular(() => {
+      this.applyTradeMarkers();
+      this.applyBracketLines();
+    });
+  }
+
   showVolume = true;
   showRsi    = true;
   showMacd   = true;
+  showTrades = true;
 
   private _candles: CandleWithIndicatorsResponse[] = [];
   private _playbackTime: number | null = null;
+  private _trades: Trade[] = [];
+  private _isNySessionOnly = false;
 
   private chart?: IChartApi;
   private candleSeries?:    ISeriesApi<'Candlestick'>;
@@ -63,6 +86,12 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private macdZeroSeries?:  ISeriesApi<'Line'>;
 
   private activeCandlePlugin?: ActiveCandlePlugin;
+  private sessionMarkersPlugin?: SessionMarkersPlugin;
+  private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
+  private slPriceLine?: IPriceLine;
+  private tpPriceLine?: IPriceLine;
+  private hasAppliedInitialViewport = false;
+  private hasFocusedInitialPlayback = false;
 
   constructor(private readonly ngZone: NgZone) {}
 
@@ -126,6 +155,12 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     if (this._playbackTime !== null) {
       this.ngZone.runOutsideAngular(() => this.applyPlayback(this._playbackTime));
     }
+    if (this._trades.length) {
+      this.ngZone.runOutsideAngular(() => {
+        this.applyTradeMarkers();
+        this.applyBracketLines();
+      });
+    }
   }
 
   ngOnDestroy(): void {
@@ -156,10 +191,118 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  toggleTrades(): void {
+    this.showTrades = !this.showTrades;
+    this.ngZone.runOutsideAngular(() => this.applyTradeMarkers());
+  }
+
+  private applyTradeMarkers(): void {
+    if (!this.candleSeries) return;
+    if (!this.tradeMarkersPlugin) {
+      this.tradeMarkersPlugin = createSeriesMarkers(this.candleSeries, []);
+    }
+    if (!this.showTrades) {
+      this.tradeMarkersPlugin.setMarkers([]);
+      return;
+    }
+    const markers: SeriesMarker<Time>[] = [];
+    for (const t of this._trades) {
+      if (t.openedAt !== null && t.entryPrice !== null) {
+        const isBuy = t.side === 'Buy';
+        markers.push({
+          time: this.toTime(t.openedAt) as Time,
+          position: isBuy ? 'belowBar' : 'aboveBar',
+          color: isBuy ? '#26a69a' : '#ef5350',
+          shape: isBuy ? 'arrowUp' : 'arrowDown',
+          text: t.side,
+          size: 1,
+        });
+      }
+      if (t.closedAt !== null && t.closedPrice !== null) {
+        const isBuy = t.side === 'Buy';
+        const pnlText = t.pnl !== null ? ` ${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}` : '';
+        markers.push({
+          time: this.toTime(t.closedAt) as Time,
+          position: isBuy ? 'aboveBar' : 'belowBar',
+          color: '#f59e0b',
+          shape: 'circle',
+          text: `✕${pnlText}`,
+          size: 1,
+        });
+      }
+    }
+    markers.sort((a, b) => (a.time as number) - (b.time as number));
+    this.tradeMarkersPlugin.setMarkers(markers);
+  }
+
+  private applyBracketLines(): void {
+    if (!this.candleSeries) return;
+
+    if (this.slPriceLine) {
+      this.candleSeries.removePriceLine(this.slPriceLine);
+      this.slPriceLine = undefined;
+    }
+    if (this.tpPriceLine) {
+      this.candleSeries.removePriceLine(this.tpPriceLine);
+      this.tpPriceLine = undefined;
+    }
+
+    const trade = this._trades.find(t => t.status === 'Active' || t.status === 'Pending');
+    if (!trade || trade.entryPrice === null) return;
+
+    const entry = Number(trade.entryPrice);
+    const isBuy = trade.side === 'Buy';
+
+    if (trade.stopLoss !== null) {
+      const slPrice = isBuy ? entry - Number(trade.stopLoss) : entry + Number(trade.stopLoss);
+      const isBreakeven = Number(trade.stopLoss) === 0;
+      this.slPriceLine = this.candleSeries.createPriceLine({
+        price: slPrice,
+        color: isBreakeven ? '#ffd600' : '#ef5350',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isBreakeven ? 'BE' : 'SL',
+      });
+    }
+
+    if (trade.takeProfit !== null) {
+      const tpPrice = isBuy ? entry + Number(trade.takeProfit) : entry - Number(trade.takeProfit);
+      this.tpPriceLine = this.candleSeries.createPriceLine({
+        price: tpPrice,
+        color: '#26a69a',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'TP',
+      });
+    }
+  }
+
+  private applySessionMarkers(): void {
+    if (!this.candleSeries) return;
+    if (this.sessionMarkersPlugin) {
+      this.candleSeries.detachPrimitive(this.sessionMarkersPlugin);
+      this.sessionMarkersPlugin = undefined;
+    }
+    if (!this._isNySessionOnly || this._candles.length === 0) return;
+    const first = this._candles[0].time;
+    const last  = this._candles[this._candles.length - 1].time;
+    const fromMs = (first > 9_999_999_999 ? first : first * 1000) - 86_400_000;
+    const toMs   = (last  > 9_999_999_999 ? last  : last  * 1000) + 86_400_000;
+    this.sessionMarkersPlugin = new SessionMarkersPlugin(fromMs, toMs);
+    this.candleSeries.attachPrimitive(this.sessionMarkersPlugin);
+  }
+
   private applyAllSeries(candles: CandleWithIndicatorsResponse[]): void {
+    const shouldFitInitialContent = candles.length > 0 && !this.hasAppliedInitialViewport;
+
     this.candleSeries?.setData(candles.map(c => ({
       time: this.toTime(c.time), open: c.open, high: c.high, low: c.low, close: c.close,
     })));
+    this.applySessionMarkers();
+    this.applyTradeMarkers();
+    this.applyBracketLines();
 
     this.sma20Series?.setData(
       candles.filter(c => c.sma_20 !== null).map(c => ({ time: this.toTime(c.time), value: c.sma_20! })),
@@ -206,14 +349,20 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       ]);
     }
 
-    this.chart?.timeScale().fitContent();
+    if (shouldFitInitialContent) {
+      this.chart?.timeScale().fitContent();
+      this.hasAppliedInitialViewport = true;
+    }
   }
 
   private applyPlayback(unixSeconds: number | null): void {
     if (this.activeCandlePlugin) {
       this.activeCandlePlugin.setTime(unixSeconds !== null ? unixSeconds as UTCTimestamp : null);
     }
-    if (unixSeconds !== null) this.focusOnDay(unixSeconds);
+    if (unixSeconds !== null && !this.hasFocusedInitialPlayback) {
+      this.focusOnDay(unixSeconds);
+      this.hasFocusedInitialPlayback = true;
+    }
   }
 
   private focusOnDay(unixSeconds: number): void {

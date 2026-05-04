@@ -57,10 +57,12 @@ export class SessionMarkersPlugin implements ISeriesPrimitive<Time> {
   private readonly _closes: UTCTimestamp[];
 
   constructor(
+    fromMs?: number,
+    toMs?: number,
     private readonly _openColor  = 'rgba(38, 166, 154, 0.5)',
     private readonly _closeColor = 'rgba(239, 83, 80, 0.5)',
   ) {
-    const { opens, closes } = generateNyseMarkers();
+    const { opens, closes } = generateNyseMarkers(fromMs, toMs);
     this._opens  = opens;
     this._closes = closes;
   }
@@ -96,18 +98,19 @@ export class SessionMarkersPlugin implements ISeriesPrimitive<Time> {
 }
 
 function generateNyseMarkers(
-  pastDays = 90,
-  futureDays = 10,
+  fromMs?: number,
+  toMs?: number,
 ): { opens: UTCTimestamp[]; closes: UTCTimestamp[] } {
   const opens:  UTCTimestamp[] = [];
   const closes: UTCTimestamp[] = [];
   const msPerDay = 86_400_000;
-  const now = Date.now();
+  const startMs = fromMs ?? (Date.now() - 90 * msPerDay);
+  const endMs   = toMs   ?? (Date.now() + 10 * msPerDay);
   const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' });
   const dateFmt    = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' });
 
-  for (let offset = -pastDays; offset <= futureDays; offset++) {
-    const d = new Date(now + offset * msPerDay);
+  for (let ms = startMs; ms <= endMs; ms += msPerDay) {
+    const d = new Date(ms);
     if (weekdayFmt.format(d) === 'Sat' || weekdayFmt.format(d) === 'Sun') continue;
     const nyDate = dateFmt.format(d);
     opens.push(toUtcTimestamp(nyTimeToUtcMs(nyDate, 9, 30)));

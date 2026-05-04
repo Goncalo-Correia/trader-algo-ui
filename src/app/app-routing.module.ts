@@ -8,6 +8,8 @@ import { AccountDetailComponent } from './pages/account-detail/account-detail.co
 import { BacktestPageComponent } from './pages/backtest/backtest-page.component';
 import { BacktestsPageComponent } from './pages/backtests/backtests-page.component';
 import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail.component';
+import { TradeBotsPageComponent } from './pages/tradebots/tradebots-page.component';
+import { TradebotDetailComponent } from './pages/tradebot-detail/tradebot-detail.component';
 
 const routes: Routes = [
   { path: 'algo-trader',    component: AlgoTraderPageComponent },
@@ -17,6 +19,8 @@ const routes: Routes = [
   { path: 'backtest',       component: BacktestPageComponent },
   { path: 'backtests',      component: BacktestsPageComponent },
   { path: 'backtests/:id',  component: BacktestDetailComponent },
+  { path: 'tradebots',      component: TradeBotsPageComponent },
+  { path: 'tradebots/:id',  component: TradebotDetailComponent },
   { path: 'deprecated',     component: DeprecatedPageComponent },
   { path: '',               redirectTo: '/charts', pathMatch: 'full' },
 ];

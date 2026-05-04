@@ -8,6 +8,7 @@
         [candles]="backtestCandles"
         [playbackTime]="activePlaybackTime"
         [trades]="backtestTrades"
+        [isNySessionOnly]="isNySessionOnly"
       ></app-backtest-chart>
       <div class="chart-empty" *ngIf="!backtestCandles.length && !running">
         Configure a backtest and click <strong>Run Backtest</strong> to start streaming.

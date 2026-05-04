@@ -96,11 +96,15 @@ export class TraderAlgoApiService {
   }
 
   getActiveTrades(tradingAccountId: number): Observable<Trade[]> {
-    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/active`, { params: { tradingAccountId } });
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/account/${tradingAccountId}/active`);
   }
 
   getTradeHistory(tradingAccountId: number): Observable<Trade[]> {
-    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/history`, { params: { tradingAccountId } });
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/account/${tradingAccountId}/history`);
+  }
+
+  getBacktestTrades(backtestId: number): Observable<Trade[]> {
+    return this.http.get<Trade[]>(`${this.baseUrl}/api/trades/backtest/${backtestId}`);
   }
 
   getTradingAccounts(): Observable<TradingAccount[]> {
@@ -119,8 +123,11 @@ export class TraderAlgoApiService {
     return this.http.patch<TradingAccount>(`${this.baseUrl}/api/trading-accounts/${id}`, payload);
   }
 
-  getTradeBots(): Observable<TradeBot[]> {
-    return this.http.get<TradeBot[]>(`${this.baseUrl}/api/tradebots`);
+  getTradeBots(tradingAccountId?: number): Observable<TradeBot[]> {
+    const options = tradingAccountId === undefined
+      ? {}
+      : { params: new HttpParams().set('tradingAccountId', String(tradingAccountId)) };
+    return this.http.get<TradeBot[]>(`${this.baseUrl}/api/tradebots`, options);
   }
 
   getTradeBot(id: number): Observable<TradeBot> {
@@ -165,12 +172,20 @@ export class TraderAlgoApiService {
     return this.http.post<BacktestSummary>(`${this.baseUrl}/api/backtests`, payload);
   }
 
+  deleteTradingAccount(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/trading-accounts/${id}`);
+  }
+
   getBacktests(): Observable<BacktestSummary[]> {
     return this.http.get<BacktestSummary[]>(`${this.baseUrl}/api/backtests`);
   }
 
   getBacktest(id: number): Observable<BacktestDetail> {
     return this.http.get<BacktestDetail>(`${this.baseUrl}/api/backtests/${id}`);
+  }
+
+  deleteBacktest(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/backtests/${id}`);
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

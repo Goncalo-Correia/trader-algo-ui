@@ -19,6 +19,8 @@ import { AccountDetailComponent } from './pages/account-detail/account-detail.co
 import { BacktestPageComponent } from './pages/backtest/backtest-page.component';
 import { BacktestsPageComponent } from './pages/backtests/backtests-page.component';
 import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail.component';
+import { TradeBotsPageComponent } from './pages/tradebots/tradebots-page.component';
+import { TradebotDetailComponent } from './pages/tradebot-detail/tradebot-detail.component';
 
 @NgModule({
   declarations: [
@@ -37,6 +39,8 @@ import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail
     BacktestPageComponent,
     BacktestsPageComponent,
     BacktestDetailComponent,
+    TradeBotsPageComponent,
+    TradebotDetailComponent,
   ],
   imports: [
     BrowserModule,

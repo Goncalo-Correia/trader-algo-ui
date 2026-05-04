@@ -257,5 +257,11 @@
 .tp-bot-status.enabled { color: #26a69a; }
 .tp-bot-status.disabled { color: #ef5350; }
 .tp-bot-risk-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+
+.tp-risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+.tp-adjust-section { display: flex; flex-direction: column; gap: 6px; }
+
+.tp-adj-btn.full-width { width: 100%; height: 26px; }
 .tp-action-btn.bot-toggle-btn { flex: 1; height: 26px; background: #26a69a; color: #ffffff; }
 .tp-action-btn.bot-toggle-btn.enabled { background: #ef535022; color: #ef5350; border: 1px solid #ef535044; }

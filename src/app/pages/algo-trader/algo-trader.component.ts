@@ -11,11 +11,12 @@ import { Trade } from '../../structures/trade';
   styleUrls: ['./algo-trader.component.css'],
 })
 export class AlgoTraderPageComponent implements OnInit {
-  symbols:        SymbolResponse[]  = [];
-  intervals:      IntervalResponse[] = [];
-  selectedSymbol  = '';
-  defaultInterval = '';
-  activeTrade:    Trade | null = null;
+  symbols:          SymbolResponse[]  = [];
+  intervals:        IntervalResponse[] = [];
+  selectedSymbol    = '';
+  defaultInterval   = '';
+  activeTrade:      Trade | null = null;
+  tradingAccountId: number | null = null;
 
   constructor(private readonly traderAlgoApi: TraderAlgoApiService) {}
 
@@ -42,5 +43,9 @@ export class AlgoTraderPageComponent implements OnInit {
 
   onTradeChange(trade: Trade | null): void {
     this.activeTrade = trade;
+  }
+
+  onAccountChange(accountId: number | null): void {
+    this.tradingAccountId = accountId;
   }
 }

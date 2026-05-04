@@ -32,6 +32,9 @@
                 (click)="toggleActive()">
           {{ saving ? '…' : account.isActive ? 'Set Inactive' : 'Set Active' }}
         </button>
+        <button class="btn-delete" [disabled]="deleting" (click)="deleteAccount()">
+          {{ deleting ? '…' : 'Delete' }}
+        </button>
       </div>
     </div>
 

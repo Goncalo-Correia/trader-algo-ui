@@ -8,7 +8,13 @@
       "Bash(git push *)",
       "Bash(curl -s http://localhost:32768/swagger/v1/swagger.json)",
       "Bash(node -e ' *)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git stash *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -E \"\\\\.cs$\")"
     ]
   }
 }

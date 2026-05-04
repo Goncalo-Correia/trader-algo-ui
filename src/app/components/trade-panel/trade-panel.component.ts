@@ -10,7 +10,13 @@ import {
   TradeBotEvent,
   UpdateTradeBotRequest,
 } from '../../structures/trade-bot';
-import { Trade } from '../../structures/trade';
+import {
+  CreateTradeRequest,
+  Trade,
+  TradeOrderType,
+  TradeSide,
+  UpdateTradeRequest,
+} from '../../structures/trade';
 import { TradingAccount } from '../../structures/trading-account';
 
 interface TradeBotDraft {
@@ -43,8 +49,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   // ── Outputs ─────────────────────────────────────────────────────────────────
 
-  @Output() symbolChange = new EventEmitter<string>();
-  @Output() tradeChange  = new EventEmitter<Trade | null>();
+  @Output() symbolChange  = new EventEmitter<string>();
+  @Output() tradeChange   = new EventEmitter<Trade | null>();
+  @Output() accountChange = new EventEmitter<number | null>();
 
   // ── State ───────────────────────────────────────────────────────────────────
 
@@ -69,6 +76,25 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   activeTrade: Trade | null = null;
 
+  // ── Manual trade entry ───────────────────────────────────────────────────────
+
+  tradeSide: TradeSide = 'Buy';
+  tradeOrderType: TradeOrderType = 'Market';
+  tradeQuantity: number | null = null;
+  tradeLimitPrice: number | null = null;
+  tradeStopLoss: number | null = null;
+  tradeTakeProfit: number | null = null;
+  isSubmittingTrade = false;
+  isClosingTrade    = false;
+  tradeError        = '';
+  tradeMessage      = '';
+
+  // ── SL/TP adjustment for active trade ───────────────────────────────────────
+
+  adjustSlDraft: number | null = null;
+  adjustTpDraft: number | null = null;
+  isAdjusting = false;
+
   private subscription?: Subscription;
   private botEventSubscription?: Subscription;
   private pollingTimer?: ReturnType<typeof setTimeout>;
@@ -85,6 +111,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.accounts = accounts.filter(a => a.isActive);
         if (this.accounts.length > 0) {
           this.selectedAccountId = this.accounts[0].id;
+          this.accountChange.emit(this.selectedAccountId);
           this.loadActiveTrade();
           if (this.showTradeBot) {
             this.loadTradeBot();
@@ -116,6 +143,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   onAccountChange(accountId: number | null): void {
     if (accountId === this.selectedAccountId) return;
     this.selectedAccountId = accountId;
+    this.accountChange.emit(accountId);
     this.clearTradeState();
     this.clearBotState();
     this.loadActiveTrade();
@@ -154,6 +182,13 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     return this.activeTrade?.status === 'Pending' || this.activeTrade?.status === 'Active';
   }
 
+  get tradeFormValid(): boolean {
+    if (this.selectedAccountId === null) return false;
+    if (!this.tradeQuantity || this.tradeQuantity <= 0) return false;
+    if (this.tradeOrderType === 'Limit' && (!this.tradeLimitPrice || this.tradeLimitPrice <= 0)) return false;
+    return true;
+  }
+
   get absoluteSlPrice(): number | null {
     const t = this.activeTrade;
     if (!t || t.stopLoss === null || t.stopLoss === undefined) return null;
@@ -172,6 +207,74 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     return t.side === 'Buy'
       ? Number(entry) + Number(t.takeProfit)
       : Number(entry) - Number(t.takeProfit);
+  }
+
+  // ── Manual trade actions ─────────────────────────────────────────────────────
+
+  submitTrade(): void {
+    if (!this.tradeFormValid || this.isSubmittingTrade) return;
+    this.isSubmittingTrade = true;
+    this.tradeError        = '';
+    this.tradeMessage      = '';
+
+    const payload: CreateTradeRequest = {
+      symbolCode:       this.selectedSymbol,
+      side:             this.tradeSide,
+      orderType:        this.tradeOrderType,
+      quantity:         this.tradeQuantity!,
+      tradingAccountId: this.selectedAccountId ?? undefined,
+    };
+    if (this.tradeOrderType === 'Limit' && this.tradeLimitPrice) {
+      payload.limitPrice = this.tradeLimitPrice;
+    }
+    if (this.tradeStopLoss)   payload.stopLoss   = this.tradeStopLoss;
+    if (this.tradeTakeProfit) payload.takeProfit = this.tradeTakeProfit;
+
+    this.traderAlgoApi.createTrade(payload).subscribe({
+      next: trade => {
+        this.isSubmittingTrade = false;
+        this.activeTrade       = trade;
+        this.tradeChange.emit(trade);
+        this.tradeMessage = `${trade.side} trade opened.`;
+        this.syncAdjustDraft(trade);
+        this.startPolling();
+      },
+      error: err => {
+        this.isSubmittingTrade = false;
+        this.tradeError = this.extractError(err, 'Failed to submit trade.');
+      },
+    });
+  }
+
+  closeTrade(): void {
+    if (!this.activeTrade || this.isClosingTrade) return;
+    this.isClosingTrade = true;
+    this.traderAlgoApi.stopTrade(this.activeTrade.id).subscribe({
+      next: () => {
+        this.isClosingTrade = false;
+        this.stopPolling();
+        this.loadActiveTrade();
+      },
+      error: () => { this.isClosingTrade = false; },
+    });
+  }
+
+  saveAdjustment(): void {
+    if (!this.activeTrade || this.isAdjusting) return;
+    this.isAdjusting = true;
+    const update: UpdateTradeRequest = {
+      stopLoss:   this.adjustSlDraft ?? undefined,
+      takeProfit: this.adjustTpDraft ?? undefined,
+    };
+    this.traderAlgoApi.updateTrade(this.activeTrade.id, update).subscribe({
+      next: trade => {
+        this.isAdjusting = false;
+        this.activeTrade = trade;
+        this.syncAdjustDraft(trade);
+        this.tradeChange.emit(trade);
+      },
+      error: () => { this.isAdjusting = false; },
+    });
   }
 
   // ── Bot actions ──────────────────────────────────────────────────────────────
@@ -231,10 +334,18 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         const trade = trades[0] ?? null;
         this.activeTrade = trade;
         this.tradeChange.emit(trade);
-        if (trade) this.startPolling();
+        if (trade) {
+          this.syncAdjustDraft(trade);
+          this.startPolling();
+        }
       },
       error: err => console.error('Failed to load active trade.', err),
     });
+  }
+
+  private syncAdjustDraft(trade: Trade): void {
+    this.adjustSlDraft = trade.stopLoss   ?? null;
+    this.adjustTpDraft = trade.takeProfit ?? null;
   }
 
   private loadTradeBot(): void {
@@ -243,11 +354,11 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     this.isLoadingBot = true;
     this.botError     = '';
 
-    this.traderAlgoApi.getTradeBots().subscribe({
+    this.traderAlgoApi.getTradeBots(accountId).subscribe({
       next: bots => {
         if (this.selectedAccountId !== accountId) return;
         this.isLoadingBot = false;
-        this.tradeBot     = bots.find(b => b.tradingAccountId === accountId) ?? null;
+        this.tradeBot     = bots.find(b => b.tradingAccountId === accountId && b.backtestId === null) ?? null;
         if (this.tradeBot) this.applyTradeBotToDraft(this.tradeBot);
         else               this.applyDefaultTradeBotDraft();
       },
@@ -275,9 +386,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       symbolId:    symbol.id,
       intervalId:  interval.id,
       quantity:    this.tradeBotDraft.quantity,
-      orderType:   'Market',
       stopLoss:    this.tradeBotDraft.stopLoss ?? null,
       takeProfit:  this.tradeBotDraft.takeProfit ?? null,
+      isEnabled:   this.tradeBot?.isEnabled ?? false,
     };
 
     if (!this.tradeBot) return this.traderAlgoApi.createTradeBot(payload);
@@ -288,9 +399,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       symbolId:    payload.symbolId,
       intervalId:  payload.intervalId,
       quantity:    payload.quantity,
-      orderType:   'Market',
-      stopLoss:    payload.stopLoss,
-      takeProfit:  payload.takeProfit,
+      stopLoss:    payload.stopLoss ?? null,
+      takeProfit:  payload.takeProfit ?? null,
+      isEnabled:   this.tradeBot.isEnabled,
     };
     return this.traderAlgoApi.updateTradeBot(this.tradeBot.id, update);
   }
@@ -343,6 +454,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
           this.activeTrade = trade;
           this.tradeChange.emit(trade);
           if (trade?.status === 'Pending' || trade?.status === 'Active') {
+            this.syncAdjustDraft(trade);
             this.pollingTimer = setTimeout(poll, this.POLL_MS);
           } else {
             this.activeTrade = null;
@@ -366,7 +478,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private clearTradeState(): void {
     this.stopPolling();
-    this.activeTrade = null;
+    this.activeTrade  = null;
+    this.tradeError   = '';
+    this.tradeMessage = '';
   }
 
   private clearBotState(): void {

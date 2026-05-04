@@ -166,6 +166,21 @@
 .btn-activate { background: #26a69a22; color: #26a69a; border: 1px solid #26a69a44; }
 .btn-activate:hover:not(:disabled) { background: #26a69a44; }
 
+.btn-delete {
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid #ef535044;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ef535022;
+  color: #ef5350;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn-delete:hover:not(:disabled) { background: #ef535044; }
+.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+
 
 .stats-bar {
   display: flex;

@@ -6,7 +6,7 @@
   overflow-y: auto;
 }
 
-.backtests-page {
+.tradebots-page {
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -55,8 +55,28 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-
 .btn-primary:hover { background: #1a4fd6; }
+
+.toggle-btn {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: 1px solid #26a69a55;
+  background: #26a69a22;
+  color: #26a69a;
+}
+.toggle-btn.enabled {
+  border-color: #ef535055;
+  background: #ef535022;
+  color: #ef5350;
+}
+.toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.toggle-btn:not(:disabled):hover { opacity: 0.8; }
 
 /* ── Table ──────────────────────────────────────────────────────────────── */
 
@@ -89,7 +109,6 @@
   border-bottom: 1px solid #1e2130;
   transition: background 0.1s;
 }
-
 .bt-table tbody tr:last-child { border-bottom: none; }
 
 .clickable-row { cursor: pointer; }
@@ -101,22 +120,11 @@
   white-space: nowrap;
 }
 
-.td-id   { color: #4a4d5a; font-size: 11px; }
-.td-dim  { color: #787b86; }
-.td-bold { font-weight: 600; }
-
-.positive { color: #26a69a; font-weight: 700; }
-.negative { color: #ef5350; font-weight: 700; }
-
-.strategy-tag {
-  font-size: 11px;
-  font-weight: 600;
-  color: #818cf8;
-  background: #818cf822;
-  border: 1px solid #818cf844;
-  border-radius: 4px;
-  padding: 2px 7px;
-}
+.td-id     { color: #4a4d5a; font-size: 11px; }
+.td-dim    { color: #787b86; }
+.td-bold   { font-weight: 600; }
+.td-mono   { font-variant-numeric: tabular-nums; }
+.td-action { text-align: right; }
 
 .status-badge {
   font-size: 10px;
@@ -126,9 +134,15 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.status-enabled  { color: #26a69a; background: #26a69a22; border: 1px solid #26a69a44; }
+.status-disabled { color: #787b86; background: #78787822; border: 1px solid #78787844; }
 
-.status-completed { color: #26a69a; background: #26a69a22; border: 1px solid #26a69a44; }
-.status-running   { color: #2962ff; background: #2962ff22; border: 1px solid #2962ff44; }
-.status-pending   { color: #f59e0b; background: #f59e0b22; border: 1px solid #f59e0b44; }
-.status-cancelled { color: #787b86; background: #78787822; border: 1px solid #78787844; }
-.status-failed    { color: #ef5350; background: #ef535022; border: 1px solid #ef535044; }
+.scope-badge {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.scope-account  { color: #818cf8; background: #818cf822; border: 1px solid #818cf844; }
+.scope-backtest { color: #f59e0b; background: #f59e0b22; border: 1px solid #f59e0b44; }
+.scope-unknown  { color: #787b86; background: #78787822; border: 1px solid #78787844; }

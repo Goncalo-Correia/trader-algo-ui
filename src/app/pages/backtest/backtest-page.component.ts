@@ -6,11 +6,13 @@ import { SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
 import { BacktestSummary, CreateBacktestRequest } from '../../structures/backtest';
+import { Trade } from '../../structures/trade';
+import { TradingStrategy } from '../../structures/trading-account';
 
 const STRATEGIES = [
-  { id: 1, name: 'SMA' },
-  { id: 2, name: 'RSI' },
-  { id: 3, name: 'MACD' },
+  { value: 'Sma' as TradingStrategy, name: 'SMA' },
+  { value: 'Rsi' as TradingStrategy, name: 'RSI' },
+  { value: 'Macd' as TradingStrategy, name: 'MACD' },
 ];
 
 @Component({
@@ -25,12 +27,20 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   selectedSymbol = '';
   selectedInterval = '';
-  selectedStrategyId = 1;
+  selectedStrategy: TradingStrategy = 'Sma';
   fromDate = '';
   toDate = '';
   initialBalance = 1000;
+  quantity: number | null = 1;
+  stopLoss: number | null = 100;
+  takeProfit: number | null = 100;
+  breakeven: number | null = null;
+  isNySessionOnly = false;
+  dailyProfitGoal: number | null = null;
+  maxLossesPerDay: number | null = null;
 
   backtestCandles: CandleWithIndicatorsResponse[] = [];
+  backtestTrades: Trade[] = [];
   activePlaybackTime: number | null = null;
 
   running = false;
@@ -39,6 +49,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   errorMessage: string | null = null;
 
   private streamSub: Subscription | null = null;
+  private isLoadingTrades = false;
 
   constructor(
     private readonly api: TraderAlgoApiService,
@@ -68,6 +79,10 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   runBacktest(): void {
     if (!this.selectedSymbol || !this.selectedInterval || !this.fromDate || !this.toDate) return;
+    if (!this.quantity || this.quantity <= 0) {
+      this.errorMessage = 'Quantity must be greater than zero.';
+      return;
+    }
     if (this.running) return;
 
     this.running = true;
@@ -75,7 +90,9 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this.errorMessage = null;
     this.backtestResult = null;
     this.backtestCandles = [];
+    this.backtestTrades = [];
     this.activePlaybackTime = null;
+    this.isLoadingTrades = false;
     this.cancelStream();
 
     const payload: CreateBacktestRequest = {
@@ -84,6 +101,14 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       from: new Date(this.fromDate).toISOString(),
       to: new Date(this.toDate).toISOString(),
       initialBalance: this.initialBalance,
+      tradingStrategy: this.selectedStrategy,
+      quantity: this.quantity,
+      stopLoss: this.stopLoss ?? null,
+      takeProfit: this.takeProfit ?? null,
+      breakeven: this.breakeven ?? null,
+      isNySessionOnly: this.isNySessionOnly,
+      dailyProfitGoal: this.dailyProfitGoal ?? null,
+      maxLossesPerDay: this.maxLossesPerDay ?? null,
     };
 
     this.api.createBacktest(payload).subscribe({
@@ -93,7 +118,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.running = false;
-        this.errorMessage = err?.error?.message ?? 'Failed to create backtest. Ensure a trade bot is enabled.';
+        this.errorMessage = this.extractError(err, 'Failed to create backtest.');
       },
     });
   }
@@ -110,11 +135,47 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  get activeTrade(): Trade | null {
+    return this.backtestTrades.find(t => t.status === 'Active' || t.status === 'Pending') ?? null;
+  }
+
+  get breakevenActive(): boolean {
+    const trade = this.activeTrade;
+    return trade !== null && trade.stopLoss === 0;
+  }
+
+  get activeTradePnl(): number | null {
+    const trade = this.activeTrade;
+    if (!trade) return null;
+
+    const entry = this.toNumber(trade.entryPrice ?? trade.requestedPrice);
+    const current = this.latestClose;
+    const quantity = this.toNumber(trade.quantity);
+    if (entry !== null && current !== null && quantity !== null) {
+      return trade.side === 'Buy'
+        ? (current - entry) * quantity
+        : (entry - current) * quantity;
+    }
+
+    return this.toNumber(trade.pnl ?? trade.unrealizedPnl);
+  }
+
+  get backtestTotalPnl(): number | null {
+    if (this.backtestTrades.length === 0) return this.backtestResult?.pnl ?? null;
+    const realized = this.backtestTrades.reduce((sum, trade) => sum + (this.toNumber(trade.pnl) ?? 0), 0);
+    return realized + (this.activeTradePnl ?? 0);
+  }
+
   private openStream(backtestId: number): void {
     this.streamSub = this.liveChart.streamBacktest(backtestId).subscribe({
-      next: candle => {
-        this.backtestCandles = [...this.backtestCandles, candle];
-        this.activePlaybackTime = candle.time;
+      next: event => {
+        if (event.type === 'candle') {
+          this.backtestCandles = [...this.backtestCandles, event.data];
+          this.activePlaybackTime = event.data.time;
+          this.refreshBacktestTrades(backtestId);
+        } else if (event.type === 'tradeBracketUpdate') {
+          this.applyBracketUpdate(event.data.tradeId, event.data.stopLoss, event.data.takeProfit);
+        }
       },
       error: () => {
         this.running = false;
@@ -129,10 +190,42 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  private applyBracketUpdate(tradeId: number, stopLoss: number | null, takeProfit: number | null): void {
+    const index = this.backtestTrades.findIndex(t => t.id === tradeId);
+    if (index === -1) return;
+    const updated = { ...this.backtestTrades[index], stopLoss, takeProfit };
+    this.backtestTrades = [
+      ...this.backtestTrades.slice(0, index),
+      updated,
+      ...this.backtestTrades.slice(index + 1),
+    ];
+  }
+
   private refreshSummary(backtestId: number): void {
     this.api.getBacktest(backtestId).subscribe({
       next: detail => { this.backtestResult = detail; },
     });
+    this.refreshBacktestTrades(backtestId);
+  }
+
+  private refreshBacktestTrades(backtestId: number): void {
+    if (this.isLoadingTrades) return;
+    this.isLoadingTrades = true;
+    this.api.getBacktestTrades(backtestId).subscribe({
+      next: trades => { this.backtestTrades = trades; },
+      error: err => console.error('Failed to load backtest trades.', err),
+      complete: () => { this.isLoadingTrades = false; },
+    });
+  }
+
+  private get latestClose(): number | null {
+    return this.toNumber(this.backtestCandles.at(-1)?.close);
+  }
+
+  private toNumber(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
   }
 
   private cancelStream(): void {
@@ -143,5 +236,19 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   private toDatetimeLocal(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  private extractError(err: unknown, fallback: string): string {
+    if (typeof err === 'object' && err !== null) {
+      const e = err as Record<string, unknown>;
+      if (typeof e['error'] === 'string') return e['error'];
+      if (typeof e['message'] === 'string') return e['message'];
+      if (typeof e['error'] === 'object' && e['error'] !== null) {
+        const body = e['error'] as Record<string, unknown>;
+        if (typeof body['message'] === 'string') return body['message'];
+        if (typeof body['title'] === 'string') return body['title'];
+      }
+    }
+    return fallback;
   }
 }

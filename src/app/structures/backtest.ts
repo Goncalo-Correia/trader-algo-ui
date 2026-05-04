@@ -1,5 +1,6 @@
 import { CandleWithIndicatorsResponse } from './candle';
 import { Trade } from './trade';
+import { TradingStrategy } from './trading-account';
 
 export interface BacktestCandleRequest {
   symbol: string;
@@ -14,6 +15,14 @@ export interface CreateBacktestRequest {
   from: string;
   to: string;
   initialBalance: number;
+  tradingStrategy?: TradingStrategy;
+  quantity?: number | null;
+  stopLoss?: number | null;
+  takeProfit?: number | null;
+  breakeven?: number | null;
+  isNySessionOnly?: boolean;
+  dailyProfitGoal?: number | null;
+  maxLossesPerDay?: number | null;
 }
 
 export type BacktestStatus = 'Pending' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
@@ -34,10 +43,24 @@ export interface BacktestSummary {
   pnl: number | null;
   candleCount: number;
   tradeCount: number;
-  quantity: number | null;
+  quantity: number;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  breakeven: number | null;
+  isNySessionOnly: boolean;
+  dailyProfitGoal: number | null;
+  maxLossesPerDay: number | null;
+}
+
+export interface TradeBracketUpdate {
+  tradeId: number;
   stopLoss: number | null;
   takeProfit: number | null;
 }
+
+export type BacktestStreamEvent =
+  | { type: 'candle'; data: CandleWithIndicatorsResponse }
+  | { type: 'tradeBracketUpdate'; data: TradeBracketUpdate };
 
 export interface EquityPoint {
   time: number;

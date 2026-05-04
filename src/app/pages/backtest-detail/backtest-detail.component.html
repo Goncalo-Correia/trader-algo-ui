@@ -1,21 +1,24 @@
 <div class="detail-page">
 
-  <a class="back-link" routerLink="/backtests">← Backtests</a>
+  <a class="back-link" routerLink="/backtests">Backtests</a>
 
-  <div class="loading-state" *ngIf="isLoading">Loading backtest…</div>
+  <div class="loading-state" *ngIf="isLoading">Loading backtest...</div>
 
   <ng-container *ngIf="!isLoading && detail">
 
-    <!-- ── Header ─────────────────────────────────────────────────────── -->
     <div class="detail-header">
       <div class="header-left">
         <h1 class="detail-title">Backtest #{{ detail.id }}</h1>
         <span class="strategy-tag">{{ detail.strategyName }}</span>
       </div>
-      <a class="btn-primary" routerLink="/backtest">Run New →</a>
+      <div class="header-actions">
+        <a class="btn-primary" routerLink="/backtest">Run New</a>
+        <button class="btn-delete" [disabled]="deleting" (click)="deleteBacktest()">
+          {{ deleting ? '…' : 'Delete' }}
+        </button>
+      </div>
     </div>
 
-    <!-- ── Stats bar ─────────────────────────────────────────────────── -->
     <div class="stats-bar">
       <div class="stat-item">
         <span class="stat-label">Symbol</span>
@@ -42,6 +45,31 @@
         <span class="stat-value">{{ detail.trades.length }}</span>
       </div>
       <div class="stat-item">
+        <span class="stat-label">Bot</span>
+        <a class="stat-value stat-link" *ngIf="detail.tradeBotId !== null" [routerLink]="['/tradebots', detail.tradeBotId]">#{{ detail.tradeBotId }}</a>
+        <span class="stat-value" *ngIf="detail.tradeBotId === null">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Qty</span>
+        <span class="stat-value">{{ detail.quantity | number:'1.0-8' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">TP / SL</span>
+        <span class="stat-value">{{ detail.takeProfit !== null ? detail.takeProfit : '-' }} / {{ detail.stopLoss !== null ? detail.stopLoss : '-' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">NY Session</span>
+        <span class="stat-value" [class.active-flag]="detail.isNySessionOnly">{{ detail.isNySessionOnly ? 'On' : 'Off' }}</span>
+      </div>
+      <div class="stat-item" *ngIf="detail.dailyProfitGoal !== null">
+        <span class="stat-label">Daily Goal</span>
+        <span class="stat-value">${{ detail.dailyProfitGoal | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-item" *ngIf="detail.maxLossesPerDay !== null">
+        <span class="stat-label">Max Losses/Day</span>
+        <span class="stat-value">{{ detail.maxLossesPerDay }}</span>
+      </div>
+      <div class="stat-item">
         <span class="stat-label">Initial</span>
         <span class="stat-value">${{ detail.initialBalance | number:'1.2-2' }}</span>
       </div>
@@ -52,12 +80,11 @@
       <div class="stat-item">
         <span class="stat-label">PnL</span>
         <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
-          {{ detail.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (detail.pnl | number:'1.2-2')) : '—' }}
+          {{ detail.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (detail.pnl | number:'1.2-2')) : '-' }}
         </span>
       </div>
     </div>
 
-    <!-- ── PnL Progression ───────────────────────────────────────────── -->
     <div class="chart-section" *ngIf="detail.equityCurve.length">
       <div class="section-title">PnL Progression</div>
       <div class="chart-wrap">
@@ -65,15 +92,6 @@
       </div>
     </div>
 
-    <!-- ── Candle chart with trade markers ──────────────────────────── -->
-    <div class="chart-section" *ngIf="detail.candles.length">
-      <div class="section-title">Candle Chart</div>
-      <div class="chart-wrap chart-wrap-lg">
-        <app-highcharts-chart [options]="candleChartOptions" [useStock]="true"></app-highcharts-chart>
-      </div>
-    </div>
-
-    <!-- ── Trades table ──────────────────────────────────────────────── -->
     <div class="trades-section">
       <div class="section-title">Trades</div>
       <div class="empty-state" *ngIf="detail.trades.length === 0">No trades executed.</div>
@@ -104,16 +122,16 @@
             <td>
               <span class="status-badge status-{{ trade.status | lowercase }}">{{ trade.status }}</span>
             </td>
-            <td>{{ trade.entryPrice !== null ? (trade.entryPrice | number:'1.2-5') : '—' }}</td>
-            <td>{{ trade.closedPrice !== null ? (trade.closedPrice | number:'1.2-5') : '—' }}</td>
-            <td class="td-dim">{{ trade.closeReason ?? '—' }}</td>
+            <td>{{ trade.entryPrice !== null ? (trade.entryPrice | number:'1.2-5') : '-' }}</td>
+            <td>{{ trade.closedPrice !== null ? (trade.closedPrice | number:'1.2-5') : '-' }}</td>
+            <td class="td-dim">{{ trade.closeReason ?? '-' }}</td>
             <td>
               <ng-container *ngIf="getTradePnl(trade) !== null">
                 <span [class.positive]="getTradePnl(trade)! >= 0" [class.negative]="getTradePnl(trade)! < 0">
                   {{ getTradePnl(trade)! >= 0 ? '+' : '' }}{{ getTradePnl(trade)! | number:'1.2-2' }}
                 </span>
               </ng-container>
-              <span class="td-dim" *ngIf="getTradePnl(trade) === null">—</span>
+              <span class="td-dim" *ngIf="getTradePnl(trade) === null">-</span>
             </td>
             <td class="td-dim">{{ formatTs(trade.openedAt) }}</td>
             <td class="td-dim">{{ formatTs(trade.closedAt) }}</td>

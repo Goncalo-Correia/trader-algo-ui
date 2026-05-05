@@ -23,6 +23,7 @@ export interface CreateBacktestRequest {
   isNySessionOnly?: boolean;
   dailyProfitGoal?: number | null;
   maxLossesPerDay?: number | null;
+  maxCandlesPerTrade?: number | null;
 }
 
 export type BacktestStatus = 'Pending' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
@@ -50,6 +51,7 @@ export interface BacktestSummary {
   isNySessionOnly: boolean;
   dailyProfitGoal: number | null;
   maxLossesPerDay: number | null;
+  maxCandlesPerTrade: number | null;
 }
 
 export interface TradeBracketUpdate {

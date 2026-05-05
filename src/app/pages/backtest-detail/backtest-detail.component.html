@@ -69,6 +69,10 @@
         <span class="stat-label">Max Losses/Day</span>
         <span class="stat-value">{{ detail.maxLossesPerDay }}</span>
       </div>
+      <div class="stat-item" *ngIf="detail.maxCandlesPerTrade !== null">
+        <span class="stat-label">Max Candles/Trade</span>
+        <span class="stat-value">{{ detail.maxCandlesPerTrade }}</span>
+      </div>
       <div class="stat-item">
         <span class="stat-label">Initial</span>
         <span class="stat-value">${{ detail.initialBalance | number:'1.2-2' }}</span>

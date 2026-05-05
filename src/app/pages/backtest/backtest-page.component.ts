@@ -38,6 +38,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   isNySessionOnly = false;
   dailyProfitGoal: number | null = null;
   maxLossesPerDay: number | null = null;
+  maxCandlesPerTrade: number | null = null;
 
   backtestCandles: CandleWithIndicatorsResponse[] = [];
   backtestTrades: Trade[] = [];
@@ -109,6 +110,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       isNySessionOnly: this.isNySessionOnly,
       dailyProfitGoal: this.dailyProfitGoal ?? null,
       maxLossesPerDay: this.maxLossesPerDay ?? null,
+      maxCandlesPerTrade: this.maxCandlesPerTrade ?? null,
     };
 
     this.api.createBacktest(payload).subscribe({

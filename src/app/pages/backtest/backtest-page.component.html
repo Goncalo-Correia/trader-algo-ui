@@ -105,6 +105,12 @@
       <div class="section-hint">Stop entries after this many losing trades in a day.</div>
     </div>
 
+    <div class="panel-section">
+      <div class="section-label">Max Candles Per Trade</div>
+      <input class="ctrl-input full-width" type="number" [(ngModel)]="maxCandlesPerTrade" min="1" step="1" [disabled]="running" placeholder="e.g. 10" />
+      <div class="section-hint">Force-close the trade after this many candles.</div>
+    </div>
+
     <button class="btn-run"
             [disabled]="running || !quantity || quantity <= 0"
             (click)="runBacktest()">

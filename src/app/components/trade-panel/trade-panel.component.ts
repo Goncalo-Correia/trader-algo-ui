@@ -4,6 +4,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
 import { IntervalResponse } from '../../structures/interval';
 import { SymbolResponse } from '../../structures/symbol';
+import { StrategyResponse } from '../../structures/strategy';
 import {
   CreateTradeBotRequest,
   TradeBot,
@@ -20,11 +21,17 @@ import {
 import { TradingAccount } from '../../structures/trading-account';
 
 interface TradeBotDraft {
-  symbolCode:  string;
-  intervalCode: string;
-  quantity:    number | null;
-  stopLoss:    number | null;
-  takeProfit:  number | null;
+  tradingStrategyId:  number | null;
+  symbolCode:         string;
+  intervalCode:       string;
+  quantity:           number | null;
+  stopLoss:           number | null;
+  takeProfit:         number | null;
+  breakeven:          number | null;
+  isNySessionOnly:    boolean;
+  dailyProfitGoal:    number | null;
+  maxLossesPerDay:    number | null;
+  maxCandlesPerTrade: number | null;
 }
 
 @Component({
@@ -56,16 +63,23 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   // ── State ───────────────────────────────────────────────────────────────────
 
   accounts: TradingAccount[] = [];
+  strategies: StrategyResponse[] = [];
   selectedAccountId: number | null = null;
   selectedSymbol = '';
 
   tradeBot: TradeBot | null = null;
   tradeBotDraft: TradeBotDraft = {
-    symbolCode:   '',
-    intervalCode: '',
-    quantity:     1,
-    stopLoss:     100,
-    takeProfit:   100,
+    tradingStrategyId:  null,
+    symbolCode:         '',
+    intervalCode:       '',
+    quantity:           1,
+    stopLoss:           100,
+    takeProfit:         100,
+    breakeven:          null,
+    isNySessionOnly:    false,
+    dailyProfitGoal:    null,
+    maxLossesPerDay:    null,
+    maxCandlesPerTrade: null,
   };
 
   isLoadingBot  = false;
@@ -106,6 +120,15 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.traderAlgoApi.getStrategies().subscribe({
+      next: strategies => {
+        this.strategies = strategies;
+        if (!this.tradeBotDraft.tradingStrategyId && strategies.length > 0) {
+          this.tradeBotDraft = { ...this.tradeBotDraft, tradingStrategyId: strategies[0].id };
+        }
+      },
+    });
+
     this.traderAlgoApi.getTradingAccounts().subscribe({
       next: accounts => {
         this.accounts = accounts.filter(a => a.isActive);
@@ -161,6 +184,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!this.findSymbol(this.tradeBotDraft.symbolCode)) return false;
     if (!this.findInterval(this.tradeBotDraft.intervalCode)) return false;
     if (!this.tradeBotDraft.quantity || this.tradeBotDraft.quantity <= 0) return false;
+    if (!this.tradeBot && !this.tradeBotDraft.tradingStrategyId) return false;
     return true;
   }
 
@@ -380,28 +404,39 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     }
 
     const payload: CreateTradeBotRequest = {
-      tradingAccountId: this.selectedAccountId,
-      symbolCode:  symbol.code,
-      intervalCode: interval.code,
-      symbolId:    symbol.id,
-      intervalId:  interval.id,
-      quantity:    this.tradeBotDraft.quantity,
-      stopLoss:    this.tradeBotDraft.stopLoss ?? null,
-      takeProfit:  this.tradeBotDraft.takeProfit ?? null,
-      isEnabled:   this.tradeBot?.isEnabled ?? false,
+      tradingAccountId:  this.selectedAccountId,
+      tradingStrategyId: this.tradeBotDraft.tradingStrategyId ?? this.strategies[0]?.id ?? 0,
+      symbolCode:        symbol.code,
+      intervalCode:      interval.code,
+      symbolId:          symbol.id,
+      intervalId:        interval.id,
+      quantity:          this.tradeBotDraft.quantity,
+      stopLoss:          this.tradeBotDraft.stopLoss ?? null,
+      takeProfit:        this.tradeBotDraft.takeProfit ?? null,
+      breakeven:         this.tradeBotDraft.breakeven ?? null,
+      isNySessionOnly:   this.tradeBotDraft.isNySessionOnly,
+      dailyProfitGoal:   this.tradeBotDraft.dailyProfitGoal ?? null,
+      maxLossesPerDay:   this.tradeBotDraft.maxLossesPerDay ?? null,
+      maxCandlesPerTrade: this.tradeBotDraft.maxCandlesPerTrade ?? null,
+      isEnabled:         this.tradeBot?.isEnabled ?? false,
     };
 
     if (!this.tradeBot) return this.traderAlgoApi.createTradeBot(payload);
 
     const update: UpdateTradeBotRequest = {
-      symbolCode:  payload.symbolCode,
-      intervalCode: payload.intervalCode,
-      symbolId:    payload.symbolId,
-      intervalId:  payload.intervalId,
-      quantity:    payload.quantity,
-      stopLoss:    payload.stopLoss ?? null,
-      takeProfit:  payload.takeProfit ?? null,
-      isEnabled:   this.tradeBot.isEnabled,
+      symbolCode:        payload.symbolCode,
+      intervalCode:      payload.intervalCode,
+      symbolId:          payload.symbolId,
+      intervalId:        payload.intervalId,
+      quantity:          payload.quantity,
+      stopLoss:          payload.stopLoss ?? null,
+      takeProfit:        payload.takeProfit ?? null,
+      breakeven:         payload.breakeven ?? null,
+      isNySessionOnly:   payload.isNySessionOnly ?? false,
+      dailyProfitGoal:   payload.dailyProfitGoal ?? null,
+      maxLossesPerDay:   payload.maxLossesPerDay ?? null,
+      maxCandlesPerTrade: payload.maxCandlesPerTrade ?? null,
+      isEnabled:         this.tradeBot.isEnabled,
     };
     return this.traderAlgoApi.updateTradeBot(this.tradeBot.id, update);
   }
@@ -513,21 +548,33 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private applyTradeBotToDraft(bot: TradeBot): void {
     this.tradeBotDraft = {
-      symbolCode:   this.tradeBotSymbolCode(bot),
-      intervalCode: this.tradeBotIntervalCode(bot),
-      quantity:     bot.quantity,
-      stopLoss:     bot.stopLoss,
-      takeProfit:   bot.takeProfit,
+      tradingStrategyId:  this.strategies.find(s => s.name === bot.tradingStrategy)?.id ?? null,
+      symbolCode:         this.tradeBotSymbolCode(bot),
+      intervalCode:       this.tradeBotIntervalCode(bot),
+      quantity:           bot.quantity,
+      stopLoss:           bot.stopLoss,
+      takeProfit:         bot.takeProfit,
+      breakeven:          bot.breakeven,
+      isNySessionOnly:    bot.isNySessionOnly,
+      dailyProfitGoal:    bot.dailyProfitGoal,
+      maxLossesPerDay:    bot.maxLossesPerDay,
+      maxCandlesPerTrade: bot.maxCandlesPerTrade,
     };
   }
 
   private applyDefaultTradeBotDraft(): void {
     this.tradeBotDraft = {
-      symbolCode:   this.selectedSymbol || this.symbols[0]?.code || '',
-      intervalCode: this.defaultInterval || this.intervals.find(i => i.isDefault)?.code || this.intervals[0]?.code || '',
-      quantity:     1,
-      stopLoss:     100,
-      takeProfit:   100,
+      tradingStrategyId:  this.strategies[0]?.id ?? null,
+      symbolCode:         this.selectedSymbol || this.symbols[0]?.code || '',
+      intervalCode:       this.defaultInterval || this.intervals.find(i => i.isDefault)?.code || this.intervals[0]?.code || '',
+      quantity:           1,
+      stopLoss:           100,
+      takeProfit:         100,
+      breakeven:          null,
+      isNySessionOnly:    false,
+      dailyProfitGoal:    null,
+      maxLossesPerDay:    null,
+      maxCandlesPerTrade: null,
     };
   }
 

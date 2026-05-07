@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { TradingAccount, CreateTradingAccountRequest, TradingStrategy } from '../../structures/trading-account';
+import { TradingAccount, CreateTradingAccountRequest } from '../../structures/trading-account';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 
 @Component({
@@ -15,8 +15,6 @@ export class AccountsPageComponent implements OnInit {
 
   newName           = '';
   newInitialBalance = 10000;
-  newStrategy: TradingStrategy = 'Sma';
-  readonly strategies: TradingStrategy[] = ['Sma', 'Rsi', 'Macd'];
 
   constructor(private readonly api: TraderAlgoApiService) {}
 
@@ -40,9 +38,8 @@ export class AccountsPageComponent implements OnInit {
     if (!this.newName.trim()) return;
     this.creating = true;
     const payload: CreateTradingAccountRequest = {
-      name:            this.newName.trim(),
-      initialBalance:  this.newInitialBalance,
-      tradingStrategy: this.newStrategy,
+      name:           this.newName.trim(),
+      initialBalance: this.newInitialBalance,
     };
     this.api.createTradingAccount(payload).subscribe({
       next: account => {
@@ -50,7 +47,6 @@ export class AccountsPageComponent implements OnInit {
         this.showCreateForm = false;
         this.newName           = '';
         this.newInitialBalance = 10000;
-        this.newStrategy       = 'Sma';
         this.creating = false;
       },
       error: () => { this.creating = false; },

@@ -21,7 +21,6 @@
         </ng-container>
       </div>
       <div class="header-right">
-        <span class="strategy-tag">{{ account.tradingStrategy }}</span>
         <span class="badge" [class.badge-active]="account.isActive" [class.badge-inactive]="!account.isActive">
           {{ account.isActive ? 'Active' : 'Inactive' }}
         </span>

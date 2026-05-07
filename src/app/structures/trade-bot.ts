@@ -1,19 +1,23 @@
 import { IntervalResponse } from './interval';
 import { SymbolResponse } from './symbol';
-import { TradingStrategy } from './trading-account';
 
 export interface TradeBot {
   id: number;
   tradingAccountId: number | null;
   tradingAccountName?: string | null;
   backtestId: number | null;
-  tradingStrategy: TradingStrategy;
+  tradingStrategy: string;
   symbolId?: number;
   intervalId?: number;
   isEnabled: boolean;
   quantity: number;
   stopLoss: number | null;
   takeProfit: number | null;
+  breakeven: number | null;
+  isNySessionOnly: boolean;
+  dailyProfitGoal: number | null;
+  maxLossesPerDay: number | null;
+  maxCandlesPerTrade: number | null;
   createdAt: number | string;
   updatedAt: number | string;
   lastSignalAt: number | string | null;
@@ -24,7 +28,8 @@ export interface TradeBot {
 }
 
 export interface CreateTradeBotRequest {
-  tradingAccountId: number;
+  tradingAccountId:  number;
+  tradingStrategyId: number;
   symbolCode: string;
   intervalCode: string;
   symbolId?: number;
@@ -32,6 +37,11 @@ export interface CreateTradeBotRequest {
   quantity: number;
   stopLoss?: number | null;
   takeProfit?: number | null;
+  breakeven?: number | null;
+  isNySessionOnly?: boolean;
+  dailyProfitGoal?: number | null;
+  maxLossesPerDay?: number | null;
+  maxCandlesPerTrade?: number | null;
   isEnabled?: boolean;
 }
 
@@ -43,6 +53,11 @@ export interface UpdateTradeBotRequest {
   quantity: number;
   stopLoss: number | null;
   takeProfit: number | null;
+  breakeven: number | null;
+  isNySessionOnly: boolean;
+  dailyProfitGoal: number | null;
+  maxLossesPerDay: number | null;
+  maxCandlesPerTrade: number | null;
   isEnabled: boolean;
 }
 

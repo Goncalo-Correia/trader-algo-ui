@@ -1,19 +1,15 @@
-export type TradingStrategy = 'Sma' | 'Rsi' | 'Macd';
-
 export interface TradingAccount {
-  id:               number;
-  name:             string;
-  initialBalance:   number;
-  currentBalance:   number;
-  tradingStrategy:  TradingStrategy;
-  isActive:         boolean;
-  createdAt:        number;
+  id:             number;
+  name:           string;
+  initialBalance: number;
+  currentBalance: number;
+  isActive:       boolean;
+  createdAt:      number;
 }
 
 export interface CreateTradingAccountRequest {
-  name:             string;
-  initialBalance:   number;
-  tradingStrategy:  TradingStrategy;
+  name:           string;
+  initialBalance: number;
 }
 
 export interface UpdateTradingAccountRequest {

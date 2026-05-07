@@ -16,12 +16,6 @@
         <label class="field-label">Initial Balance ($)</label>
         <input class="field-input" type="number" [(ngModel)]="newInitialBalance" min="0.01" />
       </div>
-      <div class="form-field">
-        <label class="field-label">Strategy</label>
-        <select class="field-select" [(ngModel)]="newStrategy">
-          <option *ngFor="let s of strategies" [value]="s">{{ s }}</option>
-        </select>
-      </div>
     </div>
     <div class="form-actions">
       <button class="btn-primary" (click)="createAccount()" [disabled]="creating || !newName.trim()">
@@ -47,8 +41,6 @@
             {{ account.isActive ? 'Active' : 'Inactive' }}
           </span>
         </div>
-
-        <span class="strategy-tag">{{ account.tradingStrategy }}</span>
 
         <div class="card-amounts">
           <div class="amount-row">

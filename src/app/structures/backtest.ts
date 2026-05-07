@@ -1,6 +1,5 @@
 import { CandleWithIndicatorsResponse } from './candle';
 import { Trade } from './trade';
-import { TradingStrategy } from './trading-account';
 
 export interface BacktestCandleRequest {
   symbol: string;
@@ -15,7 +14,7 @@ export interface CreateBacktestRequest {
   from: string;
   to: string;
   initialBalance: number;
-  tradingStrategy?: TradingStrategy;
+  tradingStrategyId?: number | null;
   quantity?: number | null;
   stopLoss?: number | null;
   takeProfit?: number | null;

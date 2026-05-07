@@ -22,10 +22,6 @@
 
     <div class="tp-account-info" *ngIf="selectedAccount">
       <div class="tp-account-row">
-        <span class="tp-detail-label">Strategy</span>
-        <span class="tp-detail-value">{{ selectedAccount.tradingStrategy }}</span>
-      </div>
-      <div class="tp-account-row">
         <span class="tp-detail-label">Initial</span>
         <span class="tp-detail-value">${{ selectedAccount.initialBalance | number:'1.2-2' }}</span>
       </div>
@@ -60,6 +56,13 @@
     </div>
 
     <div class="tp-field">
+      <label class="tp-label">Strategy</label>
+      <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.tradingStrategyId" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+        <option *ngFor="let s of strategies" [ngValue]="s.id">{{ s.name }}</option>
+      </select>
+    </div>
+
+    <div class="tp-field">
       <label class="tp-label">Bot Symbol</label>
       <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.symbolCode" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
         <option *ngFor="let s of symbols" [ngValue]="s.code">{{ s.code }}</option>
@@ -86,6 +89,36 @@
       <div class="tp-field">
         <label class="tp-label">SL</label>
         <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.stopLoss" placeholder="-" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+      </div>
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Breakeven</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.breakeven" placeholder="e.g. 50" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Daily Profit Goal ($)</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.dailyProfitGoal" placeholder="e.g. 200" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Max Losses Per Day</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.maxLossesPerDay" placeholder="e.g. 3" min="1" step="1" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Max Candles Per Trade</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.maxCandlesPerTrade" placeholder="e.g. 10" min="1" step="1" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-field">
+      <div class="tp-toggle-row">
+        <label class="tp-label">NY Session Only</label>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="tradeBotDraft.isNySessionOnly" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
       </div>
     </div>
 

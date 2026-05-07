@@ -73,12 +73,17 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
     this.saveMessage = '';
 
     const payload: UpdateTradeBotRequest = {
-      symbolCode:   this.bot.symbolCode   ?? '',
-      intervalCode: this.bot.intervalCode ?? '',
-      quantity:     this.draftQuantity    ?? this.bot.quantity,
-      stopLoss:     this.draftStopLoss,
-      takeProfit:   this.draftTakeProfit,
-      isEnabled:    this.bot.isEnabled,
+      symbolCode:         this.bot.symbolCode   ?? '',
+      intervalCode:       this.bot.intervalCode ?? '',
+      quantity:           this.draftQuantity    ?? this.bot.quantity,
+      stopLoss:           this.draftStopLoss,
+      takeProfit:         this.draftTakeProfit,
+      breakeven:          this.bot.breakeven,
+      isNySessionOnly:    this.bot.isNySessionOnly,
+      dailyProfitGoal:    this.bot.dailyProfitGoal,
+      maxLossesPerDay:    this.bot.maxLossesPerDay,
+      maxCandlesPerTrade: this.bot.maxCandlesPerTrade,
+      isEnabled:          this.bot.isEnabled,
     };
 
     this.api.updateTradeBot(this.bot.id, payload).subscribe({

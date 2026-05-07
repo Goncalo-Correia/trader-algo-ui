@@ -4,16 +4,10 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { LiveChartDataService } from '../../services/live-chart-data.service';
 import { SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
+import { StrategyResponse } from '../../structures/strategy';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
 import { BacktestSummary, CreateBacktestRequest } from '../../structures/backtest';
 import { Trade } from '../../structures/trade';
-import { TradingStrategy } from '../../structures/trading-account';
-
-const STRATEGIES = [
-  { value: 'Sma' as TradingStrategy, name: 'SMA' },
-  { value: 'Rsi' as TradingStrategy, name: 'RSI' },
-  { value: 'Macd' as TradingStrategy, name: 'MACD' },
-];
 
 @Component({
   selector: 'app-backtest-page',
@@ -23,11 +17,11 @@ const STRATEGIES = [
 export class BacktestPageComponent implements OnInit, OnDestroy {
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
-  strategies = STRATEGIES;
+  strategies: StrategyResponse[] = [];
 
   selectedSymbol = '';
   selectedInterval = '';
-  selectedStrategy: TradingStrategy = 'Sma';
+  selectedStrategy: number | null = null;
   fromDate = '';
   toDate = '';
   initialBalance = 1000;
@@ -72,6 +66,10 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       this.intervals = i;
       this.selectedInterval = i.find(x => x.isDefault)?.code ?? i[0]?.code ?? '';
     });
+    this.api.getStrategies().subscribe(s => {
+      this.strategies = s;
+      this.selectedStrategy = s[0]?.id ?? null;
+    });
   }
 
   ngOnDestroy(): void {
@@ -102,7 +100,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       from: new Date(this.fromDate).toISOString(),
       to: new Date(this.toDate).toISOString(),
       initialBalance: this.initialBalance,
-      tradingStrategy: this.selectedStrategy,
+      tradingStrategyId: this.selectedStrategy,
       quantity: this.quantity,
       stopLoss: this.stopLoss ?? null,
       takeProfit: this.takeProfit ?? null,

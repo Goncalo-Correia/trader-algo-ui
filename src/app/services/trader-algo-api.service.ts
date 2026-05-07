@@ -9,6 +9,7 @@ import { CreateTradeBotRequest, TradeBot, UpdateTradeBotRequest } from '../struc
 import { CreateTradeRequest, Trade, UpdateTradeRequest } from '../structures/trade';
 import { TradingAccount, CreateTradingAccountRequest, UpdateTradingAccountRequest } from '../structures/trading-account';
 import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestRequest } from '../structures/backtest';
+import { StrategyResponse } from '../structures/strategy';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -67,6 +68,10 @@ export class TraderAlgoApiService {
 
   getSymbols(): Observable<SymbolResponse[]> {
     return this.http.get<SymbolResponse[]>(`${this.baseUrl}/api/symbols`);
+  }
+
+  getStrategies(): Observable<StrategyResponse[]> {
+    return this.http.get<StrategyResponse[]>(`${this.baseUrl}/api/trading-strategies`);
   }
 
   getSessionVolumeProfile(symbol: string, buckets = 30): Observable<VolumeProfileLevel[]> {

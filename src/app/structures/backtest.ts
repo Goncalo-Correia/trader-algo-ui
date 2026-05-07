@@ -9,8 +9,8 @@ export interface BacktestCandleRequest {
 }
 
 export interface CreateBacktestRequest {
-  symbolCode: string;
-  intervalCode: string;
+  symbol: string;
+  interval: string;
   from: string;
   to: string;
   initialBalance: number;

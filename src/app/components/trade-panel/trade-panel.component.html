@@ -57,7 +57,7 @@
 
     <div class="tp-field">
       <label class="tp-label">Strategy</label>
-      <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.tradingStrategyId" [disabled]="!!tradeBot || isLoadingBot || isSavingBot || isTogglingBot">
+      <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.tradingStrategyId" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
         <option *ngFor="let s of strategies" [ngValue]="s.id">{{ s.name }}</option>
       </select>
     </div>

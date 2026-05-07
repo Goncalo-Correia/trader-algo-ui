@@ -91,7 +91,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private slPriceLine?: IPriceLine;
   private tpPriceLine?: IPriceLine;
   private hasAppliedInitialViewport = false;
-  private hasFocusedInitialPlayback = false;
 
   constructor(private readonly ngZone: NgZone) {}
 
@@ -350,7 +349,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     }
 
     if (shouldFitInitialContent) {
-      this.chart?.timeScale().fitContent();
+      this.chart?.timeScale().setVisibleLogicalRange({ from: 0, to: 99 });
       this.hasAppliedInitialViewport = true;
     }
   }
@@ -359,17 +358,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     if (this.activeCandlePlugin) {
       this.activeCandlePlugin.setTime(unixSeconds !== null ? unixSeconds as UTCTimestamp : null);
     }
-    if (unixSeconds !== null && !this.hasFocusedInitialPlayback) {
-      this.focusOnDay(unixSeconds);
-      this.hasFocusedInitialPlayback = true;
-    }
-  }
-
-  private focusOnDay(unixSeconds: number): void {
-    const d = new Date(unixSeconds * 1000);
-    const dayStart = (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000) as UTCTimestamp;
-    const dayEnd   = (dayStart + 86400) as UTCTimestamp;
-    this.chart?.timeScale().setVisibleRange({ from: dayStart, to: dayEnd });
   }
 
   private toTime(unixSeconds: number): UTCTimestamp {

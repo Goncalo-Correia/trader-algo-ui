@@ -123,7 +123,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     this.traderAlgoApi.getStrategies().subscribe({
       next: strategies => {
         this.strategies = strategies;
-        if (!this.tradeBotDraft.tradingStrategyId && strategies.length > 0) {
+        if (this.tradeBot) {
+          this.applyTradeBotToDraft(this.tradeBot);
+        } else if (!this.tradeBotDraft.tradingStrategyId && strategies.length > 0) {
           this.tradeBotDraft = { ...this.tradeBotDraft, tradingStrategyId: strategies[0].id };
         }
       },
@@ -424,6 +426,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!this.tradeBot) return this.traderAlgoApi.createTradeBot(payload);
 
     const update: UpdateTradeBotRequest = {
+      tradingStrategyId: payload.tradingStrategyId,
       symbolCode:        payload.symbolCode,
       intervalCode:      payload.intervalCode,
       symbolId:          payload.symbolId,
@@ -468,6 +471,16 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       case 'BotEnabled':
       case 'BotDisabled':
         this.loadTradeBot();
+        break;
+      case 'TradeBracketUpdate':
+        if (this.activeTrade && event.tradeId === this.activeTrade.id) {
+          this.activeTrade = {
+            ...this.activeTrade,
+            stopLoss:   event.stopLoss   !== undefined ? event.stopLoss   : this.activeTrade.stopLoss,
+            takeProfit: event.takeProfit !== undefined ? event.takeProfit : this.activeTrade.takeProfit,
+          };
+          this.syncAdjustDraft(this.activeTrade);
+        }
         break;
       case 'SignalIgnored':
         this.botMessage = event.reason ? `Signal ignored: ${event.reason}.` : 'Signal ignored.';
@@ -548,7 +561,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private applyTradeBotToDraft(bot: TradeBot): void {
     this.tradeBotDraft = {
-      tradingStrategyId:  this.strategies.find(s => s.name === bot.tradingStrategy)?.id ?? null,
+      tradingStrategyId:  bot.tradingStrategyId ?? this.strategies.find(s => s.name === bot.tradingStrategy)?.id ?? null,
       symbolCode:         this.tradeBotSymbolCode(bot),
       intervalCode:       this.tradeBotIntervalCode(bot),
       quantity:           bot.quantity,

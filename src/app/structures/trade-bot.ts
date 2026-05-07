@@ -6,6 +6,7 @@ export interface TradeBot {
   tradingAccountId: number | null;
   tradingAccountName?: string | null;
   backtestId: number | null;
+  tradingStrategyId?: number | null;
   tradingStrategy: string;
   symbolId?: number;
   intervalId?: number;
@@ -46,6 +47,7 @@ export interface CreateTradeBotRequest {
 }
 
 export interface UpdateTradeBotRequest {
+  tradingStrategyId?: number | null;
   symbolCode: string;
   intervalCode: string;
   symbolId?: number;
@@ -66,7 +68,8 @@ export type TradeBotEventType =
   | 'TradeClosed'
   | 'BotEnabled'
   | 'BotDisabled'
-  | 'SignalIgnored';
+  | 'SignalIgnored'
+  | 'TradeBracketUpdate';
 
 export interface TradeBotEvent {
   type: TradeBotEventType;
@@ -78,4 +81,6 @@ export interface TradeBotEvent {
   reason?: string;
   message?: string;
   createdAt?: number;
+  stopLoss?: number | null;
+  takeProfit?: number | null;
 }

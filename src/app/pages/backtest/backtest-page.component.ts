@@ -95,8 +95,8 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this.cancelStream();
 
     const payload: CreateBacktestRequest = {
-      symbolCode: this.selectedSymbol,
-      intervalCode: this.selectedInterval,
+      symbol: this.selectedSymbol,
+      interval: this.selectedInterval,
       from: new Date(this.fromDate).toISOString(),
       to: new Date(this.toDate).toISOString(),
       initialBalance: this.initialBalance,

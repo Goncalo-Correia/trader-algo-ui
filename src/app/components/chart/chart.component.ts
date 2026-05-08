@@ -46,6 +46,14 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     if (changed && this.chart) this.resetAndReload();
   }
 
+  @Input() set symbolProvider(value: number) {
+    const newAlpaca = value === 1;
+    if (newAlpaca !== this._isAlpaca) {
+      this._isAlpaca = newAlpaca;
+      if (this.chart) this.ngZone.runOutsideAngular(() => this.applyDeltaPaneVisibility());
+    }
+  }
+
   @Input() set initialInterval(value: string) { this.selectedInterval = value; }
 
   @Input() set activeTrade(trade: Trade | null) {
@@ -99,6 +107,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   // ── Private state ────────────────────────────────────────────────────────────
   private selectedSymbol = '';
+  private _isAlpaca = false;
   private _activeTrade: Trade | null = null;
   protected _adjustMode: 'stopLoss' | 'takeProfit' | null = null;
   private _tradingAccountId: number | null = null;
@@ -546,7 +555,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       candles.filter(c => c.sma_100 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma_100! })),
     );
     this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
-    this.deltaSeries?.setData(candles.map(c => this.toDeltaBar(c)));
+    this.deltaSeries?.setData(this._isAlpaca ? [] : candles.map(c => this.toDeltaBar(c)));
+    this.applyDeltaPaneVisibility();
     this.rsiSeries?.setData(
       candles.filter(c => c.rsi !== null).map(c => ({ time: this.toChartTime(c.time), value: c.rsi! })),
     );
@@ -599,7 +609,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
             if (candle.sma_20 !== null)         this.sma20Series?.update({ time: t, value: candle.sma_20 });
             if (candle.sma_100 !== null)        this.sma100Series?.update({ time: t, value: candle.sma_100 });
             this.volumeSeries?.update(this.toVolumeBar(candle));
-            this.deltaSeries?.update(this.toDeltaBar(candle));
+            if (!this._isAlpaca) this.deltaSeries?.update(this.toDeltaBar(candle));
             if (candle.rsi !== null) {
               this.rsiSeries?.update({ time: t, value: candle.rsi });
               this.rsiOverbought?.update({ time: t, value: 70 });
@@ -682,7 +692,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   }
 
   private toVolumeBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const vol = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
+    const takerTotal = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
+    const vol = takerTotal > 0 ? takerTotal : c.volume;
     return { time: this.toChartTime(c.time), value: vol, color: c.close >= c.open ? '#26a69a' : '#ef5350' };
   }
 
@@ -692,6 +703,10 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     const total = buy + sell;
     const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
     return { time: this.toChartTime(c.time), value: delta, color: delta >= 0 ? '#26a69a' : '#ef5350' };
+  }
+
+  private applyDeltaPaneVisibility(): void {
+    this.deltaSeries?.priceScale().applyOptions({ visible: !this._isAlpaca });
   }
 
   private toMacdHistogram(candles: CandleWithIndicatorsResponse[]): HistogramData<Time>[] {

@@ -37,6 +37,10 @@ export class AlgoTraderPageComponent implements OnInit {
     });
   }
 
+  get selectedSymbolProvider(): number {
+    return this.symbols.find(s => s.code === this.selectedSymbol)?.provider ?? 0;
+  }
+
   onSymbolChange(symbol: string): void {
     this.selectedSymbol = symbol;
   }

@@ -14,7 +14,9 @@
       "Bash(git commit -m ' *)",
       "Bash(git stash *)",
       "Bash(xargs grep *)",
-      "Bash(grep -E \"\\\\.cs$\")"
+      "Bash(grep -E \"\\\\.cs$\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(git branch *)"
     ]
   }
 }

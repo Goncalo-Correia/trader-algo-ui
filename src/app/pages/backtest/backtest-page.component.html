@@ -24,7 +24,7 @@
 
     <div class="panel-section">
       <div class="section-label">Symbol</div>
-      <select class="ctrl-select full-width" [(ngModel)]="selectedSymbol" [disabled]="running">
+      <select class="ctrl-select full-width" [ngModel]="selectedSymbol" (ngModelChange)="onSymbolChange($event)" [disabled]="running">
         <option *ngFor="let s of symbols" [value]="s.code">{{ s.code }}</option>
       </select>
     </div>

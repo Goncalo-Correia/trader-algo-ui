@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { LiveChartDataService } from '../../services/live-chart-data.service';
-import { SymbolResponse } from '../../structures/symbol';
+import { isAlpacaSymbol, SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
 import { StrategyResponse } from '../../structures/strategy';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
@@ -60,7 +60,9 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
     this.api.getSymbols().subscribe(s => {
       this.symbols = s;
-      this.selectedSymbol = s.find(x => x.isDefault)?.code ?? s[0]?.code ?? '';
+      const def = s.find(x => x.isDefault) ?? s[0];
+      this.selectedSymbol = def?.code ?? '';
+      this.isNySessionOnly = isAlpacaSymbol(def);
     });
     this.api.getIntervals().subscribe(i => {
       this.intervals = i;
@@ -74,6 +76,11 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.cancelStream();
+  }
+
+  onSymbolChange(code: string): void {
+    this.selectedSymbol = code;
+    this.isNySessionOnly = isAlpacaSymbol(this.symbols.find(s => s.code === code));
   }
 
   runBacktest(): void {

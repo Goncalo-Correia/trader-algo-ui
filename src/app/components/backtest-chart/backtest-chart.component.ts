@@ -365,7 +365,8 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   }
 
   private toVolumeBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const vol = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
+    const takerTotal = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
+    const vol = takerTotal > 0 ? takerTotal : c.volume;
     return { time: this.toTime(c.time), value: vol, color: c.close >= c.open ? '#26a69a' : '#ef5350' };
   }
 

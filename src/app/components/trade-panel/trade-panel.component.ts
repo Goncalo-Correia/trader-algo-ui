@@ -3,7 +3,7 @@ import { Observable, Subscription, switchMap } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
 import { IntervalResponse } from '../../structures/interval';
-import { SymbolResponse } from '../../structures/symbol';
+import { isAlpacaSymbol, SymbolResponse } from '../../structures/symbol';
 import { StrategyResponse } from '../../structures/strategy';
 import {
   CreateTradeBotRequest,
@@ -157,10 +157,13 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   // ── Symbol / account ────────────────────────────────────────────────────────
 
   onSymbolChange(event: Event): void {
-    const symbol = (event.target as HTMLSelectElement).value;
-    if (!symbol || symbol === this.selectedSymbol) return;
-    this.selectedSymbol = symbol;
-    this.symbolChange.emit(symbol);
+    const code = (event.target as HTMLSelectElement).value;
+    if (!code || code === this.selectedSymbol) return;
+    this.selectedSymbol = code;
+    this.symbolChange.emit(code);
+    if (!this.tradeBot) {
+      this.tradeBotDraft.isNySessionOnly = isAlpacaSymbol(this.findSymbol(code));
+    }
     this.clearTradeState();
     this.loadActiveTrade();
   }
@@ -576,15 +579,16 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   }
 
   private applyDefaultTradeBotDraft(): void {
+    const symbolCode = this.selectedSymbol || this.symbols[0]?.code || '';
     this.tradeBotDraft = {
       tradingStrategyId:  this.strategies[0]?.id ?? null,
-      symbolCode:         this.selectedSymbol || this.symbols[0]?.code || '',
+      symbolCode,
       intervalCode:       this.defaultInterval || this.intervals.find(i => i.isDefault)?.code || this.intervals[0]?.code || '',
       quantity:           1,
       stopLoss:           100,
       takeProfit:         100,
       breakeven:          null,
-      isNySessionOnly:    false,
+      isNySessionOnly:    isAlpacaSymbol(this.findSymbol(symbolCode)),
       dailyProfitGoal:    null,
       maxLossesPerDay:    null,
       maxCandlesPerTrade: null,

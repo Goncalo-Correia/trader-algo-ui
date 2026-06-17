@@ -21,8 +21,10 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
 
   trades: Trade[] = [];
   isLoadingTrades = false;
+  readonly trackByTradeId = (_: number, trade: Trade): number => trade.id;
 
   eventLog: (TradeBotEvent & { receivedAt: number })[] = [];
+  readonly trackByReceivedAt = (_: number, event: { receivedAt: number }): number => event.receivedAt;
 
   draftQuantity: number | null = null;
   draftStopLoss: number | null = null;

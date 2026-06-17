@@ -148,7 +148,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let trade of sortedTrades">
+          <tr *ngFor="let trade of sortedTrades; trackBy: trackById">
             <td class="td-id">{{ trade.id }}</td>
             <td>
               <span class="side-badge" [class.side-buy]="trade.side === 'Buy'" [class.side-sell]="trade.side === 'Sell'">

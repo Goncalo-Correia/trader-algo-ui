@@ -9,6 +9,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 })
 export class AccountsPageComponent implements OnInit {
   accounts: TradingAccount[] = [];
+  readonly trackById = (_: number, account: TradingAccount): number => account.id;
   isLoading = true;
   showCreateForm = false;
   creating = false;

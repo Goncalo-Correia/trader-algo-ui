@@ -19,6 +19,10 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   intervals: IntervalResponse[] = [];
   strategies: StrategyResponse[] = [];
 
+  readonly trackBySymbolId = (_: number, symbol: SymbolResponse): number => symbol.id;
+  readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
+  readonly trackByStrategyId = (_: number, strategy: StrategyResponse): number => strategy.id;
+
   selectedSymbol = '';
   selectedInterval = '';
   selectedStrategy: number | null = null;

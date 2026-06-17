@@ -9,6 +9,7 @@ import { BacktestSummary } from '../../structures/backtest';
 })
 export class BacktestsPageComponent implements OnInit {
   backtests: BacktestSummary[] = [];
+  readonly trackById = (_: number, backtest: BacktestSummary): number => backtest.id;
   isLoading = true;
 
   constructor(private readonly api: TraderAlgoApiService) {}

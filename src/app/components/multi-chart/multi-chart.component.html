@@ -3,7 +3,7 @@
   <!-- 2 × 2 chart grid -->
   <div class="chart-grid">
     <app-chart
-      *ngFor="let pane of panes"
+      *ngFor="let pane of panes; trackBy: trackByIndex"
       [symbol]="selectedSymbol"
       [initialInterval]="pane.interval"
       [availableIntervals]="intervals"

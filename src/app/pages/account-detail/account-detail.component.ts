@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import * as Highcharts from 'highcharts/highstock';
+import type * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
 import { TradingAccount, UpdateTradingAccountRequest } from '../../structures/trading-account';
 import { Trade } from '../../structures/trade';
@@ -17,6 +17,7 @@ const NAMES_OVERRIDE_KEY = 'trader-account-names';
 export class AccountDetailComponent implements OnInit, OnDestroy {
   account: TradingAccount | null = null;
   trades: Trade[] = [];
+  readonly trackById = (_: number, trade: Trade): number => trade.id;
   isLoading = true;
   editingName = false;
   nameInput = '';

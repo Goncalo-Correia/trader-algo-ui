@@ -24,6 +24,7 @@ import { LiveChartDataService } from '../../services/live-chart-data.service';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
 import { VolumeProfilePlugin } from '../../chart-plugins/volume-profile.plugin';
+import { CHART_COLORS } from '../../shared/chart-theme';
 import { CandleResponse, CandleWithIndicatorsResponse } from '../../structures/candle';
 import { IntervalResponse } from '../../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/session';
@@ -95,6 +96,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   showMacd            = true;
   showPredictMenu     = false;
   showTrades          = true;
+
+  readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
+  readonly trackByKronosKey = (_: number, button: { key: string }): string => button.key;
 
   readonly kronosButtons = [
     { label: 'Mini P',  key: 'mini-precise'  },
@@ -185,39 +189,39 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.ngZone.runOutsideAngular(() => {
       this.chart = createChart(this.chartContainer.nativeElement, {
         autoSize: true,
-        layout: { background: { color: '#000000' }, textColor: '#d1d4dc' },
+        layout: { background: { color: CHART_COLORS.background }, textColor: CHART_COLORS.text },
         grid: { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
-        rightPriceScale: { borderColor: '#2a2d3a' },
+        rightPriceScale: { borderColor: CHART_COLORS.border },
         timeScale: {
-          borderColor: '#2a2d3a',
+          borderColor: CHART_COLORS.border,
           timeVisible: true,
           secondsVisible: false,
           tickMarkFormatter: (time: Time) => this.formatTimeLabel(time),
         },
         localization: { timeFormatter: (time: Time) => this.formatDateTimeLabel(time) },
         crosshair: {
-          vertLine: { labelBackgroundColor: '#2962ff' },
-          horzLine: { labelBackgroundColor: '#2962ff' },
+          vertLine: { labelBackgroundColor: CHART_COLORS.accent },
+          horzLine: { labelBackgroundColor: CHART_COLORS.accent },
         },
       });
 
       // Pane 0 — candlesticks + SMAs
       this.series = this.chart.addSeries(CandlestickSeries, {
-        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
-        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+        upColor: CHART_COLORS.bullish, downColor: CHART_COLORS.bearish, borderVisible: false,
+        wickUpColor: CHART_COLORS.bullish, wickDownColor: CHART_COLORS.bearish,
       });
       this.series.attachPrimitive(new SessionMarkersPlugin());
       this.volumeProfilePlugin = new VolumeProfilePlugin();
       this.series.attachPrimitive(this.volumeProfilePlugin);
 
       this.predictSeries = this.chart.addSeries(CandlestickSeries, {
-        upColor: '#2962ff', downColor: '#ffd600', borderVisible: false,
-        wickUpColor: '#2962ff', wickDownColor: '#ffd600',
+        upColor: CHART_COLORS.accent, downColor: CHART_COLORS.highlight, borderVisible: false,
+        wickUpColor: CHART_COLORS.accent, wickDownColor: CHART_COLORS.highlight,
       });
 
       const smaOpts = { priceScaleId: 'right', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.sma20Series  = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#f59e0b' });
-      this.sma100Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#818cf8' });
+      this.sma20Series  = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma20 });
+      this.sma100Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma100 });
 
       // Pane 1 — volume + delta
       this.volumeSeries = this.chart.addSeries(HistogramSeries, { priceScaleId: 'volume', priceFormat: { type: 'volume' } }, 1);
@@ -231,18 +235,18 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
       // Pane 2 — RSI
       const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.rsiSeries     = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#9c27b0', lastValueVisible: true }, 2);
-      this.rsiMaSeries   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
-      this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ef5350' }, 2);
-      this.rsiOversold   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
+      this.rsiSeries     = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.rsi, lastValueVisible: true }, 2);
+      this.rsiMaSeries   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.highlight, lastValueVisible: true }, 2);
+      this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bearish }, 2);
+      this.rsiOversold   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bullish }, 2);
       this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
       // Pane 3 — MACD
       const macdOpts = { priceScaleId: 'macd', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.macdLineSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#2962ff', lastValueVisible: true }, 3);
-      this.macdSignalSeries = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#ff6d00', lastValueVisible: true }, 3);
+      this.macdLineSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: CHART_COLORS.accent, lastValueVisible: true }, 3);
+      this.macdSignalSeries = this.chart.addSeries(LineSeries,      { ...macdOpts, color: CHART_COLORS.macdSignal, lastValueVisible: true }, 3);
       this.macdHistSeries   = this.chart.addSeries(HistogramSeries, { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false }, 3);
-      this.macdZeroSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#4a4d5a' }, 3);
+      this.macdZeroSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: CHART_COLORS.zeroLine }, 3);
       this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
@@ -356,7 +360,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     if (entryRef !== null && entryRef !== undefined) {
       this.tradeEntryLine = this.series.createPriceLine({
         price: Number(entryRef),
-        color: '#ffd600',
+        color: CHART_COLORS.highlight,
         lineWidth: 1, lineStyle: LineStyle.Solid,
         axisLabelVisible: true, title: `${trade.side} Entry`,
       });
@@ -368,7 +372,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         : Number(entryRef) + Number(trade.stopLoss);
       this.tradeSlLine = this.series.createPriceLine({
         price: slPrice,
-        color: '#ef5350', lineWidth: 1, lineStyle: LineStyle.Solid,
+        color: CHART_COLORS.bearish, lineWidth: 1, lineStyle: LineStyle.Solid,
         axisLabelVisible: true, title: 'SL',
       });
     }
@@ -378,7 +382,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         : Number(entryRef) - Number(trade.takeProfit);
       this.tradeTpLine = this.series.createPriceLine({
         price: tpPrice,
-        color: '#26a69a', lineWidth: 1, lineStyle: LineStyle.Solid,
+        color: CHART_COLORS.bullish, lineWidth: 1, lineStyle: LineStyle.Solid,
         axisLabelVisible: true, title: 'TP',
       });
     }
@@ -433,7 +437,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         markers.push({
           time: this.toChartTime(t.openedAt) as Time,
           position: isBuy ? 'belowBar' : 'aboveBar',
-          color: isBuy ? '#26a69a' : '#ef5350',
+          color: isBuy ? CHART_COLORS.bullish : CHART_COLORS.bearish,
           shape: isBuy ? 'arrowUp' : 'arrowDown',
           text: t.side,
           size: 1,
@@ -445,7 +449,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         markers.push({
           time: this.toChartTime(t.closedAt) as Time,
           position: isBuy ? 'aboveBar' : 'belowBar',
-          color: '#f59e0b',
+          color: CHART_COLORS.sma20,
           shape: 'circle',
           text: `✕${pnlText}`,
           size: 1,
@@ -623,8 +627,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
               const h = candle.macd_histogram;
               const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
               const color = h >= 0
-                ? (growing ? '#26a69a' : '#26a69a55')
-                : (growing ? '#ef5350' : '#ef535055');
+                ? (growing ? CHART_COLORS.bullish : CHART_COLORS.bullishFaded)
+                : (growing ? CHART_COLORS.bearish : CHART_COLORS.bearishFaded);
               this.macdHistSeries?.update({ time: t, value: h, color });
               this.macdZeroSeries?.update({ time: t, value: 0 });
             }
@@ -666,9 +670,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private applyVisibleSessionLines(): void {
     this.clearSessionLines();
     if (this.showCurrentSession && this.currentSession)
-      this.applySessionLines(this.currentSession, 'D', '#42a5f5', LineStyle.Solid);
+      this.applySessionLines(this.currentSession, 'D', CHART_COLORS.sessionCurrent, LineStyle.Solid);
     if (this.showPreviousSession && this.previousSession)
-      this.applySessionLines(this.previousSession, 'P', '#9e9e9e', LineStyle.Dashed);
+      this.applySessionLines(this.previousSession, 'P', CHART_COLORS.sessionPrevious, LineStyle.Dashed);
   }
 
   private applySessionLines(s: SessionOhlcvResponse, prefix: string, color: string, lineStyle: LineStyle): void {
@@ -694,7 +698,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private toVolumeBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
     const takerTotal = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
     const vol = takerTotal > 0 ? takerTotal : c.volume;
-    return { time: this.toChartTime(c.time), value: vol, color: c.close >= c.open ? '#26a69a' : '#ef5350' };
+    return { time: this.toChartTime(c.time), value: vol, color: c.close >= c.open ? CHART_COLORS.bullish : CHART_COLORS.bearish };
   }
 
   private toDeltaBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
@@ -702,7 +706,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     const sell  = c.taker_sell_base_asset_volume;
     const total = buy + sell;
     const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
-    return { time: this.toChartTime(c.time), value: delta, color: delta >= 0 ? '#26a69a' : '#ef5350' };
+    return { time: this.toChartTime(c.time), value: delta, color: delta >= 0 ? CHART_COLORS.bullish : CHART_COLORS.bearish };
   }
 
   private applyDeltaPaneVisibility(): void {
@@ -717,8 +721,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       const prev = result.at(-1)?.value ?? null;
       const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
       const color = h >= 0
-        ? (growing ? '#26a69a' : '#26a69a55')
-        : (growing ? '#ef5350' : '#ef535055');
+        ? (growing ? CHART_COLORS.bullish : CHART_COLORS.bullishFaded)
+        : (growing ? CHART_COLORS.bearish : CHART_COLORS.bearishFaded);
       result.push({ time: this.toChartTime(c.time), value: h, color });
     }
     return result;
@@ -728,12 +732,6 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     const last = this.loadedCandles.at(-1);
     if (last?.time === candle.time) this.loadedCandles[this.loadedCandles.length - 1] = candle;
     else this.loadedCandles.push(candle);
-  }
-
-  // Extension point: visualise rsi_divergence when backend data is ready.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private applyRsiDivergence(_candles: CandleWithIndicatorsResponse[]): void {
-    // Not yet implemented — rsi_divergence is stored in the model but not rendered.
   }
 
   private toChartTime(time: number): UTCTimestamp {

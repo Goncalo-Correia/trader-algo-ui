@@ -5,7 +5,7 @@
     <label class="tp-section-label">Symbol</label>
     <select class="tp-symbol-select" (change)="onSymbolChange($event)">
       <option
-        *ngFor="let s of symbols"
+        *ngFor="let s of symbols; trackBy: trackBySymbolId"
         [value]="s.code"
         [selected]="s.code === selectedSymbol"
       >{{ s.code }}</option>
@@ -17,7 +17,7 @@
     <label class="tp-section-label">Account</label>
     <select class="tp-symbol-select" [ngModel]="selectedAccountId" [ngModelOptions]="{standalone: true}" (ngModelChange)="onAccountChange($event)">
       <option [ngValue]="null" disabled>— select account —</option>
-      <option *ngFor="let a of accounts" [ngValue]="a.id">{{ a.name }}</option>
+      <option *ngFor="let a of accounts; trackBy: trackByAccountId" [ngValue]="a.id">{{ a.name }}</option>
     </select>
 
     <div class="tp-account-info" *ngIf="selectedAccount">
@@ -58,21 +58,21 @@
     <div class="tp-field">
       <label class="tp-label">Strategy</label>
       <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.tradingStrategyId" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
-        <option *ngFor="let s of strategies" [ngValue]="s.id">{{ s.name }}</option>
+        <option *ngFor="let s of strategies; trackBy: trackByStrategyId" [ngValue]="s.id">{{ s.name }}</option>
       </select>
     </div>
 
     <div class="tp-field">
       <label class="tp-label">Bot Symbol</label>
       <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.symbolCode" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
-        <option *ngFor="let s of symbols" [ngValue]="s.code">{{ s.code }}</option>
+        <option *ngFor="let s of symbols; trackBy: trackBySymbolId" [ngValue]="s.code">{{ s.code }}</option>
       </select>
     </div>
 
     <div class="tp-field">
       <label class="tp-label">Bot Interval</label>
       <select class="tp-symbol-select" [(ngModel)]="tradeBotDraft.intervalCode" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
-        <option *ngFor="let i of intervals" [ngValue]="i.code">{{ i.displayName || i.code }}</option>
+        <option *ngFor="let i of intervals; trackBy: trackByIntervalId" [ngValue]="i.code">{{ i.displayName || i.code }}</option>
       </select>
     </div>
 

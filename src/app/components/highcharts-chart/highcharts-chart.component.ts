@@ -8,7 +8,10 @@ import {
   Output,
   ViewChild,
 } from '@angular/core';
-import * as Highcharts from 'highcharts/highstock';
+// Type-only import (erased at build time). The library itself is loaded
+// dynamically in ngAfterViewInit so its ~400 kB stays out of the initial
+// bundle and only downloads on pages that actually render a Highcharts chart.
+import type * as Highcharts from 'highcharts/highstock';
 
 @Component({
   selector: 'app-highcharts-chart',
@@ -28,10 +31,12 @@ export class HighchartsChartComponent implements AfterViewInit, OnDestroy {
 
   private chart?: Highcharts.Chart;
 
-  ngAfterViewInit(): void {
+  async ngAfterViewInit(): Promise<void> {
+    const mod = await import('highcharts/highstock');
+    const hc = ((mod as { default?: typeof Highcharts }).default ?? mod) as typeof Highcharts;
     this.chart = this.useStock
-      ? Highcharts.stockChart(this.chartEl.nativeElement, this.options)
-      : Highcharts.chart(this.chartEl.nativeElement, this.options);
+      ? hc.stockChart(this.chartEl.nativeElement, this.options)
+      : hc.chart(this.chartEl.nativeElement, this.options);
     this.chartCreated.emit(this.chart);
   }
 

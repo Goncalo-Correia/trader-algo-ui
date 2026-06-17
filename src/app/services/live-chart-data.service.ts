@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
-import { BacktestStreamEvent } from '../structures/backtest';
+import { BacktestStreamEvent, TradeBracketUpdate } from '../structures/backtest';
 import { environment } from '../../environments/environment';
+import { connectWebSocket } from '../core/websocket';
 
 export type ChartInterval = string;
 
@@ -12,92 +13,58 @@ export type ChartInterval = string;
 export class LiveChartDataService {
   private readonly candlesUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/candles`;
   private readonly candlesWithIndicatorsUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/candleswithindicators`;
+  private readonly backtestUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest`;
 
   streamCandles(symbol: string, interval: ChartInterval): Observable<CandleResponse> {
-    return new Observable<CandleResponse>(subscriber => {
-      const socket = new WebSocket(`${this.candlesUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`);
-
-      socket.onmessage = event => {
-        try {
-          const message = JSON.parse(String(event.data)) as CandleResponse | CandleResponse[];
-          const candles = Array.isArray(message) ? message : [message];
-
-          candles.forEach(candle => subscriber.next(candle));
-        } catch (error) {
-          subscriber.error(error);
-        }
-      };
-
-      socket.onerror = event => {
-        subscriber.error(event);
-      };
-
-      socket.onclose = () => {
-        subscriber.complete();
-      };
-
-      return () => {
-        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-          socket.close();
-        }
-      };
-    });
-  }
-
-  streamBacktest(backtestId: number, delay = false): Observable<BacktestStreamEvent> {
-    return new Observable<BacktestStreamEvent>(subscriber => {
-      const socket = new WebSocket(
-        `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest?backtestId=${backtestId}&delay=${delay}`,
-      );
-
-      socket.onmessage = event => {
-        try {
-          const envelope = JSON.parse(String(event.data)) as { type: string; data: unknown };
-          if (envelope.type === 'candle') {
-            subscriber.next({ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse });
-          } else if (envelope.type === 'tradeBracketUpdate') {
-            subscriber.next({ type: 'tradeBracketUpdate', data: envelope.data as { tradeId: number; stopLoss: number | null; takeProfit: number | null } });
-          }
-        } catch (error) {
-          subscriber.error(error);
-        }
-      };
-
-      socket.onerror = event => { subscriber.error(event); };
-      socket.onclose = () => { subscriber.complete(); };
-
-      return () => {
-        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-          socket.close();
-        }
-      };
-    });
+    const url = `${this.candlesUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`;
+    return connectWebSocket<CandleResponse>(url, { parse: raw => parseCandleFrames<CandleResponse>(raw) });
   }
 
   streamCandlesWithIndicators(symbol: string, interval: ChartInterval): Observable<CandleWithIndicatorsResponse> {
-    return new Observable<CandleWithIndicatorsResponse>(subscriber => {
-      const socket = new WebSocket(
-        `${this.candlesWithIndicatorsUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`,
-      );
-
-      socket.onmessage = event => {
-        try {
-          const message = JSON.parse(String(event.data)) as CandleWithIndicatorsResponse | CandleWithIndicatorsResponse[];
-          const candles = Array.isArray(message) ? message : [message];
-          candles.forEach(candle => subscriber.next(candle));
-        } catch (error) {
-          subscriber.error(error);
-        }
-      };
-
-      socket.onerror = event => { subscriber.error(event); };
-      socket.onclose = () => { subscriber.complete(); };
-
-      return () => {
-        if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-          socket.close();
-        }
-      };
-    });
+    const url = `${this.candlesWithIndicatorsUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`;
+    return connectWebSocket<CandleWithIndicatorsResponse>(url, { parse: raw => parseCandleFrames<CandleWithIndicatorsResponse>(raw) });
   }
+
+  streamBacktest(backtestId: number, delay = false): Observable<BacktestStreamEvent> {
+    const url = `${this.backtestUrl}?backtestId=${backtestId}&delay=${delay}`;
+    // A backtest is a finite replay — a server close means "done", not "dropped".
+    return connectWebSocket(url, { reconnect: false, parse: parseBacktestEvent });
+  }
+}
+
+/** Accepts either a single candle frame or a batch, dropping any that fail shape validation. */
+function parseCandleFrames<T extends CandleResponse | CandleWithIndicatorsResponse>(raw: unknown): T[] {
+  const items = Array.isArray(raw) ? raw : [raw];
+  // Shape is validated at this single network boundary; the cast is the only assertion.
+  return items.filter(hasCandleShape) as T[];
+}
+
+function hasCandleShape(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const c = value as Record<string, unknown>;
+  return (
+    typeof c['time'] === 'number' &&
+    typeof c['open'] === 'number' &&
+    typeof c['high'] === 'number' &&
+    typeof c['low'] === 'number' &&
+    typeof c['close'] === 'number'
+  );
+}
+
+function parseBacktestEvent(raw: unknown): BacktestStreamEvent[] {
+  if (typeof raw !== 'object' || raw === null) return [];
+  const envelope = raw as { type?: unknown; data?: unknown };
+  if (envelope.type === 'candle' && hasCandleShape(envelope.data)) {
+    return [{ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse }];
+  }
+  if (envelope.type === 'tradeBracketUpdate' && isTradeBracketUpdate(envelope.data)) {
+    return [{ type: 'tradeBracketUpdate', data: envelope.data }];
+  }
+  return [];
+}
+
+function isTradeBracketUpdate(value: unknown): value is TradeBracketUpdate {
+  if (typeof value !== 'object' || value === null) return false;
+  const u = value as Record<string, unknown>;
+  return typeof u['tradeId'] === 'number';
 }

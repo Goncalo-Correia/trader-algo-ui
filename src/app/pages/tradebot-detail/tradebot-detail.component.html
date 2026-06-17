@@ -88,7 +88,7 @@
           <div class="events-empty" *ngIf="bot.tradingAccountId === null">Backtest-scoped bots do not have an account event stream.</div>
           <div class="events-empty" *ngIf="bot.tradingAccountId !== null && !eventLog.length">Waiting for events...</div>
           <div class="event-list" *ngIf="bot.tradingAccountId !== null">
-            <div class="event-item" *ngFor="let e of eventLog">
+            <div class="event-item" *ngFor="let e of eventLog; trackBy: trackByReceivedAt">
               <span [class]="'event-type ' + eventTypeClass(e.type)">{{ e.type }}</span>
               <span class="event-detail" *ngIf="e.tradeId">#{{ e.tradeId }}</span>
               <span class="event-detail" *ngIf="e.symbolCode">{{ e.symbolCode }}</span>
@@ -126,7 +126,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let t of recentTrades">
+            <tr *ngFor="let t of recentTrades; trackBy: trackByTradeId">
               <td class="td-id">{{ t.id }}</td>
               <td><span [class]="'side-badge ' + sideClass(t.side)">{{ t.side }}</span></td>
               <td class="td-bold">{{ t.symbolCode }}</td>

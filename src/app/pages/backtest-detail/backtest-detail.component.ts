@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import * as Highcharts from 'highcharts/highstock';
+import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestDetail } from '../../structures/backtest';
 import { Trade } from '../../structures/trade';
@@ -43,6 +43,7 @@ function darkThemeBase(): Highcharts.Options {
 })
 export class BacktestDetailComponent implements OnInit {
   detail: BacktestDetail | null = null;
+  readonly trackById = (_: number, trade: Trade): number => trade.id;
   isLoading = true;
   deleting = false;
   private backtestId!: number;

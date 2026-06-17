@@ -25,14 +25,14 @@
     <div class="panel-section">
       <div class="section-label">Symbol</div>
       <select class="ctrl-select full-width" [ngModel]="selectedSymbol" (ngModelChange)="onSymbolChange($event)" [disabled]="running">
-        <option *ngFor="let s of symbols" [value]="s.code">{{ s.code }}</option>
+        <option *ngFor="let s of symbols; trackBy: trackBySymbolId" [value]="s.code">{{ s.code }}</option>
       </select>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Interval</div>
       <select class="ctrl-select full-width" [(ngModel)]="selectedInterval" [disabled]="running">
-        <option *ngFor="let i of intervals" [value]="i.code">{{ i.displayName }}</option>
+        <option *ngFor="let i of intervals; trackBy: trackByIntervalId" [value]="i.code">{{ i.displayName }}</option>
       </select>
     </div>
 
@@ -54,7 +54,7 @@
     <div class="panel-section">
       <div class="section-label">Strategy</div>
       <select class="ctrl-select full-width" [(ngModel)]="selectedStrategy" [disabled]="running">
-        <option *ngFor="let s of strategies" [ngValue]="s.id">{{ s.name }}</option>
+        <option *ngFor="let s of strategies; trackBy: trackByStrategyId" [ngValue]="s.id">{{ s.name }}</option>
       </select>
       <div class="section-hint">A scoped bot is created for each backtest.</div>
     </div>

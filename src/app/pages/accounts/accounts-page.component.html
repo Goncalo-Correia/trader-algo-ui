@@ -33,7 +33,7 @@
     </div>
 
     <div class="accounts-grid" *ngIf="accounts.length > 0">
-      <a class="account-card" *ngFor="let account of accounts"
+      <a class="account-card" *ngFor="let account of accounts; trackBy: trackById"
          [routerLink]="['/accounts', account.id]">
         <div class="card-header">
           <span class="account-name">{{ account.name }}</span>

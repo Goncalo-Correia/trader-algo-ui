@@ -66,6 +66,11 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   accounts: TradingAccount[] = [];
   strategies: StrategyResponse[] = [];
+
+  readonly trackBySymbolId = (_: number, symbol: SymbolResponse): number => symbol.id;
+  readonly trackByAccountId = (_: number, account: TradingAccount): number => account.id;
+  readonly trackByStrategyId = (_: number, strategy: StrategyResponse): number => strategy.id;
+  readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
   selectedAccountId: number | null = null;
   selectedSymbol = '';
 

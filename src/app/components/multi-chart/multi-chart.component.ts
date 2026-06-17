@@ -18,6 +18,7 @@ export class MultiChartComponent implements OnInit {
   symbols:   SymbolResponse[]  = [];
   intervals: IntervalResponse[] = [];
   panes:     PaneConfig[]       = [];
+  readonly trackByIndex = (index: number): number => index;
 
   selectedSymbol = '';
   activeTrade:  Trade | null = null;

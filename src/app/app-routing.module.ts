@@ -2,7 +2,6 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AlgoTraderPageComponent } from './pages/algo-trader/algo-trader.component';
 import { ChartsPageComponent } from './pages/charts/charts-page.component';
-import { DeprecatedPageComponent } from './pages/deprecated/deprecated.component';
 import { AccountsPageComponent } from './pages/accounts/accounts-page.component';
 import { AccountDetailComponent } from './pages/account-detail/account-detail.component';
 import { BacktestPageComponent } from './pages/backtest/backtest-page.component';
@@ -21,7 +20,6 @@ const routes: Routes = [
   { path: 'backtests/:id',  component: BacktestDetailComponent },
   { path: 'tradebots',      component: TradeBotsPageComponent },
   { path: 'tradebots/:id',  component: TradebotDetailComponent },
-  { path: 'deprecated',     component: DeprecatedPageComponent },
   { path: '',               redirectTo: '/charts', pathMatch: 'full' },
 ];
 

@@ -29,7 +29,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let bt of backtests" [routerLink]="['/backtests', bt.id]" class="clickable-row">
+        <tr *ngFor="let bt of backtests; trackBy: trackById" [routerLink]="['/backtests', bt.id]" class="clickable-row">
           <td class="td-id">{{ bt.id }}</td>
           <td><span [class]="'status-badge ' + statusClass(bt.status)">{{ bt.status }}</span></td>
           <td><span class="strategy-tag">{{ bt.strategyName }}</span></td>

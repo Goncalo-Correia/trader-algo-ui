@@ -4,7 +4,7 @@
   <div class="chart-toolbar">
     <div class="toolbar-items">
       <button
-        *ngFor="let interval of availableIntervals"
+        *ngFor="let interval of availableIntervals; trackBy: trackByIntervalId"
         class="toolbar-btn"
         [class.active]="interval.code === selectedInterval"
         (click)="onIntervalChange(interval.code)"
@@ -36,7 +36,7 @@
 
         <div class="predict-menu" *ngIf="showPredictMenu">
           <button
-            *ngFor="let btn of kronosButtons"
+            *ngFor="let btn of kronosButtons; trackBy: trackByKronosKey"
             class="predict-menu-item"
             [disabled]="predictingKey !== null"
             (click)="runPredict(btn.key)"

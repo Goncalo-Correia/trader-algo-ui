@@ -9,6 +9,7 @@ import { TradeBot } from '../../structures/trade-bot';
 })
 export class TradeBotsPageComponent implements OnInit {
   bots: TradeBot[] = [];
+  readonly trackById = (_: number, bot: TradeBot): number => bot.id;
   isLoading = true;
   togglingId: number | null = null;
 

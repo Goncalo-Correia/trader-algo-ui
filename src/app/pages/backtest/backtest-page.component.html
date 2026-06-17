@@ -81,6 +81,18 @@
     </div>
 
     <div class="panel-section">
+      <div class="section-label">Breakeven Stop</div>
+      <input class="ctrl-input full-width" type="number" [(ngModel)]="breakevenStop" min="0" step="any" [disabled]="running" placeholder="e.g. 25" />
+      <div class="section-hint">Lock in profit at this offset above entry when breakeven triggers.</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Fee ($)</div>
+      <input class="ctrl-input full-width" type="number" [(ngModel)]="fee" min="0" step="any" [disabled]="running" placeholder="e.g. 0.65" />
+      <div class="section-hint">Deducted from PnL on each closed trade.</div>
+    </div>
+
+    <div class="panel-section">
       <div class="toggle-row">
         <span class="section-label">NY Session Only</span>
         <label class="toggle-switch" [class.disabled]="running">
@@ -109,6 +121,19 @@
       <div class="section-label">Max Candles Per Trade</div>
       <input class="ctrl-input full-width" type="number" [(ngModel)]="maxCandlesPerTrade" min="1" step="1" [disabled]="running" placeholder="e.g. 10" />
       <div class="section-hint">Force-close the trade after this many candles.</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="toggle-row">
+        <span class="section-label">Delay</span>
+        <label class="toggle-switch" [class.disabled]="running">
+          <input type="checkbox" [(ngModel)]="delay" [disabled]="running" />
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+        </label>
+      </div>
+      <div class="section-hint">Pace the stream at 100 ms per candle.</div>
     </div>
 
     <button class="btn-run"

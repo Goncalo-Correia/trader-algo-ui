@@ -79,10 +79,13 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
       stopLoss:           this.draftStopLoss,
       takeProfit:         this.draftTakeProfit,
       breakeven:          this.bot.breakeven,
+      breakevenStop:      this.bot.breakevenStop ?? null,
       isNySessionOnly:    this.bot.isNySessionOnly,
+      delay:              this.bot.delay ?? false,
       dailyProfitGoal:    this.bot.dailyProfitGoal,
       maxLossesPerDay:    this.bot.maxLossesPerDay,
       maxCandlesPerTrade: this.bot.maxCandlesPerTrade,
+      fee:                this.bot.fee ?? null,
       isEnabled:          this.bot.isEnabled,
     };
 

@@ -20,7 +20,9 @@ export interface Trade {
   closedAt:       number | null;
   closedPrice:    number | null;
   closeReason:      TradeCloseReason | null;
+  fee:              number | null;
   pnl:              number | null;
+  accountPnl:       number | null;
   unrealizedPnl:    number | null;
   tradingAccountId: number | null;
   backtestId:       number | null;

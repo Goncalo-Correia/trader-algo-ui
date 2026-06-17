@@ -98,6 +98,16 @@
     </div>
 
     <div class="tp-field">
+      <label class="tp-label">Breakeven Stop</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.breakevenStop" placeholder="e.g. 25" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-field">
+      <label class="tp-label">Fee ($)</label>
+      <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.fee" placeholder="e.g. 0.65" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
+    </div>
+
+    <div class="tp-field">
       <label class="tp-label">Daily Profit Goal ($)</label>
       <input class="tp-input" type="number" [(ngModel)]="tradeBotDraft.dailyProfitGoal" placeholder="e.g. 200" min="0" step="any" [disabled]="isLoadingBot || isSavingBot || isTogglingBot">
     </div>

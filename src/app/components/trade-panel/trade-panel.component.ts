@@ -28,10 +28,12 @@ interface TradeBotDraft {
   stopLoss:           number | null;
   takeProfit:         number | null;
   breakeven:          number | null;
+  breakevenStop:      number | null;
   isNySessionOnly:    boolean;
   dailyProfitGoal:    number | null;
   maxLossesPerDay:    number | null;
   maxCandlesPerTrade: number | null;
+  fee:               number | null;
 }
 
 @Component({
@@ -76,10 +78,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     stopLoss:           100,
     takeProfit:         100,
     breakeven:          null,
+    breakevenStop:      null,
     isNySessionOnly:    false,
     dailyProfitGoal:    null,
     maxLossesPerDay:    null,
     maxCandlesPerTrade: null,
+    fee:               null,
   };
 
   isLoadingBot  = false;
@@ -419,10 +423,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       stopLoss:          this.tradeBotDraft.stopLoss ?? null,
       takeProfit:        this.tradeBotDraft.takeProfit ?? null,
       breakeven:         this.tradeBotDraft.breakeven ?? null,
+      breakevenStop:     this.tradeBotDraft.breakevenStop ?? null,
       isNySessionOnly:   this.tradeBotDraft.isNySessionOnly,
       dailyProfitGoal:   this.tradeBotDraft.dailyProfitGoal ?? null,
       maxLossesPerDay:   this.tradeBotDraft.maxLossesPerDay ?? null,
       maxCandlesPerTrade: this.tradeBotDraft.maxCandlesPerTrade ?? null,
+      fee:               this.tradeBotDraft.fee ?? null,
       isEnabled:         this.tradeBot?.isEnabled ?? false,
     };
 
@@ -438,10 +444,13 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       stopLoss:          payload.stopLoss ?? null,
       takeProfit:        payload.takeProfit ?? null,
       breakeven:         payload.breakeven ?? null,
+      breakevenStop:     payload.breakevenStop ?? null,
       isNySessionOnly:   payload.isNySessionOnly ?? false,
+      delay:             payload.delay ?? false,
       dailyProfitGoal:   payload.dailyProfitGoal ?? null,
       maxLossesPerDay:   payload.maxLossesPerDay ?? null,
       maxCandlesPerTrade: payload.maxCandlesPerTrade ?? null,
+      fee:               payload.fee ?? null,
       isEnabled:         this.tradeBot.isEnabled,
     };
     return this.traderAlgoApi.updateTradeBot(this.tradeBot.id, update);
@@ -571,10 +580,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       stopLoss:           bot.stopLoss,
       takeProfit:         bot.takeProfit,
       breakeven:          bot.breakeven,
+      breakevenStop:      bot.breakevenStop ?? null,
       isNySessionOnly:    bot.isNySessionOnly,
       dailyProfitGoal:    bot.dailyProfitGoal,
       maxLossesPerDay:    bot.maxLossesPerDay,
       maxCandlesPerTrade: bot.maxCandlesPerTrade,
+      fee:               bot.fee ?? null,
     };
   }
 
@@ -588,10 +599,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       stopLoss:           100,
       takeProfit:         100,
       breakeven:          null,
+      breakevenStop:      null,
       isNySessionOnly:    isAlpacaSymbol(this.findSymbol(symbolCode)),
       dailyProfitGoal:    null,
       maxLossesPerDay:    null,
       maxCandlesPerTrade: null,
+      fee:               null,
     };
   }
 

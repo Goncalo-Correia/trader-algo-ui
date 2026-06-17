@@ -19,6 +19,8 @@ export interface CreateBacktestRequest {
   stopLoss?: number | null;
   takeProfit?: number | null;
   breakeven?: number | null;
+  breakevenStop?: number | null;
+  fee?: number | null;
   isNySessionOnly?: boolean;
   dailyProfitGoal?: number | null;
   maxLossesPerDay?: number | null;
@@ -41,13 +43,18 @@ export interface BacktestSummary {
   initialBalance: number;
   finalBalance: number | null;
   pnl: number | null;
+  maxDrawdown: number | null;
+  maxTrailingDrawdown: number | null;
   candleCount: number;
   tradeCount: number;
   quantity: number;
   stopLoss: number | null;
   takeProfit: number | null;
   breakeven: number | null;
+  breakevenStop: number | null;
+  fee: number | null;
   isNySessionOnly: boolean;
+  delay: boolean;
   dailyProfitGoal: number | null;
   maxLossesPerDay: number | null;
   maxCandlesPerTrade: number | null;
@@ -64,8 +71,9 @@ export type BacktestStreamEvent =
   | { type: 'tradeBracketUpdate'; data: TradeBracketUpdate };
 
 export interface EquityPoint {
-  time: number;
-  balance: number;
+  time:     number;
+  balance:  number;
+  tradePnl: number | null;
 }
 
 export interface BacktestDetail extends BacktestSummary {

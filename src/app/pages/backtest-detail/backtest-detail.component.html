@@ -20,72 +20,104 @@
     </div>
 
     <div class="stats-bar">
-      <div class="stat-item">
-        <span class="stat-label">Symbol</span>
-        <span class="stat-value">{{ detail.symbolCode }}</span>
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-label">Strategy</span>
+          <span class="stat-value">{{ detail.strategyName || '-' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Symbol</span>
+          <span class="stat-value">{{ detail.symbolCode }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Interval</span>
+          <span class="stat-value">{{ detail.intervalCode }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">From</span>
+          <span class="stat-value">{{ formatDate(detail.from) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">To</span>
+          <span class="stat-value">{{ formatDate(detail.to) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Candles</span>
+          <span class="stat-value">{{ detail.candleCount }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Trades</span>
+          <span class="stat-value">{{ detail.trades.length }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Bot</span>
+          <a class="stat-value stat-link" *ngIf="detail.tradeBotId != null" [routerLink]="['/tradebots', detail.tradeBotId]">#{{ detail.tradeBotId }}</a>
+          <span class="stat-value" *ngIf="detail.tradeBotId == null">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Qty</span>
+          <span class="stat-value">{{ detail.quantity != null ? (detail.quantity | number:'1.0-8') : '-' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">TP / SL</span>
+          <span class="stat-value">{{ detail.takeProfit != null ? detail.takeProfit : '-' }} / {{ detail.stopLoss != null ? detail.stopLoss : '-' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">NY Session</span>
+          <span class="stat-value" [class.active-flag]="detail.isNySessionOnly">{{ detail.isNySessionOnly != null ? (detail.isNySessionOnly ? 'On' : 'Off') : '-' }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.dailyProfitGoal !== null">
+          <span class="stat-label">Daily Goal</span>
+          <span class="stat-value">${{ detail.dailyProfitGoal | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.maxLossesPerDay !== null">
+          <span class="stat-label">Max Losses/Day</span>
+          <span class="stat-value">{{ detail.maxLossesPerDay }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.maxCandlesPerTrade !== null">
+          <span class="stat-label">Max Candles/Trade</span>
+          <span class="stat-value">{{ detail.maxCandlesPerTrade }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.breakeven != null">
+          <span class="stat-label">Breakeven</span>
+          <span class="stat-value">{{ detail.breakeven }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.breakevenStop != null">
+          <span class="stat-label">Breakeven Stop</span>
+          <span class="stat-value">{{ detail.breakevenStop }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.fee != null">
+          <span class="stat-label">Fee</span>
+          <span class="stat-value">${{ detail.fee | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Delay</span>
+          <span class="stat-value" [class.active-flag]="detail.delay">{{ detail.delay ? 'On' : 'Off' }}</span>
+        </div>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">Interval</span>
-        <span class="stat-value">{{ detail.intervalCode }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">From</span>
-        <span class="stat-value">{{ formatDate(detail.from) }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">To</span>
-        <span class="stat-value">{{ formatDate(detail.to) }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Candles</span>
-        <span class="stat-value">{{ detail.candleCount }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Trades</span>
-        <span class="stat-value">{{ detail.trades.length }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Bot</span>
-        <a class="stat-value stat-link" *ngIf="detail.tradeBotId !== null" [routerLink]="['/tradebots', detail.tradeBotId]">#{{ detail.tradeBotId }}</a>
-        <span class="stat-value" *ngIf="detail.tradeBotId === null">-</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Qty</span>
-        <span class="stat-value">{{ detail.quantity | number:'1.0-8' }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">TP / SL</span>
-        <span class="stat-value">{{ detail.takeProfit !== null ? detail.takeProfit : '-' }} / {{ detail.stopLoss !== null ? detail.stopLoss : '-' }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">NY Session</span>
-        <span class="stat-value" [class.active-flag]="detail.isNySessionOnly">{{ detail.isNySessionOnly ? 'On' : 'Off' }}</span>
-      </div>
-      <div class="stat-item" *ngIf="detail.dailyProfitGoal !== null">
-        <span class="stat-label">Daily Goal</span>
-        <span class="stat-value">${{ detail.dailyProfitGoal | number:'1.2-2' }}</span>
-      </div>
-      <div class="stat-item" *ngIf="detail.maxLossesPerDay !== null">
-        <span class="stat-label">Max Losses/Day</span>
-        <span class="stat-value">{{ detail.maxLossesPerDay }}</span>
-      </div>
-      <div class="stat-item" *ngIf="detail.maxCandlesPerTrade !== null">
-        <span class="stat-label">Max Candles/Trade</span>
-        <span class="stat-value">{{ detail.maxCandlesPerTrade }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Initial</span>
-        <span class="stat-value">${{ detail.initialBalance | number:'1.2-2' }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Final</span>
-        <span class="stat-value">${{ detail.finalBalance | number:'1.2-2' }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">PnL</span>
-        <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
-          {{ detail.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (detail.pnl | number:'1.2-2')) : '-' }}
-        </span>
+      <div class="stats-row stats-row-financial">
+        <div class="stat-item">
+          <span class="stat-label">Initial</span>
+          <span class="stat-value">${{ detail.initialBalance | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Final</span>
+          <span class="stat-value">${{ detail.finalBalance | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">PnL</span>
+          <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
+            {{ detail.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (detail.pnl | number:'1.2-2')) : '-' }}
+          </span>
+        </div>
+        <div class="stat-item" *ngIf="detail.maxDrawdown != null">
+          <span class="stat-label">Max Drawdown</span>
+          <span class="stat-value negative">-${{ detail.maxDrawdown | number:'1.2-2' }}</span>
+        </div>
+        <div class="stat-item" *ngIf="detail.maxTrailingDrawdown != null">
+          <span class="stat-label">Max Trailing DD</span>
+          <span class="stat-value negative">-${{ detail.maxTrailingDrawdown | number:'1.2-2' }}</span>
+        </div>
       </div>
     </div>
 
@@ -110,6 +142,7 @@
             <th>Close</th>
             <th>Close Reason</th>
             <th>PnL</th>
+            <th>Account</th>
             <th>Opened</th>
             <th>Closed</th>
           </tr>
@@ -136,6 +169,10 @@
                 </span>
               </ng-container>
               <span class="td-dim" *ngIf="getTradePnl(trade) === null">-</span>
+            </td>
+            <td>
+              <span *ngIf="trade.accountPnl != null">${{ trade.accountPnl | number:'1.2-2' }}</span>
+              <span class="td-dim" *ngIf="trade.accountPnl == null">-</span>
             </td>
             <td class="td-dim">{{ formatTs(trade.openedAt) }}</td>
             <td class="td-dim">{{ formatTs(trade.closedAt) }}</td>

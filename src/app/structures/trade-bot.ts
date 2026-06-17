@@ -15,10 +15,13 @@ export interface TradeBot {
   stopLoss: number | null;
   takeProfit: number | null;
   breakeven: number | null;
+  breakevenStop: number | null;
   isNySessionOnly: boolean;
+  delay: boolean;
   dailyProfitGoal: number | null;
   maxLossesPerDay: number | null;
   maxCandlesPerTrade: number | null;
+  fee: number | null;
   createdAt: number | string;
   updatedAt: number | string;
   lastSignalAt: number | string | null;
@@ -39,10 +42,13 @@ export interface CreateTradeBotRequest {
   stopLoss?: number | null;
   takeProfit?: number | null;
   breakeven?: number | null;
+  breakevenStop?: number | null;
   isNySessionOnly?: boolean;
+  delay?: boolean;
   dailyProfitGoal?: number | null;
   maxLossesPerDay?: number | null;
   maxCandlesPerTrade?: number | null;
+  fee?: number | null;
   isEnabled?: boolean;
 }
 
@@ -56,10 +62,13 @@ export interface UpdateTradeBotRequest {
   stopLoss: number | null;
   takeProfit: number | null;
   breakeven: number | null;
+  breakevenStop: number | null;
   isNySessionOnly: boolean;
+  delay: boolean;
   dailyProfitGoal: number | null;
   maxLossesPerDay: number | null;
   maxCandlesPerTrade: number | null;
+  fee: number | null;
   isEnabled: boolean;
 }
 

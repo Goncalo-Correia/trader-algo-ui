@@ -108,11 +108,20 @@
 
 .stats-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   background: #1a1a1a;
   border: 1px solid #2a2d3a;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.stats-row-financial {
+  border-top: 1px solid #2a2d3a;
 }
 
 .stat-item {
@@ -124,7 +133,7 @@
   padding: 14px 16px;
   border-right: 1px solid #2a2d3a;
 }
-.stat-item:last-child { border-right: none; }
+.stats-row .stat-item:last-child { border-right: none; }
 
 .stat-label {
   font-size: 10px;

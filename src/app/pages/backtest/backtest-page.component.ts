@@ -29,7 +29,10 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   stopLoss: number | null = 100;
   takeProfit: number | null = 100;
   breakeven: number | null = null;
+  breakevenStop: number | null = null;
+  fee: number | null = null;
   isNySessionOnly = false;
+  delay = false;
   dailyProfitGoal: number | null = null;
   maxLossesPerDay: number | null = null;
   maxCandlesPerTrade: number | null = null;
@@ -112,6 +115,8 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       stopLoss: this.stopLoss ?? null,
       takeProfit: this.takeProfit ?? null,
       breakeven: this.breakeven ?? null,
+      breakevenStop: this.breakevenStop ?? null,
+      fee: this.fee ?? null,
       isNySessionOnly: this.isNySessionOnly,
       dailyProfitGoal: this.dailyProfitGoal ?? null,
       maxLossesPerDay: this.maxLossesPerDay ?? null,
@@ -121,7 +126,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this.api.createBacktest(payload).subscribe({
       next: result => {
         this.backtestResult = result;
-        this.openStream(result.id);
+        this.openStream(result.id, this.delay);
       },
       error: (err) => {
         this.running = false;
@@ -173,8 +178,8 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     return realized + (this.activeTradePnl ?? 0);
   }
 
-  private openStream(backtestId: number): void {
-    this.streamSub = this.liveChart.streamBacktest(backtestId).subscribe({
+  private openStream(backtestId: number, delay: boolean): void {
+    this.streamSub = this.liveChart.streamBacktest(backtestId, delay).subscribe({
       next: event => {
         if (event.type === 'candle') {
           this.backtestCandles = [...this.backtestCandles, event.data];

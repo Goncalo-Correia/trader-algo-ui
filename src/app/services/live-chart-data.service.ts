@@ -44,10 +44,10 @@ export class LiveChartDataService {
     });
   }
 
-  streamBacktest(backtestId: number): Observable<BacktestStreamEvent> {
+  streamBacktest(backtestId: number, delay = false): Observable<BacktestStreamEvent> {
     return new Observable<BacktestStreamEvent>(subscriber => {
       const socket = new WebSocket(
-        `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest?backtestId=${backtestId}`,
+        `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest?backtestId=${backtestId}&delay=${delay}`,
       );
 
       socket.onmessage = event => {

@@ -22,6 +22,9 @@ import { BacktestsPageComponent } from './pages/backtests/backtests-page.compone
 import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail.component';
 import { TradeBotsPageComponent } from './pages/tradebots/tradebots-page.component';
 import { TradebotDetailComponent } from './pages/tradebot-detail/tradebot-detail.component';
+import { MlPageComponent } from './pages/ml/ml-page.component';
+import { MlTrainPageComponent } from './pages/ml/ml-train-page.component';
+import { MlTrainingDetailComponent } from './pages/ml/ml-training-detail.component';
 
 @NgModule({
   declarations: [
@@ -40,6 +43,9 @@ import { TradebotDetailComponent } from './pages/tradebot-detail/tradebot-detail
     BacktestDetailComponent,
     TradeBotsPageComponent,
     TradebotDetailComponent,
+    MlPageComponent,
+    MlTrainPageComponent,
+    MlTrainingDetailComponent,
   ],
   imports: [
     BrowserModule,

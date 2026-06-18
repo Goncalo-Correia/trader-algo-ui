@@ -9,6 +9,9 @@ import { BacktestsPageComponent } from './pages/backtests/backtests-page.compone
 import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail.component';
 import { TradeBotsPageComponent } from './pages/tradebots/tradebots-page.component';
 import { TradebotDetailComponent } from './pages/tradebot-detail/tradebot-detail.component';
+import { MlPageComponent } from './pages/ml/ml-page.component';
+import { MlTrainPageComponent } from './pages/ml/ml-train-page.component';
+import { MlTrainingDetailComponent } from './pages/ml/ml-training-detail.component';
 
 const routes: Routes = [
   { path: 'algo-trader',    component: AlgoTraderPageComponent },
@@ -20,6 +23,9 @@ const routes: Routes = [
   { path: 'backtests/:id',  component: BacktestDetailComponent },
   { path: 'tradebots',      component: TradeBotsPageComponent },
   { path: 'tradebots/:id',  component: TradebotDetailComponent },
+  { path: 'ml',             component: MlPageComponent },
+  { path: 'ml/new',         component: MlTrainPageComponent },
+  { path: 'ml/:id',         component: MlTrainingDetailComponent },
   { path: '',               redirectTo: '/charts', pathMatch: 'full' },
 ];
 

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
 import { BacktestStreamEvent, TradeBracketUpdate } from '../structures/backtest';
+import { MlStreamDecision, MlTrainingStreamEvent } from '../structures/ml-training';
 import { environment } from '../../environments/environment';
 import { connectWebSocket } from '../core/websocket';
 
@@ -14,6 +15,7 @@ export class LiveChartDataService {
   private readonly candlesUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/candles`;
   private readonly candlesWithIndicatorsUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/candleswithindicators`;
   private readonly backtestUrl = `${environment.traderAlgoApi.wsUrl}/ws/charts/backtest`;
+  private readonly mlTrainingUrl = `${environment.traderAlgoApi.wsUrl}/ws/ml/training`;
 
   streamCandles(symbol: string, interval: ChartInterval): Observable<CandleResponse> {
     const url = `${this.candlesUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`;
@@ -29,6 +31,12 @@ export class LiveChartDataService {
     const url = `${this.backtestUrl}?backtestId=${backtestId}&delay=${delay}`;
     // A backtest is a finite replay — a server close means "done", not "dropped".
     return connectWebSocket(url, { reconnect: false, parse: parseBacktestEvent });
+  }
+
+  streamTraining(trainingRunId: number, delay = false): Observable<MlTrainingStreamEvent> {
+    const url = `${this.mlTrainingUrl}?trainingRunId=${trainingRunId}&delay=${delay}`;
+    // A training replay is finite — a server close means "done", not "dropped".
+    return connectWebSocket(url, { reconnect: false, parse: parseTrainingEvent });
   }
 }
 
@@ -67,4 +75,22 @@ function isTradeBracketUpdate(value: unknown): value is TradeBracketUpdate {
   if (typeof value !== 'object' || value === null) return false;
   const u = value as Record<string, unknown>;
   return typeof u['tradeId'] === 'number';
+}
+
+function parseTrainingEvent(raw: unknown): MlTrainingStreamEvent[] {
+  if (typeof raw !== 'object' || raw === null) return [];
+  const envelope = raw as { type?: unknown; data?: unknown };
+  if (envelope.type === 'candle' && hasCandleShape(envelope.data)) {
+    return [{ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse }];
+  }
+  if (envelope.type === 'mlDecision' && isMlDecision(envelope.data)) {
+    return [{ type: 'mlDecision', data: envelope.data }];
+  }
+  return [];
+}
+
+function isMlDecision(value: unknown): value is MlStreamDecision {
+  if (typeof value !== 'object' || value === null) return false;
+  const d = value as Record<string, unknown>;
+  return typeof d['time'] === 'number' && typeof d['action'] === 'number';
 }

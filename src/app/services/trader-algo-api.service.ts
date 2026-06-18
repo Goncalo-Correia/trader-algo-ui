@@ -10,6 +10,12 @@ import { CreateTradeRequest, Trade, UpdateTradeRequest } from '../structures/tra
 import { TradingAccount, CreateTradingAccountRequest, UpdateTradingAccountRequest } from '../structures/trading-account';
 import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestRequest } from '../structures/backtest';
 import { StrategyResponse } from '../structures/strategy';
+import {
+  CreateTrainingRequest,
+  MlDecisionLog,
+  MlTrainingRun,
+  MlTrainStartedResponse,
+} from '../structures/ml-training';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -191,6 +197,27 @@ export class TraderAlgoApiService {
 
   deleteBacktest(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/api/backtests/${id}`);
+  }
+
+  // ── ML training runs ─────────────────────────────────────────────────────
+  getTrainingRuns(): Observable<MlTrainingRun[]> {
+    return this.http.get<MlTrainingRun[]>(`${this.baseUrl}/api/ml/training-runs`);
+  }
+
+  getTrainingRun(id: number): Observable<MlTrainingRun> {
+    return this.http.get<MlTrainingRun>(`${this.baseUrl}/api/ml/training-runs/${id}`);
+  }
+
+  getTrainingDecisions(id: number): Observable<MlDecisionLog> {
+    return this.http.get<MlDecisionLog>(`${this.baseUrl}/api/ml/training-runs/${id}/decisions`);
+  }
+
+  createTraining(payload: CreateTrainingRequest): Observable<MlTrainStartedResponse> {
+    return this.http.post<MlTrainStartedResponse>(`${this.baseUrl}/api/ml/train`, payload);
+  }
+
+  deleteTraining(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/ml/training-runs/${id}`);
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

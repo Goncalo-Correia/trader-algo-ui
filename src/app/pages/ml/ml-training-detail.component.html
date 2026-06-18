@@ -1,0 +1,101 @@
+<div class="detail-page">
+
+  <a class="back-link" routerLink="/ml">ML Training</a>
+
+  <div class="loading-state" *ngIf="isLoading">Loading training run…</div>
+
+  <ng-container *ngIf="!isLoading && run">
+
+    <div class="detail-header">
+      <div class="header-left">
+        <h1 class="detail-title">Training Run #{{ run.id }}</h1>
+        <span class="model-tag">{{ run.modelId }}</span>
+        <span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span>
+      </div>
+      <div class="header-actions">
+        <a class="btn-primary" routerLink="/ml/new">New Run</a>
+        <button class="btn-delete" [disabled]="deleting" (click)="deleteRun()">
+          {{ deleting ? '…' : 'Delete' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-label">Model</span><span class="stat-value">{{ run.modelId }}</span></div>
+        <div class="stat-item"><span class="stat-label">Symbol</span><span class="stat-value">{{ run.symbolCode }}</span></div>
+        <div class="stat-item"><span class="stat-label">Interval</span><span class="stat-value">{{ run.intervalCode }}</span></div>
+        <div class="stat-item"><span class="stat-label">From</span><span class="stat-value">{{ formatDate(run.from) }}</span></div>
+        <div class="stat-item"><span class="stat-label">To</span><span class="stat-value">{{ formatDate(run.to) }}</span></div>
+        <div class="stat-item"><span class="stat-label">Timesteps</span><span class="stat-value">{{ run.totalTimesteps ?? '—' }}</span></div>
+        <div class="stat-item"><span class="stat-label">Started</span><span class="stat-value">{{ formatTs(run.startedAt) }}</span></div>
+        <div class="stat-item"><span class="stat-label">Completed</span><span class="stat-value">{{ formatTs(run.completedAt) }}</span></div>
+      </div>
+      <div class="stats-row stats-row-financial">
+        <div class="stat-item"><span class="stat-label">Final Balance</span><span class="stat-value">{{ run.finalBalance !== null ? ('$' + (run.finalBalance | number:'1.2-2')) : '—' }}</span></div>
+        <div class="stat-item">
+          <span class="stat-label">PnL %</span>
+          <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
+            {{ run.pnlPct !== null ? ((pnlPositive ? '+' : '') + (run.pnlPct | number:'1.2-2') + '%') : '—' }}
+          </span>
+        </div>
+        <div class="stat-item"><span class="stat-label">Trades</span><span class="stat-value">{{ run.nTrades ?? '—' }}</span></div>
+        <div class="stat-item" *ngIf="run.runId"><span class="stat-label">MLflow Run</span><span class="stat-value">{{ run.runId }}</span></div>
+      </div>
+    </div>
+
+    <div class="in-flight-banner" *ngIf="isInFlight">
+      <span class="status-dot blink"></span>
+      Training is {{ run.status | lowercase }}… this page updates automatically.
+    </div>
+
+    <div class="error-state" *ngIf="run.status === 'Failed'">Training failed. No decision log was produced.</div>
+
+    <ng-container *ngIf="run.status === 'Completed'">
+      <div class="error-state" *ngIf="decisionsError">{{ decisionsError }}</div>
+
+      <ng-container *ngIf="decisions">
+        <div class="chart-section">
+          <div class="section-title">Decision Process</div>
+          <div class="chart-wrap">
+            <app-highcharts-chart [options]="candleChartOptions"></app-highcharts-chart>
+          </div>
+        </div>
+
+        <div class="chart-section" *ngIf="decisions.decisions.length">
+          <div class="section-title">Balance Progression</div>
+          <div class="chart-wrap">
+            <app-highcharts-chart [options]="balanceChartOptions"></app-highcharts-chart>
+          </div>
+        </div>
+
+        <div class="trades-section">
+          <div class="section-title">Trades</div>
+          <div class="empty-state" *ngIf="decisions.trades.length === 0">No trades taken.</div>
+          <table class="trades-table" *ngIf="decisions.trades.length > 0">
+            <thead>
+              <tr>
+                <th>#</th><th>Side</th><th>Entry</th><th>Exit</th><th>Reason</th><th>PnL</th><th>Entry Time</th><th>Exit Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of decisions.trades; let i = index; trackBy: trackByIndex">
+                <td class="td-id">{{ i + 1 }}</td>
+                <td><span class="side-badge" [class.side-buy]="t.side === 'long'" [class.side-sell]="t.side === 'short'">{{ t.side }}</span></td>
+                <td>{{ t.entry_price | number:'1.2-5' }}</td>
+                <td>{{ t.exit_price | number:'1.2-5' }}</td>
+                <td class="td-dim">{{ t.reason }}</td>
+                <td><span [class.positive]="t.pnl >= 0" [class.negative]="t.pnl < 0">{{ t.pnl >= 0 ? '+' : '' }}{{ t.pnl | number:'1.2-2' }}</span></td>
+                <td class="td-dim">{{ formatTs(t.entry_time) }}</td>
+                <td class="td-dim">{{ formatTs(t.exit_time) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+    </ng-container>
+
+  </ng-container>
+
+  <div class="error-state" *ngIf="!isLoading && !run">Training run not found.</div>
+</div>

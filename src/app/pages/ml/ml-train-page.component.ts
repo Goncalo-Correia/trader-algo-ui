@@ -33,9 +33,10 @@ export class MlTrainPageComponent implements OnInit {
   maxCandlesPerTrade: number | null = null;
   dailyProfitTarget: number | null = null;
   dailyDrawdownLimit: number | null = null;
-  feeRate = 0.001;
-  slippageRate = 0.0005;
-  maxTrailingDrawdownThreshold = 0.25;
+  // Absolute amounts (not fractions): fee/slippage in cash, drawdown threshold in cash.
+  feeRate = 0;
+  slippageRate = 0;
+  maxTrailingDrawdownThreshold = 2500;
 
   submitting = false;
   errorMessage: string | null = null;

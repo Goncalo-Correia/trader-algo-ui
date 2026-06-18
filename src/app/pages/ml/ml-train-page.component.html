@@ -55,22 +55,26 @@
 
       <div class="field">
         <div class="field-label">Take Profit</div>
-        <input class="ctrl" type="number" [(ngModel)]="takeProfit" min="0" step="any" [disabled]="submitting" placeholder="fraction, e.g. 0.02" />
+        <input class="ctrl" type="number" [(ngModel)]="takeProfit" min="0" step="any" [disabled]="submitting" placeholder="price offset, e.g. 150" />
+        <div class="field-hint">Price points from entry.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Stop Loss</div>
-        <input class="ctrl" type="number" [(ngModel)]="stopLoss" min="0" step="any" [disabled]="submitting" placeholder="fraction, e.g. 0.01" />
+        <input class="ctrl" type="number" [(ngModel)]="stopLoss" min="0" step="any" [disabled]="submitting" placeholder="price offset, e.g. 100" />
+        <div class="field-hint">Price points from entry.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Breakeven</div>
-        <input class="ctrl" type="number" [(ngModel)]="breakeven" min="0" step="any" [disabled]="submitting" />
+        <input class="ctrl" type="number" [(ngModel)]="breakeven" min="0" step="any" [disabled]="submitting" placeholder="price offset" />
+        <div class="field-hint">Arm the breakeven stop after price moves this many points in profit.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Breakeven Stop</div>
-        <input class="ctrl" type="number" [(ngModel)]="breakevenStop" min="0" step="any" [disabled]="submitting" />
+        <input class="ctrl" type="number" [(ngModel)]="breakevenStop" min="0" step="any" [disabled]="submitting" placeholder="price offset" />
+        <div class="field-hint">Where the stop locks in once armed (points from entry; 0 = entry).</div>
       </div>
 
       <div class="field">
@@ -81,26 +85,31 @@
       <div class="field">
         <div class="field-label">Daily Profit Target</div>
         <input class="ctrl" type="number" [(ngModel)]="dailyProfitTarget" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Cash if ≥ 1, else a fraction of the day's starting balance.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Daily Drawdown Limit</div>
         <input class="ctrl" type="number" [(ngModel)]="dailyDrawdownLimit" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Cash if ≥ 1, else a fraction of the day's starting balance.</div>
       </div>
 
       <div class="field">
-        <div class="field-label">Fee Rate</div>
+        <div class="field-label">Fee ($ per trade)</div>
         <input class="ctrl" type="number" [(ngModel)]="feeRate" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Flat cash fee charged once per round-trip.</div>
       </div>
 
       <div class="field">
-        <div class="field-label">Slippage Rate</div>
+        <div class="field-label">Slippage ($ per fill)</div>
         <input class="ctrl" type="number" [(ngModel)]="slippageRate" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Flat price offset applied to each fill.</div>
       </div>
 
       <div class="field">
-        <div class="field-label">Max Trailing Drawdown</div>
+        <div class="field-label">Max Trailing Drawdown ($)</div>
         <input class="ctrl" type="number" [(ngModel)]="maxTrailingDrawdownThreshold" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Cash drawdown from peak balance before the run is penalized.</div>
       </div>
     </div>
 

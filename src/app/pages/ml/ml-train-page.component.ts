@@ -24,17 +24,18 @@ export class MlTrainPageComponent implements OnInit {
 
   modelId = 'ppo-v1';
   totalTimesteps = 100_000;
-  initialBalance = 10_000;
-  quantity = 0.01;
-  stopLoss: number | null = null;
-  takeProfit: number | null = null;
+  // Defaults mirror the backtest trade panel.
+  initialBalance = 1000;
+  quantity: number | null = 1;
+  stopLoss: number | null = 100;
+  takeProfit: number | null = 100;
   breakeven: number | null = null;
   breakevenStop: number | null = null;
   maxCandlesPerTrade: number | null = null;
   dailyProfitTarget: number | null = null;
   dailyDrawdownLimit: number | null = null;
   // Absolute amounts (not fractions): fee/slippage in cash, drawdown threshold in cash.
-  feeRate = 0;
+  feeRate: number | null = null;
   slippageRate = 0;
   maxTrailingDrawdownThreshold = 2500;
 

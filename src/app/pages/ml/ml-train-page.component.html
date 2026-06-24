@@ -67,24 +67,31 @@
 
       <div class="field">
         <div class="field-label">Breakeven</div>
-        <input class="ctrl" type="number" [(ngModel)]="breakeven" min="0" step="any" [disabled]="submitting" placeholder="price offset" />
+        <input class="ctrl" type="number" [(ngModel)]="breakeven" min="0" step="any" [disabled]="submitting" placeholder="e.g. 50" />
         <div class="field-hint">Arm the breakeven stop after price moves this many points in profit.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Breakeven Stop</div>
-        <input class="ctrl" type="number" [(ngModel)]="breakevenStop" min="0" step="any" [disabled]="submitting" placeholder="price offset" />
+        <input class="ctrl" type="number" [(ngModel)]="breakevenStop" min="0" step="any" [disabled]="submitting" placeholder="e.g. 25" />
         <div class="field-hint">Where the stop locks in once armed (points from entry; 0 = entry).</div>
       </div>
 
       <div class="field">
-        <div class="field-label">Max Candles Per Trade</div>
-        <input class="ctrl" type="number" [(ngModel)]="maxCandlesPerTrade" min="1" step="1" [disabled]="submitting" />
+        <div class="field-label">Fee ($)</div>
+        <input class="ctrl" type="number" [(ngModel)]="feeRate" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Flat cash fee charged once per round-trip.</div>
       </div>
 
       <div class="field">
-        <div class="field-label">Daily Profit Target</div>
-        <input class="ctrl" type="number" [(ngModel)]="dailyProfitTarget" min="0" step="any" [disabled]="submitting" />
+        <div class="field-label">Slippage ($ per fill)</div>
+        <input class="ctrl" type="number" [(ngModel)]="slippageRate" min="0" step="any" [disabled]="submitting" />
+        <div class="field-hint">Flat price offset applied to each fill.</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Daily Profit Goal ($)</div>
+        <input class="ctrl" type="number" [(ngModel)]="dailyProfitTarget" min="0" step="any" [disabled]="submitting" placeholder="e.g. 200" />
         <div class="field-hint">Cash if ≥ 1, else a fraction of the day's starting balance.</div>
       </div>
 
@@ -95,15 +102,9 @@
       </div>
 
       <div class="field">
-        <div class="field-label">Fee ($ per trade)</div>
-        <input class="ctrl" type="number" [(ngModel)]="feeRate" min="0" step="any" [disabled]="submitting" />
-        <div class="field-hint">Flat cash fee charged once per round-trip.</div>
-      </div>
-
-      <div class="field">
-        <div class="field-label">Slippage ($ per fill)</div>
-        <input class="ctrl" type="number" [(ngModel)]="slippageRate" min="0" step="any" [disabled]="submitting" />
-        <div class="field-hint">Flat price offset applied to each fill.</div>
+        <div class="field-label">Max Candles Per Trade</div>
+        <input class="ctrl" type="number" [(ngModel)]="maxCandlesPerTrade" min="1" step="1" [disabled]="submitting" placeholder="e.g. 10" />
+        <div class="field-hint">Force-close the trade after this many candles.</div>
       </div>
 
       <div class="field">

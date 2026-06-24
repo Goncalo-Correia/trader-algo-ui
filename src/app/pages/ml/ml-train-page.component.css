@@ -12,7 +12,6 @@
   flex-direction: column;
   gap: 20px;
   color: #d1d4dc;
-  max-width: 920px;
 }
 
 .page-header {
@@ -48,7 +47,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
 }
 
@@ -72,6 +71,7 @@
   color: #d1d4dc;
   font-size: 13px;
   padding: 0 10px;
+  color-scheme: dark;
 }
 .ctrl:focus { outline: none; border-color: #2962ff; }
 .ctrl:disabled { opacity: 0.5; }

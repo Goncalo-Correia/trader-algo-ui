@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { LiveChartDataService } from '../../services/live-chart-data.service';
@@ -13,6 +13,7 @@ import { Trade } from '../../structures/trade';
   selector: 'app-backtest-page',
   templateUrl: './backtest-page.component.html',
   styleUrls: ['./backtest-page.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BacktestPageComponent implements OnInit, OnDestroy {
   symbols: SymbolResponse[] = [];
@@ -51,11 +52,11 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   errorMessage: string | null = null;
 
   private streamSub: Subscription | null = null;
-  private isLoadingTrades = false;
 
   constructor(
     private readonly api: TraderAlgoApiService,
     private readonly liveChart: LiveChartDataService,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -70,14 +71,17 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       const def = s.find(x => x.isDefault) ?? s[0];
       this.selectedSymbol = def?.code ?? '';
       this.isNySessionOnly = isAlpacaSymbol(def);
+      this.cdr.markForCheck();
     });
     this.api.getIntervals().subscribe(i => {
       this.intervals = i;
       this.selectedInterval = i.find(x => x.isDefault)?.code ?? i[0]?.code ?? '';
+      this.cdr.markForCheck();
     });
     this.api.getStrategies().subscribe(s => {
       this.strategies = s;
       this.selectedStrategy = s[0]?.id ?? null;
+      this.cdr.markForCheck();
     });
   }
 
@@ -105,7 +109,6 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this.backtestCandles = [];
     this.backtestTrades = [];
     this.activePlaybackTime = null;
-    this.isLoadingTrades = false;
     this.cancelStream();
 
     const payload: CreateBacktestRequest = {
@@ -131,10 +134,12 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       next: result => {
         this.backtestResult = result;
         this.openStream(result.id, this.delay);
+        this.cdr.markForCheck();
       },
       error: (err) => {
         this.running = false;
         this.errorMessage = this.extractError(err, 'Failed to create backtest.');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -185,25 +190,56 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   private openStream(backtestId: number, delay: boolean): void {
     this.streamSub = this.liveChart.streamBacktest(backtestId, delay).subscribe({
       next: event => {
-        if (event.type === 'candle') {
-          this.backtestCandles = [...this.backtestCandles, event.data];
-          this.activePlaybackTime = event.data.time;
-          this.refreshBacktestTrades(backtestId);
-        } else if (event.type === 'tradeBracketUpdate') {
-          this.applyBracketUpdate(event.data.tradeId, event.data.stopLoss, event.data.takeProfit);
+        switch (event.type) {
+          case 'candle':
+            this.appendCandles([event.data]);
+            break;
+          case 'candleBatch':
+            this.appendCandles(event.data);
+            break;
+          case 'tradeOpened':
+          case 'tradeClosed':
+            this.upsertTrade(event.data);
+            break;
+          case 'tradeBracketUpdate':
+            this.applyBracketUpdate(event.data.tradeId, event.data.stopLoss, event.data.takeProfit);
+            break;
         }
+        // One change-detection pass per frame (a candle batch covers up to 250 candles),
+        // rather than one per candle.
+        this.cdr.markForCheck();
       },
       error: () => {
         this.running = false;
         this.streamDone = true;
         this.refreshSummary(backtestId);
+        this.cdr.markForCheck();
       },
       complete: () => {
         this.running = false;
         this.streamDone = true;
         this.refreshSummary(backtestId);
+        this.cdr.markForCheck();
       },
     });
+  }
+
+  private appendCandles(candles: CandleWithIndicatorsResponse[]): void {
+    if (candles.length === 0) return;
+    this.backtestCandles = this.backtestCandles.concat(candles);
+    this.activePlaybackTime = candles[candles.length - 1].time;
+  }
+
+  /** Inserts a newly-opened trade or replaces an existing one by id (close/update). */
+  private upsertTrade(trade: Trade): void {
+    const index = this.backtestTrades.findIndex(t => t.id === trade.id);
+    this.backtestTrades = index === -1
+      ? [...this.backtestTrades, trade]
+      : [
+          ...this.backtestTrades.slice(0, index),
+          trade,
+          ...this.backtestTrades.slice(index + 1),
+        ];
   }
 
   private applyBracketUpdate(tradeId: number, stopLoss: number | null, takeProfit: number | null): void {
@@ -219,18 +255,12 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   private refreshSummary(backtestId: number): void {
     this.api.getBacktest(backtestId).subscribe({
-      next: detail => { this.backtestResult = detail; },
+      next: detail => { this.backtestResult = detail; this.cdr.markForCheck(); },
     });
-    this.refreshBacktestTrades(backtestId);
-  }
-
-  private refreshBacktestTrades(backtestId: number): void {
-    if (this.isLoadingTrades) return;
-    this.isLoadingTrades = true;
+    // Reconcile once against the persisted set in case the socket dropped mid-run.
     this.api.getBacktestTrades(backtestId).subscribe({
-      next: trades => { this.backtestTrades = trades; },
+      next: trades => { this.backtestTrades = trades; this.cdr.markForCheck(); },
       error: err => console.error('Failed to load backtest trades.', err),
-      complete: () => { this.isLoadingTrades = false; },
     });
   }
 

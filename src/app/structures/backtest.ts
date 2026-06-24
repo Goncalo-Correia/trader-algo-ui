@@ -68,6 +68,9 @@ export interface TradeBracketUpdate {
 
 export type BacktestStreamEvent =
   | { type: 'candle'; data: CandleWithIndicatorsResponse }
+  | { type: 'candleBatch'; data: CandleWithIndicatorsResponse[] }
+  | { type: 'tradeOpened'; data: Trade }
+  | { type: 'tradeClosed'; data: Trade }
   | { type: 'tradeBracketUpdate'; data: TradeBracketUpdate };
 
 export interface EquityPoint {

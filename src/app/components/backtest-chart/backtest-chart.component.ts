@@ -39,7 +39,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
   @Input() set candles(data: CandleWithIndicatorsResponse[]) {
     this._candles = data;
-    if (this.chart) this.ngZone.runOutsideAngular(() => this.applyAllSeries(data));
+    if (this.chart) this.ngZone.runOutsideAngular(() => this.renderCandles(data));
   }
 
   @Input() set isNySessionOnly(value: boolean) {
@@ -91,6 +91,13 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private slPriceLine?: IPriceLine;
   private tpPriceLine?: IPriceLine;
   private hasAppliedInitialViewport = false;
+
+  // Incremental-render bookkeeping: how many candles are already on the chart, the time of
+  // the first one (to detect a brand-new run vs. an append), and the previous MACD-histogram
+  // value (needed for the per-bar growing/fading colour when appending one bar at a time).
+  private renderedCount = 0;
+  private firstRenderedTime: UTCTimestamp | null = null;
+  private lastMacdHistValue: number | null = null;
 
   constructor(private readonly ngZone: NgZone) {}
 
@@ -293,6 +300,59 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this.candleSeries.attachPrimitive(this.sessionMarkersPlugin);
   }
 
+  /**
+   * Chooses between a cheap incremental append and a full redraw. During a stream the input
+   * array keeps growing with the same prefix, so we only push the newly-arrived tail bars via
+   * `series.update()` (O(1) each) instead of re-`setData`-ing every series with the full array
+   * on every frame. Anything else (first load, a new run, a shorter/replaced array) redraws.
+   */
+  private renderCandles(data: CandleWithIndicatorsResponse[]): void {
+    const isAppend =
+      this.renderedCount > 0 &&
+      this.firstRenderedTime !== null &&
+      data.length > this.renderedCount &&
+      this.toTime(data[0].time) === this.firstRenderedTime;
+
+    if (isAppend) {
+      this.appendCandles(data.slice(this.renderedCount));
+    } else {
+      this.applyAllSeries(data);
+    }
+  }
+
+  private appendCandles(newCandles: CandleWithIndicatorsResponse[]): void {
+    for (const c of newCandles) {
+      const time = this.toTime(c.time);
+      this.candleSeries?.update({ time, open: c.open, high: c.high, low: c.low, close: c.close });
+      this.volumeSeries?.update(this.toVolumeBar(c));
+      this.deltaSeries?.update(this.toDeltaBar(c));
+      if (c.sma_20 !== null)  this.sma20Series?.update({ time, value: c.sma_20 });
+      if (c.sma_100 !== null) this.sma100Series?.update({ time, value: c.sma_100 });
+      if (c.rsi !== null)        this.rsiSeries?.update({ time, value: c.rsi });
+      if (c.rsi_smooth !== null) this.rsiMaSeries?.update({ time, value: c.rsi_smooth });
+      if (c.macd_line !== null)        this.macdLineSeries?.update({ time, value: c.macd_line });
+      if (c.macd_signal_line !== null) this.macdSignalSeries?.update({ time, value: c.macd_signal_line });
+      if (c.macd_histogram !== null) {
+        this.macdHistSeries?.update(this.toMacdHistogramBar(c.macd_histogram, time));
+      }
+    }
+
+    this.renderedCount = this._candles.length;
+    this.extendReferenceLines();
+    this.applySessionMarkers();
+  }
+
+  // Extends the horizontal RSI/MACD guide lines to the latest candle so they span the
+  // freshly-appended bars (their value is constant, so collinear points are harmless).
+  private extendReferenceLines(): void {
+    const last = this._candles.at(-1);
+    if (!last) return;
+    const time = this.toTime(last.time);
+    this.rsiOverbought?.update({ time, value: 70 });
+    this.rsiOversold?.update({ time, value: 30 });
+    this.macdZeroSeries?.update({ time, value: 0 });
+  }
+
   private applyAllSeries(candles: CandleWithIndicatorsResponse[]): void {
     const shouldFitInitialContent = candles.length > 0 && !this.hasAppliedInitialViewport;
 
@@ -352,6 +412,10 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       this.chart?.timeScale().setVisibleLogicalRange({ from: 0, to: 99 });
       this.hasAppliedInitialViewport = true;
     }
+
+    // Snapshot state so subsequent input pushes can be appended incrementally.
+    this.renderedCount = candles.length;
+    this.firstRenderedTime = candles.length ? this.toTime(candles[0].time) : null;
   }
 
   private applyPlayback(unixSeconds: number | null): void {
@@ -379,17 +443,24 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   }
 
   private toMacdHistogram(candles: CandleWithIndicatorsResponse[]): HistogramData<Time>[] {
+    this.lastMacdHistValue = null;
     const result: HistogramData<Time>[] = [];
     for (const c of candles) {
       if (c.macd_histogram === null) continue;
-      const h     = c.macd_histogram;
-      const prev  = result.at(-1)?.value ?? null;
-      const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
-      const color = h >= 0
-        ? (growing ? '#26a69a' : '#26a69a55')
-        : (growing ? '#ef5350' : '#ef535055');
-      result.push({ time: this.toTime(c.time), value: h, color });
+      result.push(this.toMacdHistogramBar(c.macd_histogram, this.toTime(c.time)));
     }
     return result;
+  }
+
+  // Colours a single MACD-histogram bar relative to the previous one. Tracks the last value on
+  // the component so incremental appends stay consistent with the full-redraw colouring.
+  private toMacdHistogramBar(h: number, time: UTCTimestamp): HistogramData<Time> {
+    const prev = this.lastMacdHistValue;
+    const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
+    const color = h >= 0
+      ? (growing ? '#26a69a' : '#26a69a55')
+      : (growing ? '#ef5350' : '#ef535055');
+    this.lastMacdHistValue = h;
+    return { time, value: h, color };
   }
 }

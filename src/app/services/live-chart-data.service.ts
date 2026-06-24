@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
 import { BacktestStreamEvent, TradeBracketUpdate } from '../structures/backtest';
+import { Trade } from '../structures/trade';
 import { MlStreamDecision, MlTrainingStreamEvent } from '../structures/ml-training';
 import { environment } from '../../environments/environment';
 import { connectWebSocket } from '../core/websocket';
@@ -65,6 +66,16 @@ function parseBacktestEvent(raw: unknown): BacktestStreamEvent[] {
   if (envelope.type === 'candle' && hasCandleShape(envelope.data)) {
     return [{ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse }];
   }
+  if (envelope.type === 'candleBatch' && Array.isArray(envelope.data)) {
+    const candles = envelope.data.filter(hasCandleShape) as CandleWithIndicatorsResponse[];
+    return candles.length ? [{ type: 'candleBatch', data: candles }] : [];
+  }
+  if (envelope.type === 'tradeOpened' && isTrade(envelope.data)) {
+    return [{ type: 'tradeOpened', data: envelope.data }];
+  }
+  if (envelope.type === 'tradeClosed' && isTrade(envelope.data)) {
+    return [{ type: 'tradeClosed', data: envelope.data }];
+  }
   if (envelope.type === 'tradeBracketUpdate' && isTradeBracketUpdate(envelope.data)) {
     return [{ type: 'tradeBracketUpdate', data: envelope.data }];
   }
@@ -75,6 +86,12 @@ function isTradeBracketUpdate(value: unknown): value is TradeBracketUpdate {
   if (typeof value !== 'object' || value === null) return false;
   const u = value as Record<string, unknown>;
   return typeof u['tradeId'] === 'number';
+}
+
+function isTrade(value: unknown): value is Trade {
+  if (typeof value !== 'object' || value === null) return false;
+  const t = value as Record<string, unknown>;
+  return typeof t['id'] === 'number' && (t['side'] === 'Buy' || t['side'] === 'Sell');
 }
 
 function parseTrainingEvent(raw: unknown): MlTrainingStreamEvent[] {

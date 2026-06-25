@@ -117,6 +117,18 @@ export class MlPolicyDetailComponent implements OnInit {
     return pnl >= 0 ? 'positive' : 'negative';
   }
 
+  runFinalBalance(run: MlTrainingRun): number | null {
+    return run.tracking?.finalBalance ?? run.finalBalance;
+  }
+
+  runPnlPct(run: MlTrainingRun): number | null {
+    return run.tracking?.pnlPct ?? run.pnlPct;
+  }
+
+  runTrades(run: MlTrainingRun): number | null {
+    return run.tracking?.nTrades ?? run.nTrades;
+  }
+
   formatDate(unixSeconds: number): string {
     return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
       year: 'numeric', month: 'short', day: '2-digit',

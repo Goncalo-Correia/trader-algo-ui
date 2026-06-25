@@ -13,6 +13,7 @@ import { StrategyResponse } from '../structures/strategy';
 import {
   CreateTrainingRequest,
   MlDecisionLog,
+  MlflowTrackingResponse,
   MlTrainingRun,
   MlTrainStartedResponse,
 } from '../structures/ml-training';
@@ -241,6 +242,10 @@ export class TraderAlgoApiService {
 
   getTrainingDecisions(id: number): Observable<MlDecisionLog> {
     return this.http.get<MlDecisionLog>(`${this.baseUrl}/api/ml/training-runs/${id}/decisions`);
+  }
+
+  getTrainingTracking(id: number): Observable<MlflowTrackingResponse> {
+    return this.http.get<MlflowTrackingResponse>(`${this.baseUrl}/api/ml/training-runs/${id}/tracking`);
   }
 
   createTraining(payload: CreateTrainingRequest): Observable<MlTrainStartedResponse> {

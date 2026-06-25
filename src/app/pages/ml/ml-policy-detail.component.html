@@ -93,14 +93,14 @@
             <td><span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span></td>
             <td class="td-dim">{{ formatDate(run.from) }}</td>
             <td class="td-dim">{{ formatDate(run.to) }}</td>
-            <td class="td-dim">{{ run.nTrades ?? '—' }}</td>
+            <td class="td-dim">{{ runTrades(run) ?? '—' }}</td>
             <td>
-              <span [class]="pnlClass(run.pnlPct)" *ngIf="run.pnlPct !== null">
-                {{ run.pnlPct >= 0 ? '+' : '' }}{{ run.pnlPct | number:'1.2-2' }}%
+              <span [class]="pnlClass(runPnlPct(run))" *ngIf="runPnlPct(run) !== null">
+                {{ runPnlPct(run)! >= 0 ? '+' : '' }}{{ runPnlPct(run) | number:'1.2-2' }}%
               </span>
-              <span class="td-dim" *ngIf="run.pnlPct === null">—</span>
+              <span class="td-dim" *ngIf="runPnlPct(run) === null">—</span>
             </td>
-            <td class="td-dim">{{ run.finalBalance !== null ? ('$' + (run.finalBalance | number:'1.2-2')) : '—' }}</td>
+            <td class="td-dim">{{ runFinalBalance(run) !== null ? ('$' + (runFinalBalance(run) | number:'1.2-2')) : '—' }}</td>
             <td class="td-dim">{{ formatTs(run.startedAt) }}</td>
             <td class="td-dim">{{ formatTs(run.completedAt) }}</td>
           </tr>

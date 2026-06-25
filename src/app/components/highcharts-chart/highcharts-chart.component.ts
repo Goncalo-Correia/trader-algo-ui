@@ -4,8 +4,10 @@ import {
   ElementRef,
   EventEmitter,
   Input,
+  OnChanges,
   OnDestroy,
   Output,
+  SimpleChanges,
   ViewChild,
 } from '@angular/core';
 // Type-only import (erased at build time). The library itself is loaded
@@ -21,7 +23,7 @@ import type * as Highcharts from 'highcharts/highstock';
     '.hc-container { width: 100%; height: 100%; }',
   ],
 })
-export class HighchartsChartComponent implements AfterViewInit, OnDestroy {
+export class HighchartsChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('chartEl', { static: true }) chartEl!: ElementRef<HTMLDivElement>;
 
   @Input() options: Highcharts.Options = {};
@@ -30,6 +32,12 @@ export class HighchartsChartComponent implements AfterViewInit, OnDestroy {
   @Output() chartCreated = new EventEmitter<Highcharts.Chart>();
 
   private chart?: Highcharts.Chart;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (this.chart && changes['options']) {
+      this.chart.update(this.options, true, true);
+    }
+  }
 
   async ngAfterViewInit(): Promise<void> {
     const mod = await import('highcharts/highstock');

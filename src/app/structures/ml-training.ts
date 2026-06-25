@@ -18,6 +18,54 @@ export interface MlTrainingRun {
   pnlPct: number | null;
   nTrades: number | null;
   runId: string | null;
+  tracking?: MlflowTrackingSummary | null;
+}
+
+export interface MlflowMetricPoint {
+  step: number;
+  value: number | null;
+  timestamp: string;
+}
+
+export interface MlflowRewardMetric {
+  key: string;
+  label: string;
+  whatItChecks: string;
+  latestValue: number | null;
+  history: MlflowMetricPoint[];
+}
+
+export type MlflowRewardMetricGroup = Record<string, MlflowRewardMetric>;
+export type MlflowRewardMetrics = Record<string, MlflowRewardMetricGroup>;
+
+export interface MlflowTrackingSummary {
+  trackingAvailable: boolean;
+  mlflowRunUuid: string | null;
+  runName: string | null;
+  status: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  finalBalance: number | null;
+  pnlPct: number | null;
+  nTrades: number | null;
+  params: Record<string, string>;
+  message?: string | null;
+}
+
+export interface MlflowTrackingResponse {
+  trainingRunId: number;
+  trackingAvailable: boolean;
+  mlflowRunUuid: string | null;
+  runName: string | null;
+  status: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  artifactUri: string | null;
+  params: Record<string, string>;
+  rewardMetrics?: MlflowRewardMetrics | null;
+  latestMetrics: Record<string, number | null>;
+  metricHistory: Record<string, MlflowMetricPoint[]>;
+  message?: string | null;
 }
 
 /**

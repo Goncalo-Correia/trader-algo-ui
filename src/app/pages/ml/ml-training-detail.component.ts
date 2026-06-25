@@ -4,7 +4,14 @@ import { Subscription, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
-import { MlDecisionLog, MlTrainingRun } from '../../structures/ml-training';
+import {
+  MlDecisionLog,
+  MlflowMetricPoint,
+  MlflowRewardMetric,
+  MlflowTrackingResponse,
+  MlflowTrackingSummary,
+  MlTrainingRun,
+} from '../../structures/ml-training';
 import { Trade } from '../../structures/trade';
 
 function darkThemeBase(): Highcharts.Options {
@@ -27,6 +34,23 @@ function darkThemeBase(): Highcharts.Options {
   };
 }
 
+interface PerformanceMetricView {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  latestValue: number | null;
+  history: MlflowMetricPoint[];
+}
+
+interface PerformanceMetricSection {
+  key: string;
+  title: string;
+  metrics: PerformanceMetricView[];
+  hasChart: boolean;
+  chartOptions: Highcharts.Options;
+}
+
 @Component({
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
@@ -39,13 +63,17 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   deleting = false;
   decisionsError: string | null = null;
   candlesError: string | null = null;
+  trackingError: string | null = null;
   candlesReady = false;
+  tracking: MlflowTrackingResponse | null = null;
 
   // Price chart (lightweight-charts) inputs.
   candles: CandleWithIndicatorsResponse[] = [];
   chartTrades: Trade[] = [];
 
   balanceChartOptions: Highcharts.Options = {};
+  metricHistoryChartOptions: Highcharts.Options = {};
+  rewardMetricSections: PerformanceMetricSection[] = [];
 
   readonly trackByIndex = (i: number): number => i;
 
@@ -68,9 +96,13 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
           this.isLoading = false;
           if (run.status === 'Completed') {
             this.stopPolling();
+            this.loadTracking(run.id);
             this.loadVisualization(run);
           } else if (run.status === 'Failed') {
             this.stopPolling();
+            this.loadTracking(run.id);
+          } else {
+            this.loadTracking(run.id, false);
           }
         },
         error: () => { this.isLoading = false; this.stopPolling(); },
@@ -87,7 +119,55 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   get pnlPositive(): boolean {
-    return (this.run?.pnlPct ?? 0) >= 0;
+    return (this.performancePnlPct ?? 0) >= 0;
+  }
+
+  get trackingSummary(): MlflowTrackingResponse | MlflowTrackingSummary | null {
+    return this.tracking ?? this.run?.tracking ?? null;
+  }
+
+  get trackingAvailable(): boolean {
+    return this.trackingSummary?.trackingAvailable ?? false;
+  }
+
+  get performanceFinalBalance(): number | null {
+    return this.tracking?.latestMetrics['final_balance'] ?? this.run?.tracking?.finalBalance ?? this.run?.finalBalance ?? null;
+  }
+
+  get performancePnlPct(): number | null {
+    return this.tracking?.latestMetrics['pnl_pct'] ?? this.run?.tracking?.pnlPct ?? this.run?.pnlPct ?? null;
+  }
+
+  get performanceTrades(): number | null {
+    return this.toIntegerMetric(this.tracking?.latestMetrics['n_trades']) ?? this.run?.tracking?.nTrades ?? this.run?.nTrades ?? null;
+  }
+
+  get trackingParams(): Record<string, string> {
+    return this.tracking?.params ?? this.trackingSummary?.params ?? {};
+  }
+
+  get mlflowRunUuid(): string | null {
+    return this.trackingSummary?.mlflowRunUuid ?? this.run?.runId ?? null;
+  }
+
+  get artifactUri(): string | null {
+    return this.tracking?.artifactUri ?? null;
+  }
+
+  get metricHistoryAvailable(): boolean {
+    return Object.values(this.tracking?.metricHistory ?? {}).some(points => points.length > 1);
+  }
+
+  get hasRewardMetrics(): boolean {
+    return this.rewardMetricSections.length > 0;
+  }
+
+  get continuedFromRun(): string | null {
+    return this.paramValue('continued_from_training_run_id', 'continuedFromTrainingRunId', 'continued_from_run_id');
+  }
+
+  get trackedTotalTimesteps(): string | number | null {
+    return this.paramValue('total_timesteps', 'totalTimesteps') ?? this.run?.totalTimesteps ?? null;
   }
 
   deleteRun(): void {
@@ -121,6 +201,28 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
+  formatIso(value: string | null | undefined): string {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
+      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  formatMetricValue(metric: PerformanceMetricView): string {
+    if (metric.latestValue === null || metric.latestValue === undefined) return '-';
+    const key = metric.key.toLowerCase();
+    const label = metric.label.toLowerCase();
+    const value = metric.latestValue;
+
+    if (key.includes('rate') || key.includes('pct') || label.includes('%') || label.includes('rate')) {
+      const pctValue = Math.abs(value) <= 1 ? value * 100 : value;
+      return `${pctValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+    }
+
+    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+
   private stopPolling(): void {
     this.pollSub?.unsubscribe();
     this.pollSub = null;
@@ -149,6 +251,20 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         this.buildBalanceChart(log);
       },
       error: () => { this.decisionsError = 'Decision log is not available for this run.'; },
+    });
+  }
+
+  private loadTracking(runId: number, showError = true): void {
+    if (showError) this.trackingError = null;
+    this.api.getTrainingTracking(runId).subscribe({
+      next: tracking => {
+        this.tracking = tracking;
+        this.rewardMetricSections = this.buildRewardMetricSections(tracking);
+        this.buildMetricHistoryChart(tracking);
+      },
+      error: () => {
+        if (showError) this.trackingError = 'Tracking data is not available for this run.';
+      },
     });
   }
 
@@ -202,6 +318,126 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         marker: { enabled: false },
       } as Highcharts.SeriesAreaOptions],
     };
+  }
+
+  private buildMetricHistoryChart(tracking: MlflowTrackingResponse): void {
+    const preferred = ['pnl_pct', 'final_balance', 'n_trades'];
+    const metricHistory = tracking.metricHistory ?? {};
+    const keys = [
+      ...preferred.filter(key => (metricHistory[key]?.length ?? 0) > 1),
+      ...Object.keys(metricHistory)
+        .filter(key => !preferred.includes(key) && metricHistory[key].length > 1),
+    ];
+
+    this.metricHistoryChartOptions = {
+      ...darkThemeBase(),
+      xAxis: {
+        type: 'linear',
+        gridLineColor: '#1e2130',
+        lineColor: '#2a2d3a',
+        tickColor: '#2a2d3a',
+        labels: { style: { color: '#787b86', fontSize: '11px' } },
+        title: { text: 'Step', style: { color: '#787b86' } },
+      },
+      series: keys.map((key, index) => ({
+        type: 'line',
+        name: key,
+        data: metricHistory[key]
+          .filter(point => point.value !== null)
+          .map(point => [point.step, point.value as number]),
+        color: ['#2962ff', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350'][index % 5],
+        lineWidth: 2,
+        marker: { enabled: false },
+      } as Highcharts.SeriesLineOptions)),
+    };
+  }
+
+  private buildRewardMetricSections(tracking: MlflowTrackingResponse): PerformanceMetricSection[] {
+    const groups = tracking.rewardMetrics ?? {};
+    return Object.entries(groups)
+      .map(([groupKey, metrics]) => {
+        const metricViews = Object.entries(metrics ?? {})
+          .map(([metricKey, metric]) => this.toMetricView(groupKey, metricKey, metric))
+          .filter((metric): metric is PerformanceMetricView => metric !== null);
+
+        return {
+          key: groupKey,
+          title: this.toTitle(groupKey),
+          metrics: metricViews,
+          hasChart: metricViews.some(metric => metric.history.length > 1),
+          chartOptions: this.buildRewardMetricChart(metricViews),
+        };
+      })
+      .filter(section => section.metrics.length > 0);
+  }
+
+  private toMetricView(groupKey: string, metricKey: string, metric: MlflowRewardMetric | null | undefined): PerformanceMetricView | null {
+    if (!metric) return null;
+    const key = metric.key || metricKey;
+    return {
+      id: `${groupKey}-${metricKey}`,
+      key,
+      label: metric.label || this.toTitle(key),
+      description: metric.whatItChecks || '',
+      latestValue: metric.latestValue ?? null,
+      history: [...(metric.history ?? [])].sort((a, b) => a.step - b.step),
+    };
+  }
+
+  private buildRewardMetricChart(metrics: PerformanceMetricView[]): Highcharts.Options {
+    const chartableMetrics = metrics.filter(metric => metric.history.length > 1);
+    const palette = ['#2962ff', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350', '#00acc1', '#ff7043', '#66bb6a'];
+    const base = darkThemeBase();
+
+    return {
+      ...base,
+      legend: {
+        enabled: true,
+        itemStyle: { color: '#d1d4dc', fontSize: '11px' },
+        itemHoverStyle: { color: '#fff' },
+      },
+      xAxis: {
+        type: 'linear',
+        gridLineColor: '#1e2130',
+        lineColor: '#2a2d3a',
+        tickColor: '#2a2d3a',
+        labels: { style: { color: '#787b86', fontSize: '11px' } },
+        title: { text: 'Step', style: { color: '#787b86' } },
+      },
+      tooltip: {
+        ...base.tooltip,
+        shared: true,
+      },
+      series: chartableMetrics.map((metric, index) => ({
+        type: 'line',
+        name: metric.label,
+        data: metric.history
+          .filter(point => point.value !== null && Number.isFinite(point.value))
+          .map(point => [point.step, point.value as number]),
+        color: palette[index % palette.length],
+        lineWidth: 2,
+        marker: { enabled: false },
+      } as Highcharts.SeriesLineOptions)),
+    };
+  }
+
+  private paramValue(...keys: string[]): string | null {
+    for (const key of keys) {
+      const value = this.trackingParams[key];
+      if (value !== undefined && value !== '') return value;
+    }
+    return null;
+  }
+
+  private toIntegerMetric(value: number | null | undefined): number | null {
+    return value === null || value === undefined ? null : Math.round(value);
+  }
+
+  private toTitle(value: string): string {
+    return value
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
   }
 
 }

@@ -32,16 +32,60 @@
         <div class="stat-item"><span class="stat-label">Completed</span><span class="stat-value">{{ formatTs(run.completedAt) }}</span></div>
       </div>
       <div class="stats-row stats-row-financial">
-        <div class="stat-item"><span class="stat-label">Final Balance</span><span class="stat-value">{{ run.finalBalance !== null ? ('$' + (run.finalBalance | number:'1.2-2')) : '—' }}</span></div>
+        <div class="stat-item"><span class="stat-label">Final Balance</span><span class="stat-value">{{ performanceFinalBalance !== null ? ('$' + (performanceFinalBalance | number:'1.2-2')) : '—' }}</span></div>
         <div class="stat-item">
           <span class="stat-label">PnL %</span>
           <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
-            {{ run.pnlPct !== null ? ((pnlPositive ? '+' : '') + (run.pnlPct | number:'1.2-2') + '%') : '—' }}
+            {{ performancePnlPct !== null ? ((pnlPositive ? '+' : '') + (performancePnlPct | number:'1.2-2') + '%') : '—' }}
           </span>
         </div>
-        <div class="stat-item"><span class="stat-label">Trades</span><span class="stat-value">{{ run.nTrades ?? '—' }}</span></div>
-        <div class="stat-item" *ngIf="run.runId"><span class="stat-label">MLflow Run</span><span class="stat-value">{{ run.runId }}</span></div>
+        <div class="stat-item"><span class="stat-label">Trades</span><span class="stat-value">{{ performanceTrades ?? '—' }}</span></div>
+        <div class="stat-item" *ngIf="mlflowRunUuid"><span class="stat-label">MLflow Run</span><span class="stat-value stat-value-code">{{ mlflowRunUuid }}</span></div>
       </div>
+    </div>
+
+    <div class="tracking-section">
+      <div class="section-title">Training Performance</div>
+      <div class="error-state" *ngIf="trackingError">{{ trackingError }}</div>
+      <div class="empty-state" *ngIf="!trackingAvailable && !trackingError">
+        {{ trackingSummary?.message || 'Tracking data not available yet.' }}
+      </div>
+      <ng-container *ngIf="trackingAvailable && trackingSummary as trackingInfo">
+        <div class="performance-grid">
+          <div class="stat-item"><span class="stat-label">PnL %</span><span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">{{ performancePnlPct !== null ? ((pnlPositive ? '+' : '') + (performancePnlPct | number:'1.2-2') + '%') : '—' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Final Balance</span><span class="stat-value">{{ performanceFinalBalance !== null ? ('$' + (performanceFinalBalance | number:'1.2-2')) : '—' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Trades</span><span class="stat-value">{{ performanceTrades ?? '—' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Symbol</span><span class="stat-value">{{ trackingParams['symbol'] || run.symbolCode }}</span></div>
+          <div class="stat-item"><span class="stat-label">Interval</span><span class="stat-value">{{ trackingParams['interval'] || run.intervalCode }}</span></div>
+          <div class="stat-item"><span class="stat-label">Timesteps</span><span class="stat-value">{{ trackedTotalTimesteps ?? '—' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Continued From</span><span class="stat-value">{{ continuedFromRun ?? '—' }}</span></div>
+          <div class="stat-item"><span class="stat-label">MLflow Status</span><span class="stat-value">{{ trackingInfo.status ?? '—' }}</span></div>
+          <div class="stat-item"><span class="stat-label">MLflow Start</span><span class="stat-value">{{ formatIso(trackingInfo.startTime) }}</span></div>
+          <div class="stat-item"><span class="stat-label">MLflow End</span><span class="stat-value">{{ formatIso(trackingInfo.endTime) }}</span></div>
+          <div class="stat-item"><span class="stat-label">Run Name</span><span class="stat-value stat-value-code">{{ trackingInfo.runName ?? '—' }}</span></div>
+          <div class="stat-item" *ngIf="artifactUri"><span class="stat-label">Artifact URI</span><span class="stat-value stat-value-code">{{ artifactUri }}</span></div>
+        </div>
+        <div class="reward-metric-groups" *ngIf="rewardMetricSections.length > 0">
+          <section class="reward-metric-group" *ngFor="let section of rewardMetricSections; let sectionIndex = index; trackBy: trackByIndex">
+            <div class="metric-group-title">{{ section.title }}</div>
+            <div class="metric-list">
+              <div class="metric-row" *ngFor="let metric of section.metrics; let metricIndex = index; trackBy: trackByIndex">
+                <div class="metric-copy">
+                  <span class="metric-label">{{ metric.label }}</span>
+                  <span class="metric-description" *ngIf="metric.description">{{ metric.description }}</span>
+                </div>
+                <span class="metric-value">{{ formatMetricValue(metric) }}</span>
+              </div>
+            </div>
+            <div class="chart-wrap performance-chart-wrap" *ngIf="section.hasChart">
+              <app-highcharts-chart [options]="section.chartOptions"></app-highcharts-chart>
+            </div>
+          </section>
+        </div>
+        <div class="chart-wrap performance-chart-wrap" *ngIf="metricHistoryAvailable && !hasRewardMetrics">
+          <app-highcharts-chart [options]="metricHistoryChartOptions"></app-highcharts-chart>
+        </div>
+      </ng-container>
     </div>
 
     <div class="in-flight-banner" *ngIf="isInFlight">

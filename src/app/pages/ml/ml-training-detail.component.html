@@ -52,25 +52,26 @@
     <div class="error-state" *ngIf="run.status === 'Failed'">Training failed. No decision log was produced.</div>
 
     <ng-container *ngIf="run.status === 'Completed'">
-      <div class="error-state" *ngIf="decisionsError">{{ decisionsError }}</div>
-
-      <ng-container *ngIf="decisions">
-        <div class="chart-section">
-          <div class="section-title">Decision Process</div>
-          <div class="chart-wrap">
-            <app-highcharts-chart [options]="candleChartOptions"></app-highcharts-chart>
-          </div>
+      <div class="chart-section">
+        <div class="section-title">Price Chart</div>
+        <div class="error-state" *ngIf="candlesError">{{ candlesError }}</div>
+        <div class="chart-wrap chart-wrap-price" *ngIf="candlesReady">
+          <app-backtest-chart [candles]="candles" [trades]="chartTrades"></app-backtest-chart>
         </div>
+        <div class="loading-state" *ngIf="!candlesReady && !candlesError">Loading candles…</div>
+      </div>
 
-        <div class="chart-section" *ngIf="decisions.decisions.length">
-          <div class="section-title">Balance Progression</div>
-          <div class="chart-wrap">
-            <app-highcharts-chart [options]="balanceChartOptions"></app-highcharts-chart>
-          </div>
+      <div class="chart-section" *ngIf="decisions && decisions.decisions.length">
+        <div class="section-title">Balance Progression</div>
+        <div class="chart-wrap">
+          <app-highcharts-chart [options]="balanceChartOptions"></app-highcharts-chart>
         </div>
+      </div>
 
-        <div class="trades-section">
-          <div class="section-title">Trades</div>
+      <div class="trades-section">
+        <div class="section-title">Trades</div>
+        <div class="error-state" *ngIf="decisionsError">{{ decisionsError }}</div>
+        <ng-container *ngIf="decisions">
           <div class="empty-state" *ngIf="decisions.trades.length === 0">No trades taken.</div>
           <table class="trades-table" *ngIf="decisions.trades.length > 0">
             <thead>
@@ -91,8 +92,8 @@
               </tr>
             </tbody>
           </table>
-        </div>
-      </ng-container>
+        </ng-container>
+      </div>
     </ng-container>
 
   </ng-container>

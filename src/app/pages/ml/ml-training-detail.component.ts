@@ -4,7 +4,8 @@ import { Subscription, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
-import { MlDecisionLog, MlTrainingRun, MlTrainingTrade } from '../../structures/ml-training';
+import { MlDecisionLog, MlTrainingRun } from '../../structures/ml-training';
+import { Trade } from '../../structures/trade';
 
 function darkThemeBase(): Highcharts.Options {
   return {
@@ -37,9 +38,14 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   isLoading = true;
   deleting = false;
   decisionsError: string | null = null;
+  candlesError: string | null = null;
+  candlesReady = false;
+
+  // Price chart (lightweight-charts) inputs.
+  candles: CandleWithIndicatorsResponse[] = [];
+  chartTrades: Trade[] = [];
 
   balanceChartOptions: Highcharts.Options = {};
-  candleChartOptions: Highcharts.Options = {};
 
   readonly trackByIndex = (i: number): number => i;
 
@@ -127,18 +133,58 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       from: new Date(run.from * 1000).toISOString(),
       to: new Date(run.to * 1000).toISOString(),
     };
-    this.api.getBacktestCandlesWithIndicators(range).subscribe({
-      next: candles => {
-        this.api.getTrainingDecisions(run.id).subscribe({
-          next: log => { this.decisions = log; this.buildCharts(candles, log); },
-          error: () => { this.decisionsError = 'Decision log is not available for this run.'; },
-        });
+    // The price chart renders from the candles alone; the decision log only
+    // adds trade markers and the trades table, so the two load independently.
+    // The lightweight-charts component reacts to its [candles]/[trades] inputs,
+    // so order doesn't matter.
+    this.api.getCandlesWithIndicatorsByDateInterval(range).subscribe({
+      next: candles => { this.candles = candles; this.candlesReady = true; },
+      error: () => { this.candlesError = 'Could not load candles for this run.'; },
+    });
+
+    this.api.getTrainingDecisions(run.id).subscribe({
+      next: log => {
+        this.decisions = log;
+        this.chartTrades = this.toChartTrades(log);
+        this.buildBalanceChart(log);
       },
-      error: () => { this.decisionsError = 'Could not load candles for this run.'; },
+      error: () => { this.decisionsError = 'Decision log is not available for this run.'; },
     });
   }
 
-  private buildCharts(candles: CandleWithIndicatorsResponse[], log: MlDecisionLog): void {
+  /**
+   * Maps the decision log's trades onto the `Trade` shape the shared
+   * lightweight-charts component renders as entry/exit markers. ML trades are
+   * always historical, so status is `Closed` (no live bracket lines are drawn).
+   */
+  private toChartTrades(log: MlDecisionLog): Trade[] {
+    return log.trades.map((t, i) => ({
+      id: i + 1,
+      symbolCode: log.symbol,
+      intervalCode: log.interval,
+      side: t.side === 'long' ? 'Buy' : 'Sell',
+      orderType: 'Market',
+      quantity: 1,
+      requestedPrice: null,
+      entryPrice: Number(t.entry_price),
+      stopLoss: null,
+      takeProfit: null,
+      status: 'Closed',
+      createdAt: t.entry_time ?? 0,
+      openedAt: t.entry_time,
+      closedAt: t.exit_time,
+      closedPrice: Number(t.exit_price),
+      closeReason: null,
+      fee: null,
+      pnl: Number(t.pnl),
+      accountPnl: null,
+      unrealizedPnl: null,
+      tradingAccountId: null,
+      backtestId: null,
+    }));
+  }
+
+  private buildBalanceChart(log: MlDecisionLog): void {
     this.balanceChartOptions = {
       ...darkThemeBase(),
       series: [{
@@ -156,58 +202,6 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         marker: { enabled: false },
       } as Highcharts.SeriesAreaOptions],
     };
-
-    const candleData: [number, number, number, number, number][] =
-      candles.map(c => [c.time * 1000, c.open, c.high, c.low, c.close]);
-
-    const longs = log.trades
-      .filter(t => t.side === 'long' && t.entry_time !== null)
-      .map(t => ({ x: this.msTime(t.entry_time!), y: Number(t.entry_price), name: 'Enter Long' }));
-    const shorts = log.trades
-      .filter(t => t.side === 'short' && t.entry_time !== null)
-      .map(t => ({ x: this.msTime(t.entry_time!), y: Number(t.entry_price), name: 'Enter Short' }));
-    const exits = log.trades
-      .filter(t => t.exit_time !== null)
-      .map(t => ({ x: this.msTime(t.exit_time!), y: Number(t.exit_price), name: this.exitLabel(t) }));
-
-    this.candleChartOptions = {
-      ...darkThemeBase(),
-      navigator: { enabled: false },
-      scrollbar: { enabled: false },
-      rangeSelector: { enabled: false },
-      legend: { enabled: true, itemStyle: { color: '#787b86', fontSize: '11px' } },
-      series: [
-        {
-          type: 'candlestick', name: 'Price', data: candleData,
-          upColor: '#26a69a', upLineColor: '#26a69a', color: '#ef5350', lineColor: '#ef5350',
-          dataGrouping: { enabled: false }, showInLegend: false,
-        } as Highcharts.SeriesCandlestickOptions,
-        {
-          type: 'scatter', name: 'Enter Long', data: longs, color: '#26a69a',
-          marker: { symbol: 'triangle', radius: 6 },
-          tooltip: { pointFormat: '{point.name}: {point.y:.4f}' },
-        } as Highcharts.SeriesScatterOptions,
-        {
-          type: 'scatter', name: 'Enter Short', data: shorts, color: '#ef5350',
-          marker: { symbol: 'triangle-down', radius: 6 },
-          tooltip: { pointFormat: '{point.name}: {point.y:.4f}' },
-        } as Highcharts.SeriesScatterOptions,
-        {
-          type: 'scatter', name: 'Exit', data: exits, color: '#f59e0b',
-          marker: { symbol: 'diamond', radius: 5 },
-          tooltip: { pointFormat: '{point.name}: {point.y:.4f}' },
-        } as Highcharts.SeriesScatterOptions,
-      ],
-    };
   }
 
-  private exitLabel(t: MlTrainingTrade): string {
-    const pnl = Number(t.pnl);
-    const sign = pnl >= 0 ? '+' : '';
-    return `Exit (${t.reason}) ${sign}${pnl.toFixed(2)}`;
-  }
-
-  private msTime(ts: number): number {
-    return ts > 9_999_999_999 ? ts : ts * 1000;
-  }
 }

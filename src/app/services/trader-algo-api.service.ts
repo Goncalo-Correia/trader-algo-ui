@@ -45,6 +45,15 @@ export class TraderAlgoApiService {
     return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/charts/candles/indicators`, { params });
   }
 
+  getCandlesWithIndicatorsByDateInterval(req: BacktestCandleRequest): Observable<CandleWithIndicatorsResponse[]> {
+    const params = new HttpParams()
+      .set('from', req.from)
+      .set('to', req.to)
+      .set('symbol', req.symbol)
+      .set('interval', req.interval);
+    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/charts/candles/indicators/date-interval`, { params });
+  }
+
   kronosMiniPrecise(symbol: string, interval: string): Observable<CandleResponse[]> {
     return this.kronosGet('mini/precise', symbol, interval);
   }

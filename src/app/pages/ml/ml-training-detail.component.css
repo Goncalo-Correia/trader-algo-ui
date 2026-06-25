@@ -93,6 +93,8 @@
 .chart-wrap {
   height: 360px; background: #141414; border: 1px solid #2a2d3a; border-radius: 8px; overflow: hidden;
 }
+/* The lightweight-charts price chart stacks candles + volume + RSI + MACD panes, so it needs more room. */
+.chart-wrap-price { height: 560px; }
 
 .trades-section { display: flex; flex-direction: column; gap: 8px; }
 .trades-table { width: 100%; border-collapse: collapse; font-size: 12px; background: #1a1a1a; border: 1px solid #2a2d3a; border-radius: 8px; overflow: hidden; }

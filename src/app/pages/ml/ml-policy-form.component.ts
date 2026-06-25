@@ -3,41 +3,41 @@ import { Router } from '@angular/router';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
-import { CreateTrainingRequest } from '../../structures/ml-training';
+import { CreatePolicyRequest, MlModel } from '../../structures/ml-policy';
 
 @Component({
-  selector: 'app-ml-train-page',
-  templateUrl: './ml-train-page.component.html',
-  styleUrls: ['./ml-train-page.component.css'],
+  selector: 'app-ml-policy-form',
+  templateUrl: './ml-policy-form.component.html',
+  styleUrls: ['./ml-policy-form.component.css'],
 })
-export class MlTrainPageComponent implements OnInit {
+export class MlPolicyFormComponent implements OnInit {
+  models: MlModel[] = [];
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
 
+  readonly trackByModelId = (_: number, model: MlModel): number => model.id;
   readonly trackBySymbolId = (_: number, symbol: SymbolResponse): number => symbol.id;
   readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
 
+  modelId: number | null = null;
   selectedSymbol = '';
   selectedInterval = '';
-  fromDate = '';
-  toDate = '';
 
-  modelId = 'ppo-v1';
   totalTimesteps = 100_000;
   // Defaults mirror the backtest trade panel.
   initialBalance = 1000;
-  quantity: number | null = 1;
+  quantity = 1;
   stopLoss: number | null = 100;
   takeProfit: number | null = 100;
   breakeven: number | null = null;
   breakevenStop: number | null = null;
   maxCandlesPerTrade: number | null = null;
-  dailyProfitTarget: number | null = null;
+  dailyProfit: number | null = null;
   dailyDrawdownLimit: number | null = null;
   // Absolute amounts (not fractions): fee/slippage in cash, drawdown threshold in cash.
-  feeRate: number | null = null;
-  slippageRate = 0;
-  maxTrailingDrawdownThreshold = 2500;
+  fee: number | null = null;
+  slippage: number | null = 0;
+  maxTrailingDrawdown: number | null = 2500;
 
   submitting = false;
   errorMessage: string | null = null;
@@ -48,12 +48,10 @@ export class MlTrainPageComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const today = new Date();
-    const monthAgo = new Date(today);
-    monthAgo.setMonth(today.getMonth() - 1);
-    this.toDate = this.toDatetimeLocal(today);
-    this.fromDate = this.toDatetimeLocal(monthAgo);
-
+    this.api.getMlModels().subscribe(m => {
+      this.models = m;
+      this.modelId = m[0]?.id ?? null;
+    });
     this.api.getSymbols().subscribe(s => {
       this.symbols = s;
       this.selectedSymbol = (s.find(x => x.isDefault) ?? s[0])?.code ?? '';
@@ -64,47 +62,40 @@ export class MlTrainPageComponent implements OnInit {
     });
   }
 
-  startTraining(): void {
+  createPolicy(): void {
     if (this.submitting) return;
-    if (!this.selectedSymbol || !this.selectedInterval || !this.fromDate || !this.toDate) return;
-    if (!this.modelId.trim()) { this.errorMessage = 'Model id is required.'; return; }
+    if (this.modelId === null) { this.errorMessage = 'Model is required.'; return; }
+    if (!this.selectedSymbol || !this.selectedInterval) return;
 
     this.submitting = true;
     this.errorMessage = null;
 
-    const payload: CreateTrainingRequest = {
+    const payload: CreatePolicyRequest = {
+      modelId: this.modelId,
       symbol: this.selectedSymbol,
       interval: this.selectedInterval,
-      from_date: new Date(this.fromDate).toISOString(),
-      to_date: new Date(this.toDate).toISOString(),
-      model_id: this.modelId.trim(),
-      total_timesteps: this.totalTimesteps,
-      initial_balance: this.initialBalance,
+      totalTimesteps: this.totalTimesteps,
+      initialBalance: this.initialBalance,
       quantity: this.quantity,
-      stop_loss: this.stopLoss,
-      take_profit: this.takeProfit,
+      takeProfit: this.takeProfit,
+      stopLoss: this.stopLoss,
       breakeven: this.breakeven,
-      breakeven_stop: this.breakevenStop,
-      max_candles_per_trade: this.maxCandlesPerTrade,
-      daily_profit_target: this.dailyProfitTarget,
-      daily_drawdown_limit: this.dailyDrawdownLimit,
-      fee_rate: this.feeRate,
-      slippage_rate: this.slippageRate,
-      max_trailing_drawdown_threshold: this.maxTrailingDrawdownThreshold,
+      breakevenStop: this.breakevenStop,
+      fee: this.fee,
+      slippage: this.slippage,
+      dailyProfit: this.dailyProfit,
+      dailyDrawdownLimit: this.dailyDrawdownLimit,
+      maxCandlesPerTrade: this.maxCandlesPerTrade,
+      maxTrailingDrawdown: this.maxTrailingDrawdown,
     };
 
-    this.api.createTraining(payload).subscribe({
-      next: res => this.router.navigate(['/ml', res.trainingRunId]),
+    this.api.createPolicy(payload).subscribe({
+      next: policy => this.router.navigate(['/ml/policies', policy.id]),
       error: err => {
         this.submitting = false;
-        this.errorMessage = this.extractError(err, 'Failed to start training run.');
+        this.errorMessage = this.extractError(err, 'Failed to create policy.');
       },
     });
-  }
-
-  private toDatetimeLocal(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   private extractError(err: unknown, fallback: string): string {

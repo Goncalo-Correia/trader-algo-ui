@@ -16,6 +16,7 @@ import {
   MlTrainingRun,
   MlTrainStartedResponse,
 } from '../structures/ml-training';
+import { CreatePolicyRequest, MlModel, MlPolicy } from '../structures/ml-policy';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -197,6 +198,31 @@ export class TraderAlgoApiService {
 
   deleteBacktest(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/api/backtests/${id}`);
+  }
+
+  // ── ML model registry & policies ─────────────────────────────────────────
+  getMlModels(): Observable<MlModel[]> {
+    return this.http.get<MlModel[]>(`${this.baseUrl}/api/ml/models`);
+  }
+
+  getPolicies(): Observable<MlPolicy[]> {
+    return this.http.get<MlPolicy[]>(`${this.baseUrl}/api/ml/policies`);
+  }
+
+  getPolicy(id: number): Observable<MlPolicy> {
+    return this.http.get<MlPolicy>(`${this.baseUrl}/api/ml/policies/${id}`);
+  }
+
+  createPolicy(payload: CreatePolicyRequest): Observable<MlPolicy> {
+    return this.http.post<MlPolicy>(`${this.baseUrl}/api/ml/policies`, payload);
+  }
+
+  updatePolicy(id: number, payload: CreatePolicyRequest): Observable<MlPolicy> {
+    return this.http.put<MlPolicy>(`${this.baseUrl}/api/ml/policies/${id}`, payload);
+  }
+
+  deletePolicy(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/ml/policies/${id}`);
   }
 
   // ── ML training runs ─────────────────────────────────────────────────────

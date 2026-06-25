@@ -36,7 +36,7 @@ that serves them (with automatic `wss://` over HTTPS).
 | `/backtests`, `/backtests/:id` | Backtest history and detail (equity curve, trades) |
 | `/tradebots`, `/tradebots/:id` | Trade-bot list and detail (config, history, live events) |
 | `/accounts`, `/accounts/:id` | Trading accounts and per-account PNL |
-| `/ml`, `/ml/new`, `/ml/:id` | ML training runs: list, start a run, and run detail (decision-process charts, trades). Risk params are absolute amounts (price offsets / cash), matching backtests. |
+| `/ml`, `/ml/policies/new`, `/ml/policies/:id`, `/ml/runs/:id` | ML policies: list policies, create a policy, policy detail (its training runs + start a new run), and run detail (decision-process charts, trades). Risk params are absolute amounts (price offsets / cash), matching backtests. |
 
 ## Project structure
 

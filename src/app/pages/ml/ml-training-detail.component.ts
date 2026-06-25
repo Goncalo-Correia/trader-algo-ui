@@ -86,9 +86,10 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
 
   deleteRun(): void {
     if (this.deleting || !this.run || !confirm('Delete this training run and its decision log?')) return;
+    const policyId = this.run.mlPolicyId;
     this.deleting = true;
     this.api.deleteTraining(this.runId).subscribe({
-      next: () => this.router.navigate(['/ml']),
+      next: () => this.router.navigate(['/ml/policies', policyId]),
       error: () => { this.deleting = false; },
     });
   }

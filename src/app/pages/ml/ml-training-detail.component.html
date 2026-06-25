@@ -1,6 +1,8 @@
 <div class="detail-page">
 
-  <a class="back-link" routerLink="/ml">ML Training</a>
+  <a class="back-link" [routerLink]="run ? ['/ml/policies', run.mlPolicyId] : ['/ml']">
+    ← {{ run ? 'Back to policy' : 'ML Policies' }}
+  </a>
 
   <div class="loading-state" *ngIf="isLoading">Loading training run…</div>
 
@@ -13,7 +15,7 @@
         <span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span>
       </div>
       <div class="header-actions">
-        <a class="btn-primary" routerLink="/ml/new">New Run</a>
+        <a class="btn-primary" [routerLink]="['/ml/policies', run.mlPolicyId]">Policy</a>
         <button class="btn-delete" [disabled]="deleting" (click)="deleteRun()">
           {{ deleting ? '…' : 'Delete' }}
         </button>

@@ -2,9 +2,10 @@ import { CandleWithIndicatorsResponse } from './candle';
 
 export type MlTrainingStatus = 'Pending' | 'Running' | 'Completed' | 'Failed';
 
-/** GET /api/ml/training-runs and /{id} — camelCase. */
+/** GET /api/ml/training-runs and /{id} — camelCase. Model/symbol/interval are resolved through the run's policy. */
 export interface MlTrainingRun {
   id: number;
+  mlPolicyId: number;
   modelId: string;
   symbolCode: string;
   intervalCode: string;
@@ -21,28 +22,14 @@ export interface MlTrainingRun {
 }
 
 /**
- * POST /api/ml/train body. NOTE: the backend DTO uses snake_case JSON names (it forwards
- * straight to the Python trainer), so these keys are snake_case on purpose.
+ * POST /api/ml/train body — starts a run for an existing policy.
+ * The hyperparameters now live on the policy; a run only picks the date range.
+ * `from`/`to` are date-only (yyyy-MM-dd); the server normalises from→00:00 and to→23:59.
  */
 export interface CreateTrainingRequest {
-  symbol: string;
-  interval: string;
-  from_date: string;
-  to_date: string;
-  model_id: string;
-  total_timesteps?: number | null;
-  initial_balance?: number | null;
-  quantity?: number | null;
-  stop_loss?: number | null;
-  take_profit?: number | null;
-  breakeven?: number | null;
-  breakeven_stop?: number | null;
-  max_candles_per_trade?: number | null;
-  daily_profit_target?: number | null;
-  daily_drawdown_limit?: number | null;
-  fee_rate?: number | null;
-  slippage_rate?: number | null;
-  max_trailing_drawdown_threshold?: number | null;
+  mlPolicyId: number;
+  from: string;
+  to: string;
 }
 
 /** POST /api/ml/train response — camelCase. */

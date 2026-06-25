@@ -101,9 +101,6 @@
 .td-dim  { color: #787b86; }
 .td-bold { font-weight: 600; }
 
-.positive { color: #26a69a; font-weight: 700; }
-.negative { color: #ef5350; font-weight: 700; }
-
 .model-tag {
   font-size: 11px;
   font-weight: 600;
@@ -114,16 +111,11 @@
   padding: 2px 7px;
 }
 
-.status-badge {
-  font-size: 10px;
+.run-count {
+  font-size: 11px;
   font-weight: 700;
-  border-radius: 4px;
-  padding: 2px 7px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: #d1d4dc;
+  background: #2a2d3a;
+  border-radius: 10px;
+  padding: 2px 9px;
 }
-
-.status-completed { color: #26a69a; background: #26a69a22; border: 1px solid #26a69a44; }
-.status-running   { color: #2962ff; background: #2962ff22; border: 1px solid #2962ff44; }
-.status-pending   { color: #f59e0b; background: #f59e0b22; border: 1px solid #f59e0b44; }
-.status-failed    { color: #ef5350; background: #ef535022; border: 1px solid #ef535044; }

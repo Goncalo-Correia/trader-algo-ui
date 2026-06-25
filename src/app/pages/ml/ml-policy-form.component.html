@@ -1,13 +1,21 @@
 <div class="train-page">
 
   <div class="page-header">
-    <h1 class="page-title">New Training Run</h1>
-    <a class="btn-link" routerLink="/ml">← Back to runs</a>
+    <h1 class="page-title">New Policy</h1>
+    <a class="btn-link" routerLink="/ml">← Back to policies</a>
   </div>
 
   <div class="form-card">
 
     <div class="form-grid">
+      <div class="field">
+        <div class="field-label">Model</div>
+        <select class="ctrl" [(ngModel)]="modelId" [disabled]="submitting">
+          <option *ngFor="let m of models; trackBy: trackByModelId" [ngValue]="m.id">{{ m.name }}</option>
+        </select>
+        <div class="field-hint">The base model architecture this policy trains.</div>
+      </div>
+
       <div class="field">
         <div class="field-label">Symbol</div>
         <select class="ctrl" [(ngModel)]="selectedSymbol" [disabled]="submitting">
@@ -20,22 +28,6 @@
         <select class="ctrl" [(ngModel)]="selectedInterval" [disabled]="submitting">
           <option *ngFor="let i of intervals; trackBy: trackByIntervalId" [value]="i.code">{{ i.displayName }}</option>
         </select>
-      </div>
-
-      <div class="field">
-        <div class="field-label">From</div>
-        <input class="ctrl" type="datetime-local" [(ngModel)]="fromDate" [disabled]="submitting" />
-      </div>
-
-      <div class="field">
-        <div class="field-label">To</div>
-        <input class="ctrl" type="datetime-local" [(ngModel)]="toDate" [disabled]="submitting" />
-      </div>
-
-      <div class="field">
-        <div class="field-label">Model Id</div>
-        <input class="ctrl" type="text" [(ngModel)]="modelId" [disabled]="submitting" placeholder="ppo-v1" />
-        <div class="field-hint">Reusing a model id updates the inference model; each run's history is kept separately.</div>
       </div>
 
       <div class="field">
@@ -79,19 +71,19 @@
 
       <div class="field">
         <div class="field-label">Fee ($)</div>
-        <input class="ctrl" type="number" [(ngModel)]="feeRate" min="0" step="any" [disabled]="submitting" />
+        <input class="ctrl" type="number" [(ngModel)]="fee" min="0" step="any" [disabled]="submitting" />
         <div class="field-hint">Flat cash fee charged once per round-trip.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Slippage ($ per fill)</div>
-        <input class="ctrl" type="number" [(ngModel)]="slippageRate" min="0" step="any" [disabled]="submitting" />
+        <input class="ctrl" type="number" [(ngModel)]="slippage" min="0" step="any" [disabled]="submitting" />
         <div class="field-hint">Flat price offset applied to each fill.</div>
       </div>
 
       <div class="field">
         <div class="field-label">Daily Profit Goal ($)</div>
-        <input class="ctrl" type="number" [(ngModel)]="dailyProfitTarget" min="0" step="any" [disabled]="submitting" placeholder="e.g. 200" />
+        <input class="ctrl" type="number" [(ngModel)]="dailyProfit" min="0" step="any" [disabled]="submitting" placeholder="e.g. 200" />
         <div class="field-hint">Cash if ≥ 1, else a fraction of the day's starting balance.</div>
       </div>
 
@@ -109,17 +101,17 @@
 
       <div class="field">
         <div class="field-label">Max Trailing Drawdown ($)</div>
-        <input class="ctrl" type="number" [(ngModel)]="maxTrailingDrawdownThreshold" min="0" step="any" [disabled]="submitting" />
+        <input class="ctrl" type="number" [(ngModel)]="maxTrailingDrawdown" min="0" step="any" [disabled]="submitting" />
         <div class="field-hint">Cash drawdown from peak balance before the run is penalized.</div>
       </div>
     </div>
 
     <div class="error-card" *ngIf="errorMessage">{{ errorMessage }}</div>
 
-    <button class="btn-run" [disabled]="submitting" (click)="startTraining()">
-      {{ submitting ? 'Starting…' : 'Start Training' }}
+    <button class="btn-run" [disabled]="submitting" (click)="createPolicy()">
+      {{ submitting ? 'Creating…' : 'Create Policy' }}
     </button>
-    <div class="field-hint">Training runs in the background; the run page will update as it progresses.</div>
+    <div class="field-hint">A policy holds the hyperparameters; you launch training runs against it from its detail page.</div>
 
   </div>
 

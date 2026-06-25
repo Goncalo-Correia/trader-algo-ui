@@ -22,8 +22,9 @@ import { BacktestsPageComponent } from './pages/backtests/backtests-page.compone
 import { BacktestDetailComponent } from './pages/backtest-detail/backtest-detail.component';
 import { TradeBotsPageComponent } from './pages/tradebots/tradebots-page.component';
 import { TradebotDetailComponent } from './pages/tradebot-detail/tradebot-detail.component';
-import { MlPageComponent } from './pages/ml/ml-page.component';
-import { MlTrainPageComponent } from './pages/ml/ml-train-page.component';
+import { MlPoliciesPageComponent } from './pages/ml/ml-policies-page.component';
+import { MlPolicyFormComponent } from './pages/ml/ml-policy-form.component';
+import { MlPolicyDetailComponent } from './pages/ml/ml-policy-detail.component';
 import { MlTrainingDetailComponent } from './pages/ml/ml-training-detail.component';
 
 @NgModule({
@@ -43,8 +44,9 @@ import { MlTrainingDetailComponent } from './pages/ml/ml-training-detail.compone
     BacktestDetailComponent,
     TradeBotsPageComponent,
     TradebotDetailComponent,
-    MlPageComponent,
-    MlTrainPageComponent,
+    MlPoliciesPageComponent,
+    MlPolicyFormComponent,
+    MlPolicyDetailComponent,
     MlTrainingDetailComponent,
   ],
   imports: [

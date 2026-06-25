@@ -16,7 +16,7 @@ import {
   MlTrainingRun,
   MlTrainStartedResponse,
 } from '../structures/ml-training';
-import { CreatePolicyRequest, MlModel, MlPolicy } from '../structures/ml-policy';
+import { CreatePolicyRequest, MlPolicy } from '../structures/ml-policy';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -200,11 +200,7 @@ export class TraderAlgoApiService {
     return this.http.delete<void>(`${this.baseUrl}/api/backtests/${id}`);
   }
 
-  // ── ML model registry & policies ─────────────────────────────────────────
-  getMlModels(): Observable<MlModel[]> {
-    return this.http.get<MlModel[]>(`${this.baseUrl}/api/ml/models`);
-  }
-
+  // ── ML policies ──────────────────────────────────────────────────────────
   getPolicies(): Observable<MlPolicy[]> {
     return this.http.get<MlPolicy[]>(`${this.baseUrl}/api/ml/policies`);
   }

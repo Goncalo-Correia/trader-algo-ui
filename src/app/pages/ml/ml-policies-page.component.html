@@ -16,7 +16,6 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Model</th>
           <th>Symbol</th>
           <th>Interval</th>
           <th>Timesteps</th>
@@ -29,7 +28,6 @@
       <tbody>
         <tr *ngFor="let p of policies; trackBy: trackById" [routerLink]="['/ml/policies', p.id]" class="clickable-row">
           <td class="td-id">{{ p.id }}</td>
-          <td><span class="model-tag">{{ p.modelName }}</span></td>
           <td class="td-bold">{{ p.symbolCode }}</td>
           <td class="td-dim">{{ p.intervalCode }}</td>
           <td class="td-dim">{{ p.totalTimesteps }}</td>

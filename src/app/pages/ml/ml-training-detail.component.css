@@ -57,11 +57,6 @@
 .btn-delete:hover { background: #ef535022; }
 .btn-delete:disabled { opacity: 0.5; cursor: default; }
 
-.model-tag {
-  font-size: 11px; font-weight: 600; color: #818cf8;
-  background: #818cf822; border: 1px solid #818cf844; border-radius: 4px; padding: 2px 7px;
-}
-
 .status-badge {
   font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 7px;
   text-transform: uppercase; letter-spacing: 0.04em;

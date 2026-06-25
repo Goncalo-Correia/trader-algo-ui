@@ -101,16 +101,6 @@
 .td-dim  { color: #787b86; }
 .td-bold { font-weight: 600; }
 
-.model-tag {
-  font-size: 11px;
-  font-weight: 600;
-  color: #818cf8;
-  background: #818cf822;
-  border: 1px solid #818cf844;
-  border-radius: 4px;
-  padding: 2px 7px;
-}
-
 .run-count {
   font-size: 11px;
   font-weight: 700;

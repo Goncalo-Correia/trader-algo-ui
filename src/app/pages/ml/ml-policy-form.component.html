@@ -9,14 +9,6 @@
 
     <div class="form-grid">
       <div class="field">
-        <div class="field-label">Model</div>
-        <select class="ctrl" [(ngModel)]="modelId" [disabled]="submitting">
-          <option *ngFor="let m of models; trackBy: trackByModelId" [ngValue]="m.id">{{ m.name }}</option>
-        </select>
-        <div class="field-hint">The base model architecture this policy trains.</div>
-      </div>
-
-      <div class="field">
         <div class="field-label">Symbol</div>
         <select class="ctrl" [(ngModel)]="selectedSymbol" [disabled]="submitting">
           <option *ngFor="let s of symbols; trackBy: trackBySymbolId" [value]="s.code">{{ s.code }}</option>

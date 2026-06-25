@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
-import { CreatePolicyRequest, MlModel } from '../../structures/ml-policy';
+import { CreatePolicyRequest } from '../../structures/ml-policy';
 
 @Component({
   selector: 'app-ml-policy-form',
@@ -11,15 +11,12 @@ import { CreatePolicyRequest, MlModel } from '../../structures/ml-policy';
   styleUrls: ['./ml-policy-form.component.css'],
 })
 export class MlPolicyFormComponent implements OnInit {
-  models: MlModel[] = [];
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
 
-  readonly trackByModelId = (_: number, model: MlModel): number => model.id;
   readonly trackBySymbolId = (_: number, symbol: SymbolResponse): number => symbol.id;
   readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
 
-  modelId: number | null = null;
   selectedSymbol = '';
   selectedInterval = '';
 
@@ -48,10 +45,6 @@ export class MlPolicyFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.api.getMlModels().subscribe(m => {
-      this.models = m;
-      this.modelId = m[0]?.id ?? null;
-    });
     this.api.getSymbols().subscribe(s => {
       this.symbols = s;
       this.selectedSymbol = (s.find(x => x.isDefault) ?? s[0])?.code ?? '';
@@ -64,14 +57,12 @@ export class MlPolicyFormComponent implements OnInit {
 
   createPolicy(): void {
     if (this.submitting) return;
-    if (this.modelId === null) { this.errorMessage = 'Model is required.'; return; }
     if (!this.selectedSymbol || !this.selectedInterval) return;
 
     this.submitting = true;
     this.errorMessage = null;
 
     const payload: CreatePolicyRequest = {
-      modelId: this.modelId,
       symbol: this.selectedSymbol,
       interval: this.selectedInterval,
       totalTimesteps: this.totalTimesteps,

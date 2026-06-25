@@ -6,7 +6,6 @@ export type MlTrainingStatus = 'Pending' | 'Running' | 'Completed' | 'Failed';
 export interface MlTrainingRun {
   id: number;
   mlPolicyId: number;
-  modelId: string;
   symbolCode: string;
   intervalCode: string;
   from: number;
@@ -35,7 +34,6 @@ export interface CreateTrainingRequest {
 /** POST /api/ml/train response — camelCase. */
 export interface MlTrainStartedResponse {
   trainingRunId: number;
-  modelId: string;
   status: MlTrainingStatus;
   message: string;
 }

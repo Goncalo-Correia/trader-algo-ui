@@ -1,17 +1,9 @@
-/** GET /api/ml/models — model registry rows for the model dropdown. */
-export interface MlModel {
-  id: number;
-  name: string;
-}
-
 /**
  * GET /api/ml/policies and /policies/{id} — camelCase.
- * List rows additionally carry the model/symbol/interval names and a trainingRunCount.
+ * List rows additionally carry the symbol/interval names and a trainingRunCount.
  */
 export interface MlPolicy {
   id: number;
-  modelId: number;
-  modelName: string;
   symbolCode: string;
   intervalCode: string;
   totalTimesteps: number;
@@ -37,7 +29,6 @@ export interface MlPolicy {
  * Risk fields are absolute amounts (consistent with backtests).
  */
 export interface CreatePolicyRequest {
-  modelId: number;
   symbol: string;
   interval: string;
   totalTimesteps: number;

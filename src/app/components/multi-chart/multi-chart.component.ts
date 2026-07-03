@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
@@ -12,7 +12,7 @@ interface PaneConfig {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-multi-chart',
   templateUrl: './multi-chart.component.html',
   styleUrls: ['./multi-chart.component.css'],
@@ -20,6 +20,7 @@ interface PaneConfig {
 })
 export class MultiChartComponent implements OnInit {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
@@ -47,6 +48,7 @@ export class MultiChartComponent implements OnInit {
         }));
 
         this.selectedSymbol = defaultSymbol?.code ?? '';
+        this.cdr.markForCheck();
       },
       error: err => console.error('Failed to load chart configuration.', err),
     });

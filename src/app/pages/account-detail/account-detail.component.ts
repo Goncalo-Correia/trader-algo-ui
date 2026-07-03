@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
@@ -13,7 +13,7 @@ import { LowerCasePipe, DecimalPipe } from '@angular/common';
 const NAMES_OVERRIDE_KEY = 'trader-account-names';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-account-detail',
   templateUrl: './account-detail.component.html',
   styleUrls: ['./account-detail.component.css'],
@@ -24,6 +24,7 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly api = inject(TraderAlgoApiService);
   private readonly tradeBotEvents = inject(TradeBotEventsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   account: TradingAccount | null = null;
   trades: Trade[] = [];
@@ -69,9 +70,11 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
         this.trades = trades;
         this.isLoading = false;
         this.applyPnlData();
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -116,6 +119,7 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
       next: () => this.router.navigate(['/accounts']),
       error: () => {
         this.deleting = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -128,9 +132,11 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
       next: updated => {
         this.account = updated;
         this.saving = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.saving = false;
+        this.cdr.markForCheck();
       },
     });
   }

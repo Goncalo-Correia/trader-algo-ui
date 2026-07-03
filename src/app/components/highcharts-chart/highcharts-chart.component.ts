@@ -17,7 +17,7 @@ import {
 import type * as Highcharts from 'highcharts/highstock';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-highcharts-chart',
   template: '<div #chartEl class="hc-container"></div>',
   styles: [':host { display: block; width: 100%; height: 100%; }', '.hc-container { width: 100%; height: 100%; }'],

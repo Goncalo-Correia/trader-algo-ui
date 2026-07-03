@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
@@ -58,7 +58,7 @@ interface PerformanceMetricSection {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
   styleUrls: ['./ml-training-detail.component.css'],
@@ -68,6 +68,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   run: MlTrainingRun | null = null;
   decisions: MlDecisionLog | null = null;
@@ -108,10 +109,12 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
           } else {
             this.loadTracking(run.id, false);
           }
+          this.cdr.markForCheck();
         },
         error: () => {
           this.isLoading = false;
           this.stopPolling();
+          this.cdr.markForCheck();
         },
       });
     });
@@ -195,6 +198,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       next: () => this.router.navigate(['/ml/policies', policyId]),
       error: () => {
         this.deleting = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -277,9 +281,11 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       next: candles => {
         this.candles = candles;
         this.candlesReady = true;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.candlesError = 'Could not load candles for this run.';
+        this.cdr.markForCheck();
       },
     });
 
@@ -288,9 +294,11 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         this.decisions = log;
         this.chartTrades = this.toChartTrades(log);
         this.buildBalanceChart(log);
+        this.cdr.markForCheck();
       },
       error: () => {
         this.decisionsError = 'Decision log is not available for this run.';
+        this.cdr.markForCheck();
       },
     });
   }
@@ -302,9 +310,13 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         this.tracking = tracking;
         this.rewardMetricSections = this.buildRewardMetricSections(tracking);
         this.buildMetricHistoryChart(tracking);
+        this.cdr.markForCheck();
       },
       error: () => {
-        if (showError) this.trackingError = 'Tracking data is not available for this run.';
+        if (showError) {
+          this.trackingError = 'Tracking data is not available for this run.';
+          this.cdr.markForCheck();
+        }
       },
     });
   }

@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestSummary } from '../../structures/backtest';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-backtests-page',
   templateUrl: './backtests-page.component.html',
   styleUrls: ['./backtests-page.component.css'],
@@ -13,6 +13,7 @@ import { DecimalPipe } from '@angular/common';
 })
 export class BacktestsPageComponent implements OnInit {
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   backtests: BacktestSummary[] = [];
   readonly trackById = (_: number, backtest: BacktestSummary): number => backtest.id;
@@ -23,9 +24,11 @@ export class BacktestsPageComponent implements OnInit {
       next: data => {
         this.backtests = data;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }

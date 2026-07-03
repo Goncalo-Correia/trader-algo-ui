@@ -1,6 +1,7 @@
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   EventEmitter,
@@ -42,7 +43,7 @@ import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/sessi
 import { Trade } from '../../structures/trade';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-chart',
   templateUrl: './chart.component.html',
   styleUrls: ['./chart.component.css'],
@@ -51,6 +52,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private readonly ngZone = inject(NgZone);
   private readonly traderAlgoApi = inject(TraderAlgoApiService);
   private readonly liveChartData = inject(LiveChartDataService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @ViewChild('chartContainer', { static: true })
   private readonly chartContainer!: ElementRef<HTMLDivElement>;
@@ -404,11 +406,13 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.predictSubscription = this.kronosRequest(key).subscribe({
       next: candles => {
         this.predictingKey = null;
+        this.cdr.markForCheck();
         this.ngZone.runOutsideAngular(() => this.predictSeries?.setData(candles.map(c => this.toChartCandle(c))));
       },
       error: err => {
         console.error('Predict request failed.', err);
         this.predictingKey = null;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -600,6 +604,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       .subscribe({
         next: candles => {
           this.isLoading = false;
+          this.cdr.markForCheck();
           if (candles.length === 0) {
             this.statusMessage = 'No data available.';
             return;
@@ -612,6 +617,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
           console.error('Failed to load candles.', err);
           this.isLoading = false;
           this.statusMessage = 'Failed to load candles.';
+          this.cdr.markForCheck();
         },
       });
   }
@@ -628,6 +634,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       .subscribe({
         next: candles => {
           this.isLoadingMore = false;
+          this.cdr.markForCheck();
           if (candles.length === 0) return;
           this.loadedCandles = candles;
           this.ngZone.runOutsideAngular(() => this.applyAllSeries(candles, false));
@@ -635,6 +642,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         error: err => {
           console.error('Failed to load more candles.', err);
           this.isLoadingMore = false;
+          this.cdr.markForCheck();
         },
       });
   }
@@ -696,8 +704,11 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       .streamCandlesWithIndicators(this.selectedSymbol, this.selectedInterval)
       .subscribe({
         next: candle => {
-          this.isConnected = true;
-          this.liveStatus = 'Live';
+          if (!this.isConnected || this.liveStatus !== 'Live') {
+            this.isConnected = true;
+            this.liveStatus = 'Live';
+            this.cdr.markForCheck();
+          }
           this.upsertLiveCandle(candle);
           const t = this.toChartTime(candle.time);
           this.ngZone.runOutsideAngular(() => {
@@ -736,10 +747,12 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
           console.error('Live candle stream error.', err);
           this.isConnected = false;
           this.liveStatus = 'Disconnected';
+          this.cdr.markForCheck();
         },
         complete: () => {
           this.isConnected = false;
           this.liveStatus = 'Stream closed';
+          this.cdr.markForCheck();
         },
       });
   }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -39,7 +39,7 @@ function darkThemeBase(): Highcharts.Options {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-backtest-detail',
   templateUrl: './backtest-detail.component.html',
   styleUrls: ['./backtest-detail.component.css'],
@@ -49,6 +49,7 @@ export class BacktestDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   detail: BacktestDetail | null = null;
   readonly trackById = (_: number, trade: Trade): number => trade.id;
@@ -67,9 +68,11 @@ export class BacktestDetailComponent implements OnInit {
         this.detail = detail;
         this.isLoading = false;
         this.buildCharts(detail);
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -81,6 +84,7 @@ export class BacktestDetailComponent implements OnInit {
       next: () => this.router.navigate(['/backtests']),
       error: () => {
         this.deleting = false;
+        this.cdr.markForCheck();
       },
     });
   }

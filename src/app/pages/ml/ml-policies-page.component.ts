@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { MlPolicy } from '../../structures/ml-policy';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-ml-policies-page',
   templateUrl: './ml-policies-page.component.html',
   styleUrls: ['./ml-policies-page.component.css'],
@@ -13,6 +13,7 @@ import { DecimalPipe } from '@angular/common';
 })
 export class MlPoliciesPageComponent implements OnInit {
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   policies: MlPolicy[] = [];
   readonly trackById = (_: number, policy: MlPolicy): number => policy.id;
@@ -23,9 +24,11 @@ export class MlPoliciesPageComponent implements OnInit {
       next: data => {
         this.policies = data;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }

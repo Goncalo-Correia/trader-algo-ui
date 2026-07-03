@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBot } from '../../structures/trade-bot';
 import { RouterLink } from '@angular/router';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-tradebots-page',
   templateUrl: './tradebots-page.component.html',
   styleUrls: ['./tradebots-page.component.css'],
@@ -12,6 +12,7 @@ import { RouterLink } from '@angular/router';
 })
 export class TradeBotsPageComponent implements OnInit {
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   bots: TradeBot[] = [];
   readonly trackById = (_: number, bot: TradeBot): number => bot.id;
@@ -32,9 +33,11 @@ export class TradeBotsPageComponent implements OnInit {
         const idx = this.bots.findIndex(b => b.id === updated.id);
         if (idx >= 0) this.bots = [...this.bots.slice(0, idx), updated, ...this.bots.slice(idx + 1)];
         this.togglingId = null;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.togglingId = null;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -79,9 +82,11 @@ export class TradeBotsPageComponent implements OnInit {
       next: bots => {
         this.bots = bots;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }

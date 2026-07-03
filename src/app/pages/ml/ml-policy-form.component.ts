@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SymbolResponse } from '../../structures/symbol';
@@ -7,7 +7,7 @@ import { CreatePolicyRequest } from '../../structures/ml-policy';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-ml-policy-form',
   templateUrl: './ml-policy-form.component.html',
   styleUrls: ['./ml-policy-form.component.css'],
@@ -16,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 export class MlPolicyFormComponent implements OnInit {
   private readonly api = inject(TraderAlgoApiService);
   private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
@@ -49,10 +50,12 @@ export class MlPolicyFormComponent implements OnInit {
     this.api.getSymbols().subscribe(s => {
       this.symbols = s;
       this.selectedSymbol = (s.find(x => x.isDefault) ?? s[0])?.code ?? '';
+      this.cdr.markForCheck();
     });
     this.api.getIntervals().subscribe(i => {
       this.intervals = i;
       this.selectedInterval = i.find(x => x.isDefault)?.code ?? i[0]?.code ?? '';
+      this.cdr.markForCheck();
     });
   }
 
@@ -86,6 +89,7 @@ export class MlPolicyFormComponent implements OnInit {
       error: err => {
         this.submitting = false;
         this.errorMessage = this.extractError(err, 'Failed to create policy.');
+        this.cdr.markForCheck();
       },
     });
   }

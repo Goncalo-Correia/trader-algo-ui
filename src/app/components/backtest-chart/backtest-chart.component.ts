@@ -31,7 +31,7 @@ import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin
 import { Trade } from '../../structures/trade';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-backtest-chart',
   templateUrl: './backtest-chart.component.html',
   styleUrls: ['./backtest-chart.component.css'],

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
@@ -8,7 +8,7 @@ import { ChartComponent } from '../../components/chart/chart.component';
 import { TradePanelComponent } from '../../components/trade-panel/trade-panel.component';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-algo-trader-page',
   templateUrl: './algo-trader.component.html',
   styleUrls: ['./algo-trader.component.css'],
@@ -16,6 +16,7 @@ import { TradePanelComponent } from '../../components/trade-panel/trade-panel.co
 })
 export class AlgoTraderPageComponent implements OnInit {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
@@ -36,6 +37,7 @@ export class AlgoTraderPageComponent implements OnInit {
         this.intervals = activeIntervals;
         this.selectedSymbol = (activeSymbols.find(s => s.isDefault) ?? activeSymbols[0])?.code ?? '';
         this.defaultInterval = (activeIntervals.find(i => i.isDefault) ?? activeIntervals[0])?.code ?? '';
+        this.cdr.markForCheck();
       },
       error: err => console.error('Failed to load algo-trader configuration.', err),
     });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-tradebot-detail',
   templateUrl: './tradebot-detail.component.html',
   styleUrls: ['./tradebot-detail.component.css'],
@@ -19,6 +19,7 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(TraderAlgoApiService);
   private readonly eventsSvc = inject(TradeBotEventsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   bot: TradeBot | null = null;
   isLoading = true;
@@ -49,9 +50,11 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
         this.syncDraft(bot);
         this.loadTradeHistory(bot);
         this.connectEvents(bot);
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -69,9 +72,11 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
         this.bot = bot;
         this.syncDraft(bot);
         this.isToggling = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isToggling = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -105,10 +110,12 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
         this.syncDraft(bot);
         this.isSaving = false;
         this.saveMessage = 'Settings saved.';
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isSaving = false;
         this.saveError = 'Failed to save settings.';
+        this.cdr.markForCheck();
       },
     });
   }
@@ -199,9 +206,11 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
       next: trades => {
         this.trades = trades;
         this.isLoadingTrades = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoadingTrades = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -212,9 +221,11 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
     this.eventSub = this.eventsSvc.connect(accountId).subscribe({
       next: event => {
         this.eventLog = [{ ...event, receivedAt: Date.now() }, ...this.eventLog].slice(0, 100);
+        this.cdr.markForCheck();
         if (event.type === 'BotEnabled' || event.type === 'BotDisabled') {
           this.api.getTradeBot(this.bot!.id).subscribe(bot => {
             this.bot = bot;
+            this.cdr.markForCheck();
           });
         }
         if (event.type === 'TradeClosed') {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-ml-policy-detail',
   templateUrl: './ml-policy-detail.component.html',
   styleUrls: ['./ml-policy-detail.component.css'],
@@ -18,6 +18,7 @@ export class MlPolicyDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   policy: MlPolicy | null = null;
   runs: MlTrainingRun[] = [];
@@ -60,10 +61,12 @@ export class MlPolicyDetailComponent implements OnInit {
         this.policy = policy;
         this.runs = runs.filter(r => r.mlPolicyId === this.policyId);
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
         this.notFound = true;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -83,6 +86,7 @@ export class MlPolicyDetailComponent implements OnInit {
       error: err => {
         this.submitting = false;
         this.runError = this.extractError(err, 'Failed to start training run.');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -103,6 +107,7 @@ export class MlPolicyDetailComponent implements OnInit {
         this.deleteError = this.isConflict(err)
           ? 'Delete this policy’s training runs first.'
           : this.extractError(err, 'Failed to delete policy.');
+        this.cdr.markForCheck();
       },
     });
   }

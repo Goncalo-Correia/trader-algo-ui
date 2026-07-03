@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   EventEmitter,
   Input,
@@ -37,7 +38,7 @@ interface TradeBotDraft {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-trade-panel',
   templateUrl: './trade-panel.component.html',
   styleUrls: ['./trade-panel.component.css'],
@@ -46,6 +47,7 @@ interface TradeBotDraft {
 export class TradePanelComponent implements OnInit, OnDestroy {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);
   private readonly tradeBotEvents = inject(TradeBotEventsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -137,6 +139,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         } else if (!this.tradeBotDraft.tradingStrategyId && strategies.length > 0) {
           this.tradeBotDraft = { ...this.tradeBotDraft, tradingStrategyId: strategies[0].id };
         }
+        this.cdr.markForCheck();
       },
     });
 
@@ -152,6 +155,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
             this.connectTradeBotEvents();
           }
         }
+        this.cdr.markForCheck();
       },
       error: err => console.error('Failed to load trading accounts.', err),
     });
@@ -272,10 +276,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.tradeMessage = `${trade.side} trade opened.`;
         this.syncAdjustDraft(trade);
         this.startPolling();
+        this.cdr.markForCheck();
       },
       error: err => {
         this.isSubmittingTrade = false;
         this.tradeError = this.extractError(err, 'Failed to submit trade.');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -288,9 +294,11 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.isClosingTrade = false;
         this.stopPolling();
         this.loadActiveTrade();
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isClosingTrade = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -308,9 +316,11 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.activeTrade = trade;
         this.syncAdjustDraft(trade);
         this.tradeChange.emit(trade);
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isAdjusting = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -329,10 +339,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.tradeBot = bot;
         this.applyTradeBotToDraft(bot);
         this.botMessage = 'Bot settings saved.';
+        this.cdr.markForCheck();
       },
       error: err => {
         this.isSavingBot = false;
         this.botError = this.extractError(err, 'Failed to save bot settings.');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -353,10 +365,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.tradeBot = bot;
         this.applyTradeBotToDraft(bot);
         this.botMessage = bot.isEnabled ? 'Bot enabled.' : 'Bot disabled.';
+        this.cdr.markForCheck();
       },
       error: err => {
         this.isTogglingBot = false;
         this.botError = this.extractError(err, 'Failed to change bot state.');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -376,6 +390,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
           this.syncAdjustDraft(trade);
           this.startPolling();
         }
+        this.cdr.markForCheck();
       },
       error: err => console.error('Failed to load active trade.', err),
     });
@@ -399,12 +414,14 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.tradeBot = bots.find(b => b.tradingAccountId === accountId && b.backtestId === null) ?? null;
         if (this.tradeBot) this.applyTradeBotToDraft(this.tradeBot);
         else this.applyDefaultTradeBotDraft();
+        this.cdr.markForCheck();
       },
       error: err => {
         if (this.selectedAccountId !== accountId) return;
         this.isLoadingBot = false;
         this.botError = this.extractError(err, 'Failed to load bot settings.');
         this.applyDefaultTradeBotDraft();
+        this.cdr.markForCheck();
       },
     });
   }
@@ -469,6 +486,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       next: event => {
         if (this.selectedAccountId !== accountId || event.tradingAccountId !== accountId) return;
         this.handleTradeBotEvent(event);
+        this.cdr.markForCheck();
       },
     });
   }
@@ -526,6 +544,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
             this.tradeChange.emit(null);
             this.refreshSelectedAccount();
           }
+          this.cdr.markForCheck();
         },
         error: () => {
           this.pollingTimer = setTimeout(poll, this.POLL_MS);
@@ -573,6 +592,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         } else if (account.isActive) {
           this.accounts = [...this.accounts, account];
         }
+        this.cdr.markForCheck();
       },
       error: err => console.error('Failed to refresh trading account.', err),
     });

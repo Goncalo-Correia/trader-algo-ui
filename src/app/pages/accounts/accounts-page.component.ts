@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { TradingAccount, CreateTradingAccountRequest } from '../../structures/trading-account';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { FormsModule } from '@angular/forms';
@@ -6,7 +6,7 @@ import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-accounts-page',
   templateUrl: './accounts-page.component.html',
   styleUrls: ['./accounts-page.component.css'],
@@ -14,6 +14,7 @@ import { DecimalPipe } from '@angular/common';
 })
 export class AccountsPageComponent implements OnInit {
   private readonly api = inject(TraderAlgoApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   accounts: TradingAccount[] = [];
   readonly trackById = (_: number, account: TradingAccount): number => account.id;
@@ -29,9 +30,11 @@ export class AccountsPageComponent implements OnInit {
       next: accounts => {
         this.accounts = accounts;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -59,9 +62,11 @@ export class AccountsPageComponent implements OnInit {
         this.newName = '';
         this.newInitialBalance = 10000;
         this.creating = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.creating = false;
+        this.cdr.markForCheck();
       },
     });
   }

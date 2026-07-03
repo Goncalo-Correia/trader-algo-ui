@@ -3,6 +3,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBot } from '../../structures/trade-bot';
 
 @Component({
+  standalone: false,
   selector: 'app-tradebots-page',
   templateUrl: './tradebots-page.component.html',
   styleUrls: ['./tradebots-page.component.css'],

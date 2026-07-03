@@ -16,6 +16,7 @@ import {
 import type * as Highcharts from 'highcharts/highstock';
 
 @Component({
+  standalone: false,
   selector: 'app-highcharts-chart',
   template: '<div #chartEl class="hc-container"></div>',
   styles: [

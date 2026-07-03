@@ -29,6 +29,7 @@ import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin
 import { Trade } from '../../structures/trade';
 
 @Component({
+  standalone: false,
   selector: 'app-backtest-chart',
   templateUrl: './backtest-chart.component.html',
   styleUrls: ['./backtest-chart.component.css'],

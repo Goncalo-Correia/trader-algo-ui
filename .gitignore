@@ -28,6 +28,12 @@ yarn-error.log
 !.vscode/extensions.json
 .history/*
 
+# Claude Code (local, machine-specific)
+.claude/
+
+# Build-time generated environment (written by scripts/generate-env.mjs)
+/src/environments/environment.generated.ts
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/

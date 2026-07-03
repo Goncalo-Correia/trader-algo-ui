@@ -52,6 +52,7 @@ interface PerformanceMetricSection {
 }
 
 @Component({
+  standalone: false,
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
   styleUrls: ['./ml-training-detail.component.css'],

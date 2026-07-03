@@ -14,11 +14,11 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:browser",
+          "builder": "@angular-devkit/build-angular:application",
           "options": {
             "outputPath": "dist/trader-algo-ui",
             "index": "src/index.html",
-            "main": "src/main.ts",
+            "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
@@ -48,12 +48,9 @@
               "outputHashing": "all"
             },
             "development": {
-              "buildOptimizer": false,
               "optimization": false,
-              "vendorChunk": true,
               "extractLicenses": false,
               "sourceMap": true,
-              "namedChunks": true,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -68,10 +65,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "trader-algo-ui:build:production"
+              "buildTarget": "trader-algo-ui:build:production"
             },
             "development": {
-              "browserTarget": "trader-algo-ui:build:development"
+              "buildTarget": "trader-algo-ui:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -79,7 +76,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "trader-algo-ui:build"
+            "buildTarget": "trader-algo-ui:build"
           }
         },
         "test": {

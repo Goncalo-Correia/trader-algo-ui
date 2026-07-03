@@ -37,6 +37,7 @@ function darkThemeBase(): Highcharts.Options {
 }
 
 @Component({
+  standalone: false,
   selector: 'app-backtest-detail',
   templateUrl: './backtest-detail.component.html',
   styleUrls: ['./backtest-detail.component.css'],

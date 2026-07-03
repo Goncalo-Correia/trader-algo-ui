@@ -10,7 +10,6 @@ import {
   IPriceLine,
   ISeriesApi,
   ISeriesMarkersPluginApi,
-  LineData,
   LineSeries,
   LineStyle,
   LogicalRange,
@@ -31,6 +30,7 @@ import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/sessi
 import { Trade } from '../../structures/trade';
 
 @Component({
+  standalone: false,
   selector: 'app-chart',
   templateUrl: './chart.component.html',
   styleUrls: ['./chart.component.css'],

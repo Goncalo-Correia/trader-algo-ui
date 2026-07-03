@@ -10,6 +10,7 @@ interface PaneConfig {
 }
 
 @Component({
+  standalone: false,
   selector: 'app-multi-chart',
   templateUrl: './multi-chart.component.html',
   styleUrls: ['./multi-chart.component.css'],

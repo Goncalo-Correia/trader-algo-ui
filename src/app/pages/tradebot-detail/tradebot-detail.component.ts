@@ -7,6 +7,7 @@ import { TradeBot, TradeBotEvent, UpdateTradeBotRequest } from '../../structures
 import { Trade } from '../../structures/trade';
 
 @Component({
+  standalone: false,
   selector: 'app-tradebot-detail',
   templateUrl: './tradebot-detail.component.html',
   styleUrls: ['./tradebot-detail.component.css'],

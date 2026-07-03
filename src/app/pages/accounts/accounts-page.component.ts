@@ -3,6 +3,7 @@ import { TradingAccount, CreateTradingAccountRequest } from '../../structures/tr
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 
 @Component({
+  standalone: false,
   selector: 'app-accounts-page',
   templateUrl: './accounts-page.component.html',
   styleUrls: ['./accounts-page.component.css'],

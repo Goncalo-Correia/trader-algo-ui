@@ -6,6 +6,7 @@ import { MlPolicy } from '../../structures/ml-policy';
 import { MlTrainingRun } from '../../structures/ml-training';
 
 @Component({
+  standalone: false,
   selector: 'app-ml-policy-detail',
   templateUrl: './ml-policy-detail.component.html',
   styleUrls: ['./ml-policy-detail.component.css'],

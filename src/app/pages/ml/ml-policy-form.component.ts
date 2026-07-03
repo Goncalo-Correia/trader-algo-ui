@@ -6,6 +6,7 @@ import { IntervalResponse } from '../../structures/interval';
 import { CreatePolicyRequest } from '../../structures/ml-policy';
 
 @Component({
+  standalone: false,
   selector: 'app-ml-policy-form',
   templateUrl: './ml-policy-form.component.html',
   styleUrls: ['./ml-policy-form.component.css'],

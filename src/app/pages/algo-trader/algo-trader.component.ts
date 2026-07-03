@@ -6,6 +6,7 @@ import { SymbolResponse } from '../../structures/symbol';
 import { Trade } from '../../structures/trade';
 
 @Component({
+  standalone: false,
   selector: 'app-algo-trader-page',
   templateUrl: './algo-trader.component.html',
   styleUrls: ['./algo-trader.component.css'],

@@ -1,10 +1,12 @@
 # trader-algo-ui
 
-Angular 15 single-page app for algorithmic trading: real-time candlestick charts
+Angular 22 single-page app for algorithmic trading: real-time candlestick charts
 with technical indicators, a WebSocket-streamed backtesting engine, and live
 trade-bot management. It is a front end for a separate REST + WebSocket backend.
 
 ## Getting started
+
+Requires **Node 22 LTS** (or any `^20.19 || ^22.12 || >=24`, per Angular 22).
 
 ```bash
 npm install
@@ -13,8 +15,9 @@ npm start        # dev server at http://localhost:4200
 
 The backend (REST + WebSocket) must be running. In development it is expected at
 `http://localhost:32768` / `ws://localhost:32768` — see
-[`src/environments/`](src/environments/). Production builds talk to the origin
-that serves them (with automatic `wss://` over HTTPS).
+[`src/environments/`](src/environments/). Production builds read the backend URL
+from an environment variable, falling back to the origin that serves them — see
+[Deployment](#deployment) below.
 
 ### Scripts
 
@@ -73,5 +76,26 @@ reconnects with exponential backoff (disabled for the finite backtest replay).
 use `Highcharts`, which is **lazy-loaded** so it stays out of the initial bundle.
 Heavy chart updates run outside the Angular zone to avoid extra change detection.
 
-**Configuration** — environment files in `src/environments/` hold the backend
-URLs; no other config is required.
+**Configuration** — the backend URLs live in `src/environments/`.
+`environment.development.ts` (used by `npm start`) points at the local backend.
+The production `environment.ts` reads its URL from a build-time env var and
+falls back to the serving origin (see below).
+
+## Deployment
+
+Production builds resolve the backend URL at build time from env vars, so the
+same build can point at any deployed backend without code changes:
+
+| Env var | Purpose |
+|---------|---------|
+| `TRADER_ALGO_API_BASE_URL` | Backend REST/WebSocket base URL, e.g. `https://api.example.com`. The WebSocket URL is derived from it (`http`→`ws`, `https`→`wss`). |
+| `TRADER_ALGO_API_WS_URL` | Optional. Overrides the derived WebSocket URL. |
+
+`scripts/generate-env.mjs` reads these on `postinstall` / `prebuild` and writes
+`src/environments/environment.generated.ts` (git-ignored). If neither var is
+set, the app talks to the origin serving it (upgrading to `wss://` over HTTPS).
+
+**Vercel** — [`vercel.json`](vercel.json) sets the build command, the output
+directory (`dist/trader-algo-ui/browser`), and an SPA rewrite so client-side
+routes resolve to `index.html`. Set `TRADER_ALGO_API_BASE_URL` in the Vercel
+project's environment variables to point the deployment at your backend.

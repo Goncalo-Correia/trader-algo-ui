@@ -3,6 +3,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { MlPolicy } from '../../structures/ml-policy';
 
 @Component({
+  standalone: false,
   selector: 'app-ml-policies-page',
   templateUrl: './ml-policies-page.component.html',
   styleUrls: ['./ml-policies-page.component.css'],

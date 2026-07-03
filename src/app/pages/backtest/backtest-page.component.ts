@@ -10,6 +10,7 @@ import { BacktestSummary, CreateBacktestRequest } from '../../structures/backtes
 import { Trade } from '../../structures/trade';
 
 @Component({
+  standalone: false,
   selector: 'app-backtest-page',
   templateUrl: './backtest-page.component.html',
   styleUrls: ['./backtest-page.component.css'],

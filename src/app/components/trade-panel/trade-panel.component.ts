@@ -37,6 +37,7 @@ interface TradeBotDraft {
 }
 
 @Component({
+  standalone: false,
   selector: 'app-trade-panel',
   templateUrl: './trade-panel.component.html',
   styleUrls: ['./trade-panel.component.css'],

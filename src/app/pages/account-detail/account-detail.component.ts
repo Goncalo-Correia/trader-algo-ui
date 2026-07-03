@@ -10,6 +10,7 @@ import { TradeBotEventsService } from '../../services/trade-bot-events.service';
 const NAMES_OVERRIDE_KEY = 'trader-account-names';
 
 @Component({
+  standalone: false,
   selector: 'app-account-detail',
   templateUrl: './account-detail.component.html',
   styleUrls: ['./account-detail.component.css'],

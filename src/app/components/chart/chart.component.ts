@@ -37,7 +37,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
 import { VolumeProfilePlugin } from '../../chart-plugins/volume-profile.plugin';
 import { CHART_COLORS } from '../../shared/chart-theme';
-import { CandleResponse, CandleWithIndicatorsResponse } from '../../structures/candle';
+import { CandleResponse, CandleWithIndicators } from '../../structures/candle';
 import { IntervalResponse } from '../../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/session';
 import { Trade } from '../../structures/trade';
@@ -164,10 +164,11 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private previousSession?: SessionOhlcvResponse;
   private sessionLines: IPriceLine[] = [];
 
-  private loadedCandles: CandleWithIndicatorsResponse[] = [];
+  private loadedCandles: CandleWithIndicators[] = [];
   private loadedVolumeProfile: VolumeProfileLevel[] = [];
 
   private candlesSubscription?: Subscription;
+  private loadMoreSubscription?: Subscription;
   private liveCandlesSubscription?: Subscription;
   private predictSubscription?: Subscription;
   private sessionSubscription?: Subscription;
@@ -330,6 +331,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.candlesSubscription?.unsubscribe();
+    this.loadMoreSubscription?.unsubscribe();
     this.liveCandlesSubscription?.unsubscribe();
     this.predictSubscription?.unsubscribe();
     this.sessionSubscription?.unsubscribe();
@@ -544,6 +546,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   private resetAndReload(): void {
     this.candlesSubscription?.unsubscribe();
+    this.loadMoreSubscription?.unsubscribe();
     this.liveCandlesSubscription?.unsubscribe();
     this.predictSubscription?.unsubscribe();
     this.sessionSubscription?.unsubscribe();
@@ -625,7 +628,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private loadMoreCandles(): void {
     this.isLoadingMore = true;
     this.lookback += 100;
-    this.traderAlgoApi
+    this.loadMoreSubscription = this.traderAlgoApi
       .getCandlesWithIndicators({
         symbol: this.selectedSymbol,
         interval: this.selectedInterval,
@@ -647,14 +650,14 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       });
   }
 
-  private applyAllSeries(candles: CandleWithIndicatorsResponse[], fitContent: boolean): void {
+  private applyAllSeries(candles: CandleWithIndicators[], fitContent: boolean): void {
     this.series?.setData(candles.map(c => this.toChartCandle(c)));
     this.applyTradeMarkers();
     this.sma20Series?.setData(
-      candles.filter(c => c.sma_20 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma_20! })),
+      candles.filter(c => c.sma20 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma20! })),
     );
     this.sma100Series?.setData(
-      candles.filter(c => c.sma_100 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma_100! })),
+      candles.filter(c => c.sma100 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma100! })),
     );
     this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
     this.deltaSeries?.setData(this._isAlpaca ? [] : candles.map(c => this.toDeltaBar(c)));
@@ -663,7 +666,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       candles.filter(c => c.rsi !== null).map(c => ({ time: this.toChartTime(c.time), value: c.rsi! })),
     );
     this.rsiMaSeries?.setData(
-      candles.filter(c => c.rsi_smooth !== null).map(c => ({ time: this.toChartTime(c.time), value: c.rsi_smooth! })),
+      candles.filter(c => c.rsiSmooth !== null).map(c => ({ time: this.toChartTime(c.time), value: c.rsiSmooth! })),
     );
 
     const rsiCandles = candles.filter(c => c.rsi !== null);
@@ -679,16 +682,16 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     }
 
     this.macdLineSeries?.setData(
-      candles.filter(c => c.macd_line !== null).map(c => ({ time: this.toChartTime(c.time), value: c.macd_line! })),
+      candles.filter(c => c.macdLine !== null).map(c => ({ time: this.toChartTime(c.time), value: c.macdLine! })),
     );
     this.macdSignalSeries?.setData(
       candles
-        .filter(c => c.macd_signal_line !== null)
-        .map(c => ({ time: this.toChartTime(c.time), value: c.macd_signal_line! })),
+        .filter(c => c.macdSignalLine !== null)
+        .map(c => ({ time: this.toChartTime(c.time), value: c.macdSignalLine! })),
     );
     this.macdHistSeries?.setData(this.toMacdHistogram(candles));
 
-    const macdCandles = candles.filter(c => c.macd_line !== null);
+    const macdCandles = candles.filter(c => c.macdLine !== null);
     if (macdCandles.length >= 2) {
       this.macdZeroSeries?.setData([
         { time: this.toChartTime(macdCandles[0].time), value: 0 },
@@ -713,8 +716,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
           const t = this.toChartTime(candle.time);
           this.ngZone.runOutsideAngular(() => {
             this.series?.update(this.toChartCandle(candle));
-            if (candle.sma_20 !== null) this.sma20Series?.update({ time: t, value: candle.sma_20 });
-            if (candle.sma_100 !== null) this.sma100Series?.update({ time: t, value: candle.sma_100 });
+            if (candle.sma20 !== null) this.sma20Series?.update({ time: t, value: candle.sma20 });
+            if (candle.sma100 !== null) this.sma100Series?.update({ time: t, value: candle.sma100 });
             this.volumeSeries?.update(this.toVolumeBar(candle));
             if (!this._isAlpaca) this.deltaSeries?.update(this.toDeltaBar(candle));
             if (candle.rsi !== null) {
@@ -722,13 +725,13 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
               this.rsiOverbought?.update({ time: t, value: 70 });
               this.rsiOversold?.update({ time: t, value: 30 });
             }
-            if (candle.rsi_smooth !== null) this.rsiMaSeries?.update({ time: t, value: candle.rsi_smooth });
-            if (candle.macd_line !== null) this.macdLineSeries?.update({ time: t, value: candle.macd_line });
-            if (candle.macd_signal_line !== null)
-              this.macdSignalSeries?.update({ time: t, value: candle.macd_signal_line });
-            if (candle.macd_histogram !== null) {
-              const prev = this.loadedCandles.at(-2)?.macd_histogram ?? null;
-              const h = candle.macd_histogram;
+            if (candle.rsiSmooth !== null) this.rsiMaSeries?.update({ time: t, value: candle.rsiSmooth });
+            if (candle.macdLine !== null) this.macdLineSeries?.update({ time: t, value: candle.macdLine });
+            if (candle.macdSignalLine !== null)
+              this.macdSignalSeries?.update({ time: t, value: candle.macdSignalLine });
+            if (candle.macdHistogram !== null) {
+              const prev = this.loadedCandles.at(-2)?.macdHistogram ?? null;
+              const h = candle.macdHistogram;
               const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
               const color =
                 h >= 0
@@ -819,12 +822,12 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   // ── Mapping helpers ──────────────────────────────────────────────────────────
 
-  private toChartCandle(c: CandleWithIndicatorsResponse | CandleResponse): CandlestickData<Time> {
+  private toChartCandle(c: CandleWithIndicators | CandleResponse): CandlestickData<Time> {
     return { time: this.toChartTime(c.time), open: c.open, high: c.high, low: c.low, close: c.close };
   }
 
-  private toVolumeBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const takerTotal = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
+  private toVolumeBar(c: CandleWithIndicators): HistogramData<Time> {
+    const takerTotal = c.takerBuyVolume + c.takerSellVolume;
     const vol = takerTotal > 0 ? takerTotal : c.volume;
     return {
       time: this.toChartTime(c.time),
@@ -833,9 +836,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     };
   }
 
-  private toDeltaBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const buy = c.taker_buy_base_asset_volume;
-    const sell = c.taker_sell_base_asset_volume;
+  private toDeltaBar(c: CandleWithIndicators): HistogramData<Time> {
+    const buy = c.takerBuyVolume;
+    const sell = c.takerSellVolume;
     const total = buy + sell;
     const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
     return {
@@ -849,11 +852,11 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.deltaSeries?.priceScale().applyOptions({ visible: !this._isAlpaca });
   }
 
-  private toMacdHistogram(candles: CandleWithIndicatorsResponse[]): HistogramData<Time>[] {
+  private toMacdHistogram(candles: CandleWithIndicators[]): HistogramData<Time>[] {
     const result: HistogramData<Time>[] = [];
     for (const c of candles) {
-      if (c.macd_histogram === null) continue;
-      const h = c.macd_histogram;
+      if (c.macdHistogram === null) continue;
+      const h = c.macdHistogram;
       const prev = result.at(-1)?.value ?? null;
       const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
       const color =
@@ -869,7 +872,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     return result;
   }
 
-  private upsertLiveCandle(candle: CandleWithIndicatorsResponse): void {
+  private upsertLiveCandle(candle: CandleWithIndicators): void {
     const last = this.loadedCandles.at(-1);
     if (last?.time === candle.time) this.loadedCandles[this.loadedCandles.length - 1] = candle;
     else this.loadedCandles.push(candle);

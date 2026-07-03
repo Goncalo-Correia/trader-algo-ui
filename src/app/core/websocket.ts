@@ -1,5 +1,18 @@
 import { Observable, timer } from 'rxjs';
 import { retry } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+
+/**
+ * Appends the backend API key as an `apiKey` query parameter. WebSocket
+ * handshakes can't carry a custom header from the browser, so the backend reads
+ * the key from the query string for upgrade requests. A no-op when unset.
+ */
+function withApiKey(url: string): string {
+  const key = environment.traderAlgoApi.apiKey;
+  if (!key) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}apiKey=${encodeURIComponent(key)}`;
+}
 
 export interface WebSocketOptions<T> {
   /**
@@ -34,7 +47,7 @@ export function connectWebSocket<T>(url: string, options: WebSocketOptions<T>): 
   const source$ = new Observable<T>(subscriber => {
     let socket: WebSocket;
     try {
-      socket = new WebSocket(url);
+      socket = new WebSocket(withApiKey(url));
     } catch (err) {
       subscriber.error(err);
       return;

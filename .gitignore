@@ -34,6 +34,9 @@ yarn-error.log
 # Build-time generated environment (written by scripts/generate-env.mjs)
 /src/environments/environment.generated.ts
 
+# Local dev secrets (backend ApiKey etc.) — never commit; see .env.local.example.json
+/.env.local.json
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/

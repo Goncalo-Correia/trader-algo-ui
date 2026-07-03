@@ -25,5 +25,8 @@ export const environment = {
   traderAlgoApi: {
     baseUrl,
     wsUrl,
+    // Sent as the `X-Api-Key` header (REST) and `apiKey` query param (WebSocket).
+    // Supplied at build time via the TRADER_ALGO_API_KEY env var on Vercel.
+    apiKey: generatedApiConfig.apiKey,
   },
 };

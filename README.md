@@ -90,10 +90,18 @@ same build can point at any deployed backend without code changes:
 |---------|---------|
 | `TRADER_ALGO_API_BASE_URL` | Backend REST/WebSocket base URL, e.g. `https://api.example.com`. The WebSocket URL is derived from it (`http`→`ws`, `https`→`wss`). |
 | `TRADER_ALGO_API_WS_URL` | Optional. Overrides the derived WebSocket URL. |
+| `TRADER_ALGO_API_KEY` | Backend API key. Sent as the `X-Api-Key` header on REST calls and the `apiKey` query parameter on WebSocket connections. |
 
-`scripts/generate-env.mjs` reads these on `postinstall` / `prebuild` and writes
-`src/environments/environment.generated.ts` (git-ignored). If neither var is
-set, the app talks to the origin serving it (upgrading to `wss://` over HTTPS).
+`scripts/generate-env.mjs` reads these on `postinstall` / `prebuild` / `prestart`
+and writes `src/environments/environment.generated.ts` (git-ignored). If the URL
+vars are unset the app talks to the origin serving it (`wss://` over HTTPS); if
+the key is unset no key is sent.
+
+**Local development** — the backend requires the API key locally too. Copy
+[`.env.local.example.json`](.env.local.example.json) to `.env.local.json`
+(git-ignored) and set your local `apiKey`; `npm start` picks it up. The key is a
+secret and must never be committed — that's why it lives in a git-ignored file
+rather than in `environment.development.ts`.
 
 **Vercel** — [`vercel.json`](vercel.json) sets the build command, the output
 directory (`dist/trader-algo-ui/browser`), and an SPA rewrite so client-side

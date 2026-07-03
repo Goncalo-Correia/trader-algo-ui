@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
+import { ApiKeyInterceptor } from './core/api-key.interceptor';
 import { AuthInterceptor } from './core/auth.interceptor';
 import { ErrorInterceptor } from './core/error.interceptor';
 import { GlobalErrorHandler } from './core/global-error-handler';
@@ -56,6 +57,7 @@ import { MlTrainingDetailComponent } from './pages/ml/ml-training-detail.compone
     AppRoutingModule,
   ],
   providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: ApiKeyInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
     { provide: ErrorHandler, useClass: GlobalErrorHandler },

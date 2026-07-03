@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Observable, Subscription, switchMap } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
@@ -38,6 +38,7 @@ interface TradeBotDraft {
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-trade-panel',
   templateUrl: './trade-panel.component.html',
   styleUrls: ['./trade-panel.component.css'],

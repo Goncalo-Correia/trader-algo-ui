@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -8,6 +8,7 @@ import { Trade } from '../../structures/trade';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-tradebot-detail',
   templateUrl: './tradebot-detail.component.html',
   styleUrls: ['./tradebot-detail.component.css'],

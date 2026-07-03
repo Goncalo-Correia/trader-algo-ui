@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -7,6 +7,7 @@ import { MlTrainingRun } from '../../structures/ml-training';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-policy-detail',
   templateUrl: './ml-policy-detail.component.html',
   styleUrls: ['./ml-policy-detail.component.css'],

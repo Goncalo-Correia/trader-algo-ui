@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestSummary } from '../../structures/backtest';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-backtests-page',
   templateUrl: './backtests-page.component.html',
   styleUrls: ['./backtests-page.component.css'],

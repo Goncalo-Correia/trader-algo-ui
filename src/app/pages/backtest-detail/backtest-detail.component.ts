@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -38,6 +38,7 @@ function darkThemeBase(): Highcharts.Options {
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-backtest-detail',
   templateUrl: './backtest-detail.component.html',
   styleUrls: ['./backtest-detail.component.css'],

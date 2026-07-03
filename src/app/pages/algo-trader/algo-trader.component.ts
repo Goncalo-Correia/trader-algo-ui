@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
@@ -7,6 +7,7 @@ import { Trade } from '../../structures/trade';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-algo-trader-page',
   templateUrl: './algo-trader.component.html',
   styleUrls: ['./algo-trader.component.css'],

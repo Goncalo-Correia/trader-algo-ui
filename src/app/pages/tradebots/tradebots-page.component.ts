@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBot } from '../../structures/trade-bot';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-tradebots-page',
   templateUrl: './tradebots-page.component.html',
   styleUrls: ['./tradebots-page.component.css'],

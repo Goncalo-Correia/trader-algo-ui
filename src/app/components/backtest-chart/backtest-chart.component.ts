@@ -1,5 +1,6 @@
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   Input,
@@ -30,6 +31,7 @@ import { Trade } from '../../structures/trade';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-backtest-chart',
   templateUrl: './backtest-chart.component.html',
   styleUrls: ['./backtest-chart.component.css'],

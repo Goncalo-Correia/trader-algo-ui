@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SymbolResponse } from '../../structures/symbol';
@@ -7,6 +7,7 @@ import { CreatePolicyRequest } from '../../structures/ml-policy';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-policy-form',
   templateUrl: './ml-policy-form.component.html',
   styleUrls: ['./ml-policy-form.component.css'],

@@ -1,5 +1,6 @@
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   EventEmitter,
@@ -17,6 +18,7 @@ import type * as Highcharts from 'highcharts/highstock';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-highcharts-chart',
   template: '<div #chartEl class="hc-container"></div>',
   styles: [

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
@@ -11,6 +11,7 @@ const NAMES_OVERRIDE_KEY = 'trader-account-names';
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-account-detail',
   templateUrl: './account-detail.component.html',
   styleUrls: ['./account-detail.component.css'],

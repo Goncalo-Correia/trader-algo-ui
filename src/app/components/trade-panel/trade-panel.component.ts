@@ -1,49 +1,52 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+  inject,
+} from '@angular/core';
 import { Observable, Subscription, switchMap } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
 import { IntervalResponse } from '../../structures/interval';
 import { isAlpacaSymbol, SymbolResponse } from '../../structures/symbol';
 import { StrategyResponse } from '../../structures/strategy';
-import {
-  CreateTradeBotRequest,
-  TradeBot,
-  TradeBotEvent,
-  UpdateTradeBotRequest,
-} from '../../structures/trade-bot';
-import {
-  CreateTradeRequest,
-  Trade,
-  TradeOrderType,
-  TradeSide,
-  UpdateTradeRequest,
-} from '../../structures/trade';
+import { CreateTradeBotRequest, TradeBot, TradeBotEvent, UpdateTradeBotRequest } from '../../structures/trade-bot';
+import { CreateTradeRequest, Trade, TradeOrderType, TradeSide, UpdateTradeRequest } from '../../structures/trade';
 import { TradingAccount } from '../../structures/trading-account';
+import { FormsModule } from '@angular/forms';
+import { NgClass, DecimalPipe } from '@angular/common';
 
 interface TradeBotDraft {
-  tradingStrategyId:  number | null;
-  symbolCode:         string;
-  intervalCode:       string;
-  quantity:           number | null;
-  stopLoss:           number | null;
-  takeProfit:         number | null;
-  breakeven:          number | null;
-  breakevenStop:      number | null;
-  isNySessionOnly:    boolean;
-  dailyProfitGoal:    number | null;
-  maxLossesPerDay:    number | null;
+  tradingStrategyId: number | null;
+  symbolCode: string;
+  intervalCode: string;
+  quantity: number | null;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  breakeven: number | null;
+  breakevenStop: number | null;
+  isNySessionOnly: boolean;
+  dailyProfitGoal: number | null;
+  maxLossesPerDay: number | null;
   maxCandlesPerTrade: number | null;
-  fee:               number | null;
+  fee: number | null;
 }
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-trade-panel',
   templateUrl: './trade-panel.component.html',
   styleUrls: ['./trade-panel.component.css'],
+  imports: [FormsModule, NgClass, DecimalPipe],
 })
 export class TradePanelComponent implements OnInit, OnDestroy {
+  private readonly traderAlgoApi = inject(TraderAlgoApiService);
+  private readonly tradeBotEvents = inject(TradeBotEventsService);
+
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
   @Input() symbols: SymbolResponse[] = [];
@@ -60,8 +63,8 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   // ── Outputs ─────────────────────────────────────────────────────────────────
 
-  @Output() symbolChange  = new EventEmitter<string>();
-  @Output() tradeChange   = new EventEmitter<Trade | null>();
+  @Output() symbolChange = new EventEmitter<string>();
+  @Output() tradeChange = new EventEmitter<Trade | null>();
   @Output() accountChange = new EventEmitter<number | null>();
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -78,26 +81,26 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   tradeBot: TradeBot | null = null;
   tradeBotDraft: TradeBotDraft = {
-    tradingStrategyId:  null,
-    symbolCode:         '',
-    intervalCode:       '',
-    quantity:           1,
-    stopLoss:           100,
-    takeProfit:         100,
-    breakeven:          null,
-    breakevenStop:      null,
-    isNySessionOnly:    false,
-    dailyProfitGoal:    null,
-    maxLossesPerDay:    null,
+    tradingStrategyId: null,
+    symbolCode: '',
+    intervalCode: '',
+    quantity: 1,
+    stopLoss: 100,
+    takeProfit: 100,
+    breakeven: null,
+    breakevenStop: null,
+    isNySessionOnly: false,
+    dailyProfitGoal: null,
+    maxLossesPerDay: null,
     maxCandlesPerTrade: null,
-    fee:               null,
+    fee: null,
   };
 
-  isLoadingBot  = false;
-  isSavingBot   = false;
+  isLoadingBot = false;
+  isSavingBot = false;
   isTogglingBot = false;
-  botError      = '';
-  botMessage    = '';
+  botError = '';
+  botMessage = '';
 
   activeTrade: Trade | null = null;
 
@@ -110,9 +113,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   tradeStopLoss: number | null = null;
   tradeTakeProfit: number | null = null;
   isSubmittingTrade = false;
-  isClosingTrade    = false;
-  tradeError        = '';
-  tradeMessage      = '';
+  isClosingTrade = false;
+  tradeError = '';
+  tradeMessage = '';
 
   // ── SL/TP adjustment for active trade ───────────────────────────────────────
 
@@ -124,11 +127,6 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private botEventSubscription?: Subscription;
   private pollingTimer?: ReturnType<typeof setTimeout>;
   private readonly POLL_MS = 3_000;
-
-  constructor(
-    private readonly traderAlgoApi: TraderAlgoApiService,
-    private readonly tradeBotEvents: TradeBotEventsService,
-  ) {}
 
   ngOnInit(): void {
     this.traderAlgoApi.getStrategies().subscribe({
@@ -234,9 +232,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!t || t.stopLoss === null || t.stopLoss === undefined) return null;
     const entry = t.entryPrice ?? t.requestedPrice;
     if (entry === null || entry === undefined) return null;
-    return t.side === 'Buy'
-      ? Number(entry) - Number(t.stopLoss)
-      : Number(entry) + Number(t.stopLoss);
+    return t.side === 'Buy' ? Number(entry) - Number(t.stopLoss) : Number(entry) + Number(t.stopLoss);
   }
 
   get absoluteTpPrice(): number | null {
@@ -244,9 +240,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!t || t.takeProfit === null || t.takeProfit === undefined) return null;
     const entry = t.entryPrice ?? t.requestedPrice;
     if (entry === null || entry === undefined) return null;
-    return t.side === 'Buy'
-      ? Number(entry) + Number(t.takeProfit)
-      : Number(entry) - Number(t.takeProfit);
+    return t.side === 'Buy' ? Number(entry) + Number(t.takeProfit) : Number(entry) - Number(t.takeProfit);
   }
 
   // ── Manual trade actions ─────────────────────────────────────────────────────
@@ -254,26 +248,26 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   submitTrade(): void {
     if (!this.tradeFormValid || this.isSubmittingTrade) return;
     this.isSubmittingTrade = true;
-    this.tradeError        = '';
-    this.tradeMessage      = '';
+    this.tradeError = '';
+    this.tradeMessage = '';
 
     const payload: CreateTradeRequest = {
-      symbolCode:       this.selectedSymbol,
-      side:             this.tradeSide,
-      orderType:        this.tradeOrderType,
-      quantity:         this.tradeQuantity!,
+      symbolCode: this.selectedSymbol,
+      side: this.tradeSide,
+      orderType: this.tradeOrderType,
+      quantity: this.tradeQuantity!,
       tradingAccountId: this.selectedAccountId ?? undefined,
     };
     if (this.tradeOrderType === 'Limit' && this.tradeLimitPrice) {
       payload.limitPrice = this.tradeLimitPrice;
     }
-    if (this.tradeStopLoss)   payload.stopLoss   = this.tradeStopLoss;
+    if (this.tradeStopLoss) payload.stopLoss = this.tradeStopLoss;
     if (this.tradeTakeProfit) payload.takeProfit = this.tradeTakeProfit;
 
     this.traderAlgoApi.createTrade(payload).subscribe({
       next: trade => {
         this.isSubmittingTrade = false;
-        this.activeTrade       = trade;
+        this.activeTrade = trade;
         this.tradeChange.emit(trade);
         this.tradeMessage = `${trade.side} trade opened.`;
         this.syncAdjustDraft(trade);
@@ -295,7 +289,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.stopPolling();
         this.loadActiveTrade();
       },
-      error: () => { this.isClosingTrade = false; },
+      error: () => {
+        this.isClosingTrade = false;
+      },
     });
   }
 
@@ -303,7 +299,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!this.activeTrade || this.isAdjusting) return;
     this.isAdjusting = true;
     const update: UpdateTradeRequest = {
-      stopLoss:   this.adjustSlDraft ?? undefined,
+      stopLoss: this.adjustSlDraft ?? undefined,
       takeProfit: this.adjustTpDraft ?? undefined,
     };
     this.traderAlgoApi.updateTrade(this.activeTrade.id, update).subscribe({
@@ -313,7 +309,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         this.syncAdjustDraft(trade);
         this.tradeChange.emit(trade);
       },
-      error: () => { this.isAdjusting = false; },
+      error: () => {
+        this.isAdjusting = false;
+      },
     });
   }
 
@@ -322,19 +320,19 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   saveTradeBot(): void {
     if (!this.tradeBotFormValid || this.isSavingBot) return;
     this.isSavingBot = true;
-    this.botError    = '';
-    this.botMessage  = '';
+    this.botError = '';
+    this.botMessage = '';
 
     this.persistTradeBot().subscribe({
       next: bot => {
         this.isSavingBot = false;
-        this.tradeBot    = bot;
+        this.tradeBot = bot;
         this.applyTradeBotToDraft(bot);
-        this.botMessage  = 'Bot settings saved.';
+        this.botMessage = 'Bot settings saved.';
       },
       error: err => {
         this.isSavingBot = false;
-        this.botError    = this.extractError(err, 'Failed to save bot settings.');
+        this.botError = this.extractError(err, 'Failed to save bot settings.');
       },
     });
   }
@@ -342,8 +340,8 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   toggleTradeBot(): void {
     if (!this.tradeBotFormValid || this.isTogglingBot) return;
     this.isTogglingBot = true;
-    this.botError      = '';
-    this.botMessage    = '';
+    this.botError = '';
+    this.botMessage = '';
 
     const request = this.tradeBot?.isEnabled
       ? this.traderAlgoApi.disableTradeBot(this.tradeBot.id)
@@ -352,13 +350,13 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     request.subscribe({
       next: bot => {
         this.isTogglingBot = false;
-        this.tradeBot      = bot;
+        this.tradeBot = bot;
         this.applyTradeBotToDraft(bot);
-        this.botMessage    = bot.isEnabled ? 'Bot enabled.' : 'Bot disabled.';
+        this.botMessage = bot.isEnabled ? 'Bot enabled.' : 'Bot disabled.';
       },
       error: err => {
         this.isTogglingBot = false;
-        this.botError      = this.extractError(err, 'Failed to change bot state.');
+        this.botError = this.extractError(err, 'Failed to change bot state.');
       },
     });
   }
@@ -384,7 +382,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   }
 
   private syncAdjustDraft(trade: Trade): void {
-    this.adjustSlDraft = trade.stopLoss   ?? null;
+    this.adjustSlDraft = trade.stopLoss ?? null;
     this.adjustTpDraft = trade.takeProfit ?? null;
   }
 
@@ -392,20 +390,20 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!this.showTradeBot || this.selectedAccountId === null) return;
     const accountId = this.selectedAccountId;
     this.isLoadingBot = true;
-    this.botError     = '';
+    this.botError = '';
 
     this.traderAlgoApi.getTradeBots(accountId).subscribe({
       next: bots => {
         if (this.selectedAccountId !== accountId) return;
         this.isLoadingBot = false;
-        this.tradeBot     = bots.find(b => b.tradingAccountId === accountId && b.backtestId === null) ?? null;
+        this.tradeBot = bots.find(b => b.tradingAccountId === accountId && b.backtestId === null) ?? null;
         if (this.tradeBot) this.applyTradeBotToDraft(this.tradeBot);
-        else               this.applyDefaultTradeBotDraft();
+        else this.applyDefaultTradeBotDraft();
       },
       error: err => {
         if (this.selectedAccountId !== accountId) return;
         this.isLoadingBot = false;
-        this.botError     = this.extractError(err, 'Failed to load bot settings.');
+        this.botError = this.extractError(err, 'Failed to load bot settings.');
         this.applyDefaultTradeBotDraft();
       },
     });
@@ -413,52 +411,52 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private persistTradeBot(): Observable<TradeBot> {
     if (this.selectedAccountId === null) throw new Error('Trading account is required.');
-    const symbol   = this.findSymbol(this.tradeBotDraft.symbolCode);
+    const symbol = this.findSymbol(this.tradeBotDraft.symbolCode);
     const interval = this.findInterval(this.tradeBotDraft.intervalCode);
     if (!symbol || !interval || !this.tradeBotDraft.quantity) {
       throw new Error('Valid bot settings are required.');
     }
 
     const payload: CreateTradeBotRequest = {
-      tradingAccountId:  this.selectedAccountId,
+      tradingAccountId: this.selectedAccountId,
       tradingStrategyId: this.tradeBotDraft.tradingStrategyId ?? this.strategies[0]?.id ?? 0,
-      symbolCode:        symbol.code,
-      intervalCode:      interval.code,
-      symbolId:          symbol.id,
-      intervalId:        interval.id,
-      quantity:          this.tradeBotDraft.quantity,
-      stopLoss:          this.tradeBotDraft.stopLoss ?? null,
-      takeProfit:        this.tradeBotDraft.takeProfit ?? null,
-      breakeven:         this.tradeBotDraft.breakeven ?? null,
-      breakevenStop:     this.tradeBotDraft.breakevenStop ?? null,
-      isNySessionOnly:   this.tradeBotDraft.isNySessionOnly,
-      dailyProfitGoal:   this.tradeBotDraft.dailyProfitGoal ?? null,
-      maxLossesPerDay:   this.tradeBotDraft.maxLossesPerDay ?? null,
+      symbolCode: symbol.code,
+      intervalCode: interval.code,
+      symbolId: symbol.id,
+      intervalId: interval.id,
+      quantity: this.tradeBotDraft.quantity,
+      stopLoss: this.tradeBotDraft.stopLoss ?? null,
+      takeProfit: this.tradeBotDraft.takeProfit ?? null,
+      breakeven: this.tradeBotDraft.breakeven ?? null,
+      breakevenStop: this.tradeBotDraft.breakevenStop ?? null,
+      isNySessionOnly: this.tradeBotDraft.isNySessionOnly,
+      dailyProfitGoal: this.tradeBotDraft.dailyProfitGoal ?? null,
+      maxLossesPerDay: this.tradeBotDraft.maxLossesPerDay ?? null,
       maxCandlesPerTrade: this.tradeBotDraft.maxCandlesPerTrade ?? null,
-      fee:               this.tradeBotDraft.fee ?? null,
-      isEnabled:         this.tradeBot?.isEnabled ?? false,
+      fee: this.tradeBotDraft.fee ?? null,
+      isEnabled: this.tradeBot?.isEnabled ?? false,
     };
 
     if (!this.tradeBot) return this.traderAlgoApi.createTradeBot(payload);
 
     const update: UpdateTradeBotRequest = {
       tradingStrategyId: payload.tradingStrategyId,
-      symbolCode:        payload.symbolCode,
-      intervalCode:      payload.intervalCode,
-      symbolId:          payload.symbolId,
-      intervalId:        payload.intervalId,
-      quantity:          payload.quantity,
-      stopLoss:          payload.stopLoss ?? null,
-      takeProfit:        payload.takeProfit ?? null,
-      breakeven:         payload.breakeven ?? null,
-      breakevenStop:     payload.breakevenStop ?? null,
-      isNySessionOnly:   payload.isNySessionOnly ?? false,
-      delay:             payload.delay ?? false,
-      dailyProfitGoal:   payload.dailyProfitGoal ?? null,
-      maxLossesPerDay:   payload.maxLossesPerDay ?? null,
+      symbolCode: payload.symbolCode,
+      intervalCode: payload.intervalCode,
+      symbolId: payload.symbolId,
+      intervalId: payload.intervalId,
+      quantity: payload.quantity,
+      stopLoss: payload.stopLoss ?? null,
+      takeProfit: payload.takeProfit ?? null,
+      breakeven: payload.breakeven ?? null,
+      breakevenStop: payload.breakevenStop ?? null,
+      isNySessionOnly: payload.isNySessionOnly ?? false,
+      delay: payload.delay ?? false,
+      dailyProfitGoal: payload.dailyProfitGoal ?? null,
+      maxLossesPerDay: payload.maxLossesPerDay ?? null,
       maxCandlesPerTrade: payload.maxCandlesPerTrade ?? null,
-      fee:               payload.fee ?? null,
-      isEnabled:         this.tradeBot.isEnabled,
+      fee: payload.fee ?? null,
+      isEnabled: this.tradeBot.isEnabled,
     };
     return this.traderAlgoApi.updateTradeBot(this.tradeBot.id, update);
   }
@@ -495,7 +493,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
         if (this.activeTrade && event.tradeId === this.activeTrade.id) {
           this.activeTrade = {
             ...this.activeTrade,
-            stopLoss:   event.stopLoss   !== undefined ? event.stopLoss   : this.activeTrade.stopLoss,
+            stopLoss: event.stopLoss !== undefined ? event.stopLoss : this.activeTrade.stopLoss,
             takeProfit: event.takeProfit !== undefined ? event.takeProfit : this.activeTrade.takeProfit,
           };
           this.syncAdjustDraft(this.activeTrade);
@@ -529,7 +527,9 @@ export class TradePanelComponent implements OnInit, OnDestroy {
             this.refreshSelectedAccount();
           }
         },
-        error: () => { this.pollingTimer = setTimeout(poll, this.POLL_MS); },
+        error: () => {
+          this.pollingTimer = setTimeout(poll, this.POLL_MS);
+        },
       });
     };
 
@@ -545,19 +545,19 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private clearTradeState(): void {
     this.stopPolling();
-    this.activeTrade  = null;
-    this.tradeError   = '';
+    this.activeTrade = null;
+    this.tradeError = '';
     this.tradeMessage = '';
   }
 
   private clearBotState(): void {
     this.botEventSubscription?.unsubscribe();
-    this.tradeBot      = null;
-    this.isLoadingBot  = false;
-    this.isSavingBot   = false;
+    this.tradeBot = null;
+    this.isLoadingBot = false;
+    this.isSavingBot = false;
     this.isTogglingBot = false;
-    this.botError      = '';
-    this.botMessage    = '';
+    this.botError = '';
+    this.botMessage = '';
     this.applyDefaultTradeBotDraft();
   }
 
@@ -580,51 +580,60 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private applyTradeBotToDraft(bot: TradeBot): void {
     this.tradeBotDraft = {
-      tradingStrategyId:  bot.tradingStrategyId ?? this.strategies.find(s => s.name === bot.tradingStrategy)?.id ?? null,
-      symbolCode:         this.tradeBotSymbolCode(bot),
-      intervalCode:       this.tradeBotIntervalCode(bot),
-      quantity:           bot.quantity,
-      stopLoss:           bot.stopLoss,
-      takeProfit:         bot.takeProfit,
-      breakeven:          bot.breakeven,
-      breakevenStop:      bot.breakevenStop ?? null,
-      isNySessionOnly:    bot.isNySessionOnly,
-      dailyProfitGoal:    bot.dailyProfitGoal,
-      maxLossesPerDay:    bot.maxLossesPerDay,
+      tradingStrategyId: bot.tradingStrategyId ?? this.strategies.find(s => s.name === bot.tradingStrategy)?.id ?? null,
+      symbolCode: this.tradeBotSymbolCode(bot),
+      intervalCode: this.tradeBotIntervalCode(bot),
+      quantity: bot.quantity,
+      stopLoss: bot.stopLoss,
+      takeProfit: bot.takeProfit,
+      breakeven: bot.breakeven,
+      breakevenStop: bot.breakevenStop ?? null,
+      isNySessionOnly: bot.isNySessionOnly,
+      dailyProfitGoal: bot.dailyProfitGoal,
+      maxLossesPerDay: bot.maxLossesPerDay,
       maxCandlesPerTrade: bot.maxCandlesPerTrade,
-      fee:               bot.fee ?? null,
+      fee: bot.fee ?? null,
     };
   }
 
   private applyDefaultTradeBotDraft(): void {
     const symbolCode = this.selectedSymbol || this.symbols[0]?.code || '';
     this.tradeBotDraft = {
-      tradingStrategyId:  this.strategies[0]?.id ?? null,
+      tradingStrategyId: this.strategies[0]?.id ?? null,
       symbolCode,
-      intervalCode:       this.defaultInterval || this.intervals.find(i => i.isDefault)?.code || this.intervals[0]?.code || '',
-      quantity:           1,
-      stopLoss:           100,
-      takeProfit:         100,
-      breakeven:          null,
-      breakevenStop:      null,
-      isNySessionOnly:    isAlpacaSymbol(this.findSymbol(symbolCode)),
-      dailyProfitGoal:    null,
-      maxLossesPerDay:    null,
+      intervalCode:
+        this.defaultInterval || this.intervals.find(i => i.isDefault)?.code || this.intervals[0]?.code || '',
+      quantity: 1,
+      stopLoss: 100,
+      takeProfit: 100,
+      breakeven: null,
+      breakevenStop: null,
+      isNySessionOnly: isAlpacaSymbol(this.findSymbol(symbolCode)),
+      dailyProfitGoal: null,
+      maxLossesPerDay: null,
       maxCandlesPerTrade: null,
-      fee:               null,
+      fee: null,
     };
   }
 
   private tradeBotSymbolCode(bot: TradeBot): string {
-    return bot.symbolCode ?? bot.symbol?.code
-      ?? this.symbols.find(s => s.id === bot.symbolId)?.code
-      ?? this.selectedSymbol ?? '';
+    return (
+      bot.symbolCode ??
+      bot.symbol?.code ??
+      this.symbols.find(s => s.id === bot.symbolId)?.code ??
+      this.selectedSymbol ??
+      ''
+    );
   }
 
   private tradeBotIntervalCode(bot: TradeBot): string {
-    return bot.intervalCode ?? bot.interval?.code
-      ?? this.intervals.find(i => i.id === bot.intervalId)?.code
-      ?? this.defaultInterval ?? '';
+    return (
+      bot.intervalCode ??
+      bot.interval?.code ??
+      this.intervals.find(i => i.id === bot.intervalId)?.code ??
+      this.defaultInterval ??
+      ''
+    );
   }
 
   private findSymbol(code: string): SymbolResponse | undefined {
@@ -638,7 +647,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private extractError(err: unknown, fallback: string): string {
     if (typeof err === 'object' && err !== null) {
       const e = err as Record<string, unknown>;
-      if (typeof e['error']   === 'string') return e['error'];
+      if (typeof e['error'] === 'string') return e['error'];
       if (typeof e['message'] === 'string') return e['message'];
     }
     return fallback;

@@ -17,14 +17,10 @@ import {
 import type * as Highcharts from 'highcharts/highstock';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-highcharts-chart',
   template: '<div #chartEl class="hc-container"></div>',
-  styles: [
-    ':host { display: block; width: 100%; height: 100%; }',
-    '.hc-container { width: 100%; height: 100%; }',
-  ],
+  styles: [':host { display: block; width: 100%; height: 100%; }', '.hc-container { width: 100%; height: 100%; }'],
 })
 export class HighchartsChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('chartEl', { static: true }) chartEl!: ElementRef<HTMLDivElement>;

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { LiveChartDataService } from '../../services/live-chart-data.service';
@@ -8,15 +8,23 @@ import { StrategyResponse } from '../../structures/strategy';
 import { CandleWithIndicatorsResponse } from '../../structures/candle';
 import { BacktestSummary, CreateBacktestRequest } from '../../structures/backtest';
 import { Trade } from '../../structures/trade';
+import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
-  standalone: false,
   selector: 'app-backtest-page',
   templateUrl: './backtest-page.component.html',
   styleUrls: ['./backtest-page.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [BacktestChartComponent, FormsModule, RouterLink, DecimalPipe],
 })
 export class BacktestPageComponent implements OnInit, OnDestroy {
+  private readonly api = inject(TraderAlgoApiService);
+  private readonly liveChart = inject(LiveChartDataService);
+  private readonly cdr = inject(ChangeDetectorRef);
+
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
   strategies: StrategyResponse[] = [];
@@ -54,17 +62,11 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   private streamSub: Subscription | null = null;
 
-  constructor(
-    private readonly api: TraderAlgoApiService,
-    private readonly liveChart: LiveChartDataService,
-    private readonly cdr: ChangeDetectorRef,
-  ) {}
-
   ngOnInit(): void {
     const today = new Date();
     const monthAgo = new Date(today);
     monthAgo.setMonth(today.getMonth() - 1);
-    this.toDate   = this.toDatetimeLocal(today);
+    this.toDate = this.toDatetimeLocal(today);
     this.fromDate = this.toDatetimeLocal(monthAgo);
 
     this.api.getSymbols().subscribe(s => {
@@ -137,7 +139,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
         this.openStream(result.id, this.delay);
         this.cdr.markForCheck();
       },
-      error: (err) => {
+      error: err => {
         this.running = false;
         this.errorMessage = this.extractError(err, 'Failed to create backtest.');
         this.cdr.markForCheck();
@@ -152,8 +154,12 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   get streamedCandleDate(): string {
     if (!this.activePlaybackTime) return '';
     return new Date(this.activePlaybackTime * 1000).toLocaleString(undefined, {
-      month: 'short', day: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: false,
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
     });
   }
 
@@ -174,9 +180,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     const current = this.latestClose;
     const quantity = this.toNumber(trade.quantity);
     if (entry !== null && current !== null && quantity !== null) {
-      return trade.side === 'Buy'
-        ? (current - entry) * quantity
-        : (entry - current) * quantity;
+      return trade.side === 'Buy' ? (current - entry) * quantity : (entry - current) * quantity;
     }
 
     return this.toNumber(trade.pnl ?? trade.unrealizedPnl);
@@ -234,33 +238,32 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   /** Inserts a newly-opened trade or replaces an existing one by id (close/update). */
   private upsertTrade(trade: Trade): void {
     const index = this.backtestTrades.findIndex(t => t.id === trade.id);
-    this.backtestTrades = index === -1
-      ? [...this.backtestTrades, trade]
-      : [
-          ...this.backtestTrades.slice(0, index),
-          trade,
-          ...this.backtestTrades.slice(index + 1),
-        ];
+    this.backtestTrades =
+      index === -1
+        ? [...this.backtestTrades, trade]
+        : [...this.backtestTrades.slice(0, index), trade, ...this.backtestTrades.slice(index + 1)];
   }
 
   private applyBracketUpdate(tradeId: number, stopLoss: number | null, takeProfit: number | null): void {
     const index = this.backtestTrades.findIndex(t => t.id === tradeId);
     if (index === -1) return;
     const updated = { ...this.backtestTrades[index], stopLoss, takeProfit };
-    this.backtestTrades = [
-      ...this.backtestTrades.slice(0, index),
-      updated,
-      ...this.backtestTrades.slice(index + 1),
-    ];
+    this.backtestTrades = [...this.backtestTrades.slice(0, index), updated, ...this.backtestTrades.slice(index + 1)];
   }
 
   private refreshSummary(backtestId: number): void {
     this.api.getBacktest(backtestId).subscribe({
-      next: detail => { this.backtestResult = detail; this.cdr.markForCheck(); },
+      next: detail => {
+        this.backtestResult = detail;
+        this.cdr.markForCheck();
+      },
     });
     // Reconcile once against the persisted set in case the socket dropped mid-run.
     this.api.getBacktestTrades(backtestId).subscribe({
-      next: trades => { this.backtestTrades = trades; this.cdr.markForCheck(); },
+      next: trades => {
+        this.backtestTrades = trades;
+        this.cdr.markForCheck();
+      },
       error: err => console.error('Failed to load backtest trades.', err),
     });
   }

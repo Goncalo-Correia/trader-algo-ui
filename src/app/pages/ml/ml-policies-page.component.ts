@@ -1,25 +1,32 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { MlPolicy } from '../../structures/ml-policy';
+import { RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-policies-page',
   templateUrl: './ml-policies-page.component.html',
   styleUrls: ['./ml-policies-page.component.css'],
+  imports: [RouterLink, DecimalPipe],
 })
 export class MlPoliciesPageComponent implements OnInit {
+  private readonly api = inject(TraderAlgoApiService);
+
   policies: MlPolicy[] = [];
   readonly trackById = (_: number, policy: MlPolicy): number => policy.id;
   isLoading = true;
 
-  constructor(private readonly api: TraderAlgoApiService) {}
-
   ngOnInit(): void {
     this.api.getPolicies().subscribe({
-      next: data => { this.policies = data; this.isLoading = false; },
-      error: ()   => { this.isLoading = false; },
+      next: data => {
+        this.policies = data;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 

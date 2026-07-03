@@ -1,11 +1,5 @@
-import { Injectable } from '@angular/core';
-import {
-  HttpErrorResponse,
-  HttpEvent,
-  HttpHandler,
-  HttpInterceptor,
-  HttpRequest,
-} from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AppError } from './app-error';
@@ -18,7 +12,7 @@ import { LoggerService } from './logger.service';
  */
 @Injectable()
 export class ErrorInterceptor implements HttpInterceptor {
-  constructor(private readonly logger: LoggerService) {}
+  private readonly logger = inject(LoggerService);
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     return next.handle(request).pipe(

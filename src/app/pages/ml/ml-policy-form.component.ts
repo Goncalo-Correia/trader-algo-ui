@@ -1,18 +1,22 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
 import { CreatePolicyRequest } from '../../structures/ml-policy';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-policy-form',
   templateUrl: './ml-policy-form.component.html',
   styleUrls: ['./ml-policy-form.component.css'],
+  imports: [RouterLink, FormsModule],
 })
 export class MlPolicyFormComponent implements OnInit {
+  private readonly api = inject(TraderAlgoApiService);
+  private readonly router = inject(Router);
+
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
 
@@ -40,11 +44,6 @@ export class MlPolicyFormComponent implements OnInit {
 
   submitting = false;
   errorMessage: string | null = null;
-
-  constructor(
-    private readonly api: TraderAlgoApiService,
-    private readonly router: Router,
-  ) {}
 
   ngOnInit(): void {
     this.api.getSymbols().subscribe(s => {

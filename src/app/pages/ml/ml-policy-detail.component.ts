@@ -1,18 +1,24 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { MlPolicy } from '../../structures/ml-policy';
 import { MlTrainingRun } from '../../structures/ml-training';
+import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-policy-detail',
   templateUrl: './ml-policy-detail.component.html',
   styleUrls: ['./ml-policy-detail.component.css'],
+  imports: [RouterLink, FormsModule, DecimalPipe],
 })
 export class MlPolicyDetailComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(TraderAlgoApiService);
+
   policy: MlPolicy | null = null;
   runs: MlTrainingRun[] = [];
   isLoading = true;
@@ -31,12 +37,6 @@ export class MlPolicyDetailComponent implements OnInit {
   readonly trackById = (_: number, run: MlTrainingRun): number => run.id;
 
   private policyId!: number;
-
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-    private readonly api: TraderAlgoApiService,
-  ) {}
 
   ngOnInit(): void {
     this.policyId = Number(this.route.snapshot.paramMap.get('id'));
@@ -61,7 +61,10 @@ export class MlPolicyDetailComponent implements OnInit {
         this.runs = runs.filter(r => r.mlPolicyId === this.policyId);
         this.isLoading = false;
       },
-      error: () => { this.isLoading = false; this.notFound = true; },
+      error: () => {
+        this.isLoading = false;
+        this.notFound = true;
+      },
     });
   }
 
@@ -106,11 +109,16 @@ export class MlPolicyDetailComponent implements OnInit {
 
   statusClass(status: string): string {
     switch (status) {
-      case 'Completed': return 'status-completed';
-      case 'Running':   return 'status-running';
-      case 'Pending':   return 'status-pending';
-      case 'Failed':    return 'status-failed';
-      default:          return '';
+      case 'Completed':
+        return 'status-completed';
+      case 'Running':
+        return 'status-running';
+      case 'Pending':
+        return 'status-pending';
+      case 'Failed':
+        return 'status-failed';
+      default:
+        return '';
     }
   }
 
@@ -133,7 +141,9 @@ export class MlPolicyDetailComponent implements OnInit {
 
   formatDate(unixSeconds: number): string {
     return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
-      year: 'numeric', month: 'short', day: '2-digit',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
     });
   }
 

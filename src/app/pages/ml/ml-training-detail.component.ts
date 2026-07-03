@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -13,6 +13,9 @@ import {
   MlTrainingRun,
 } from '../../structures/ml-training';
 import { Trade } from '../../structures/trade';
+import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
+import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
+import { LowerCasePipe, DecimalPipe } from '@angular/common';
 
 function darkThemeBase(): Highcharts.Options {
   return {
@@ -22,11 +25,14 @@ function darkThemeBase(): Highcharts.Options {
     legend: { enabled: false },
     xAxis: {
       type: 'datetime',
-      gridLineColor: '#1e2130', lineColor: '#2a2d3a', tickColor: '#2a2d3a',
+      gridLineColor: '#1e2130',
+      lineColor: '#2a2d3a',
+      tickColor: '#2a2d3a',
       labels: { style: { color: '#787b86', fontSize: '11px' } },
     },
     yAxis: {
-      gridLineColor: '#1e2130', lineColor: '#2a2d3a',
+      gridLineColor: '#1e2130',
+      lineColor: '#2a2d3a',
       labels: { style: { color: '#787b86', fontSize: '11px' }, align: 'left', x: 4 },
       title: { text: '' },
     },
@@ -52,13 +58,17 @@ interface PerformanceMetricSection {
 }
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
   styleUrls: ['./ml-training-detail.component.css'],
+  imports: [RouterLink, HighchartsChartComponent, BacktestChartComponent, LowerCasePipe, DecimalPipe],
 })
 export class MlTrainingDetailComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(TraderAlgoApiService);
+
   run: MlTrainingRun | null = null;
   decisions: MlDecisionLog | null = null;
   isLoading = true;
@@ -80,12 +90,6 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private runId!: number;
   private pollSub: Subscription | null = null;
 
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-    private readonly api: TraderAlgoApiService,
-  ) {}
-
   ngOnInit(): void {
     this.runId = Number(this.route.snapshot.paramMap.get('id'));
     // Poll while the run is in flight; stop and load the visualization once it settles.
@@ -105,7 +109,10 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
             this.loadTracking(run.id, false);
           }
         },
-        error: () => { this.isLoading = false; this.stopPolling(); },
+        error: () => {
+          this.isLoading = false;
+          this.stopPolling();
+        },
       });
     });
   }
@@ -131,7 +138,12 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   get performanceFinalBalance(): number | null {
-    return this.tracking?.latestMetrics['final_balance'] ?? this.run?.tracking?.finalBalance ?? this.run?.finalBalance ?? null;
+    return (
+      this.tracking?.latestMetrics['final_balance'] ??
+      this.run?.tracking?.finalBalance ??
+      this.run?.finalBalance ??
+      null
+    );
   }
 
   get performancePnlPct(): number | null {
@@ -139,7 +151,12 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   get performanceTrades(): number | null {
-    return this.toIntegerMetric(this.tracking?.latestMetrics['n_trades']) ?? this.run?.tracking?.nTrades ?? this.run?.nTrades ?? null;
+    return (
+      this.toIntegerMetric(this.tracking?.latestMetrics['n_trades']) ??
+      this.run?.tracking?.nTrades ??
+      this.run?.nTrades ??
+      null
+    );
   }
 
   get trackingParams(): Record<string, string> {
@@ -176,37 +193,54 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     this.deleting = true;
     this.api.deleteTraining(this.runId).subscribe({
       next: () => this.router.navigate(['/ml/policies', policyId]),
-      error: () => { this.deleting = false; },
+      error: () => {
+        this.deleting = false;
+      },
     });
   }
 
   statusClass(status: string): string {
     switch (status) {
-      case 'Completed': return 'status-completed';
-      case 'Running':   return 'status-running';
-      case 'Pending':   return 'status-pending';
-      case 'Failed':    return 'status-failed';
-      default:          return '';
+      case 'Completed':
+        return 'status-completed';
+      case 'Running':
+        return 'status-running';
+      case 'Pending':
+        return 'status-pending';
+      case 'Failed':
+        return 'status-failed';
+      default:
+        return '';
     }
   }
 
   formatDate(unixSeconds: number): string {
-    return new Date(unixSeconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+    return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    });
   }
 
   formatTs(ms: number | null): string {
     if (ms === null) return '—';
     const d = new Date(ms > 9_999_999_999 ? ms : ms * 1000);
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return (
+      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
+      ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
   }
 
   formatIso(value: string | null | undefined): string {
     if (!value) return '—';
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return (
+      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
+      ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
   }
 
   formatMetricValue(metric: PerformanceMetricView): string {
@@ -240,8 +274,13 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     // The lightweight-charts component reacts to its [candles]/[trades] inputs,
     // so order doesn't matter.
     this.api.getCandlesWithIndicatorsByDateInterval(range).subscribe({
-      next: candles => { this.candles = candles; this.candlesReady = true; },
-      error: () => { this.candlesError = 'Could not load candles for this run.'; },
+      next: candles => {
+        this.candles = candles;
+        this.candlesReady = true;
+      },
+      error: () => {
+        this.candlesError = 'Could not load candles for this run.';
+      },
     });
 
     this.api.getTrainingDecisions(run.id).subscribe({
@@ -250,7 +289,9 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         this.chartTrades = this.toChartTrades(log);
         this.buildBalanceChart(log);
       },
-      error: () => { this.decisionsError = 'Decision log is not available for this run.'; },
+      error: () => {
+        this.decisionsError = 'Decision log is not available for this run.';
+      },
     });
   }
 
@@ -303,20 +344,23 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private buildBalanceChart(log: MlDecisionLog): void {
     this.balanceChartOptions = {
       ...darkThemeBase(),
-      series: [{
-        type: 'area',
-        name: 'Balance',
-        data: log.decisions
-          .filter(d => d.open_time !== null)
-          .map(d => [d.open_time! * 1000, Number(d.balance)]),
-        color: '#2962ff',
-        fillColor: {
-          linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-          stops: [[0, 'rgba(41,98,255,0.25)'], [1, 'rgba(41,98,255,0)']],
-        },
-        lineWidth: 2,
-        marker: { enabled: false },
-      } as Highcharts.SeriesAreaOptions],
+      series: [
+        {
+          type: 'area',
+          name: 'Balance',
+          data: log.decisions.filter(d => d.open_time !== null).map(d => [d.open_time! * 1000, Number(d.balance)]),
+          color: '#2962ff',
+          fillColor: {
+            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+            stops: [
+              [0, 'rgba(41,98,255,0.25)'],
+              [1, 'rgba(41,98,255,0)'],
+            ],
+          },
+          lineWidth: 2,
+          marker: { enabled: false },
+        } as Highcharts.SeriesAreaOptions,
+      ],
     };
   }
 
@@ -325,8 +369,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     const metricHistory = tracking.metricHistory ?? {};
     const keys = [
       ...preferred.filter(key => (metricHistory[key]?.length ?? 0) > 1),
-      ...Object.keys(metricHistory)
-        .filter(key => !preferred.includes(key) && metricHistory[key].length > 1),
+      ...Object.keys(metricHistory).filter(key => !preferred.includes(key) && metricHistory[key].length > 1),
     ];
 
     this.metricHistoryChartOptions = {
@@ -339,16 +382,19 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         labels: { style: { color: '#787b86', fontSize: '11px' } },
         title: { text: 'Step', style: { color: '#787b86' } },
       },
-      series: keys.map((key, index) => ({
-        type: 'line',
-        name: key,
-        data: metricHistory[key]
-          .filter(point => point.value !== null)
-          .map(point => [point.step, point.value as number]),
-        color: ['#2962ff', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350'][index % 5],
-        lineWidth: 2,
-        marker: { enabled: false },
-      } as Highcharts.SeriesLineOptions)),
+      series: keys.map(
+        (key, index) =>
+          ({
+            type: 'line',
+            name: key,
+            data: metricHistory[key]
+              .filter(point => point.value !== null)
+              .map(point => [point.step, point.value as number]),
+            color: ['#2962ff', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350'][index % 5],
+            lineWidth: 2,
+            marker: { enabled: false },
+          }) as Highcharts.SeriesLineOptions,
+      ),
     };
   }
 
@@ -371,7 +417,11 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       .filter(section => section.metrics.length > 0);
   }
 
-  private toMetricView(groupKey: string, metricKey: string, metric: MlflowRewardMetric | null | undefined): PerformanceMetricView | null {
+  private toMetricView(
+    groupKey: string,
+    metricKey: string,
+    metric: MlflowRewardMetric | null | undefined,
+  ): PerformanceMetricView | null {
     if (!metric) return null;
     const key = metric.key || metricKey;
     return {
@@ -408,16 +458,19 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         ...base.tooltip,
         shared: true,
       },
-      series: chartableMetrics.map((metric, index) => ({
-        type: 'line',
-        name: metric.label,
-        data: metric.history
-          .filter(point => point.value !== null && Number.isFinite(point.value))
-          .map(point => [point.step, point.value as number]),
-        color: palette[index % palette.length],
-        lineWidth: 2,
-        marker: { enabled: false },
-      } as Highcharts.SeriesLineOptions)),
+      series: chartableMetrics.map(
+        (metric, index) =>
+          ({
+            type: 'line',
+            name: metric.label,
+            data: metric.history
+              .filter(point => point.value !== null && Number.isFinite(point.value))
+              .map(point => [point.step, point.value as number]),
+            color: palette[index % palette.length],
+            lineWidth: 2,
+            marker: { enabled: false },
+          }) as Highcharts.SeriesLineOptions,
+      ),
     };
   }
 
@@ -439,5 +492,4 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       .replace(/[_-]+/g, ' ')
       .replace(/\b\w/g, char => char.toUpperCase());
   }
-
 }

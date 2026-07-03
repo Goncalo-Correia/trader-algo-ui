@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { CandleRequest, CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
@@ -7,7 +7,11 @@ import { SessionOhlcvResponse, VolumeProfileLevel } from '../structures/session'
 import { SymbolResponse } from '../structures/symbol';
 import { CreateTradeBotRequest, TradeBot, UpdateTradeBotRequest } from '../structures/trade-bot';
 import { CreateTradeRequest, Trade, UpdateTradeRequest } from '../structures/trade';
-import { TradingAccount, CreateTradingAccountRequest, UpdateTradingAccountRequest } from '../structures/trading-account';
+import {
+  TradingAccount,
+  CreateTradingAccountRequest,
+  UpdateTradingAccountRequest,
+} from '../structures/trading-account';
 import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestRequest } from '../structures/backtest';
 import { StrategyResponse } from '../structures/strategy';
 import {
@@ -22,9 +26,9 @@ import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class TraderAlgoApiService {
-  private readonly baseUrl = environment.traderAlgoApi.baseUrl;
+  private readonly http = inject(HttpClient);
 
-  constructor(private readonly http: HttpClient) {}
+  private readonly baseUrl = environment.traderAlgoApi.baseUrl;
 
   getCandles(request: CandleRequest = {}): Observable<CandleResponse[]> {
     let params = new HttpParams();
@@ -52,7 +56,10 @@ export class TraderAlgoApiService {
       .set('to', req.to)
       .set('symbol', req.symbol)
       .set('interval', req.interval);
-    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/charts/candles/indicators/date-interval`, { params });
+    return this.http.get<CandleWithIndicatorsResponse[]>(
+      `${this.baseUrl}/api/charts/candles/indicators/date-interval`,
+      { params },
+    );
   }
 
   kronosMiniPrecise(symbol: string, interval: string): Observable<CandleResponse[]> {
@@ -146,9 +153,10 @@ export class TraderAlgoApiService {
   }
 
   getTradeBots(tradingAccountId?: number): Observable<TradeBot[]> {
-    const options = tradingAccountId === undefined
-      ? {}
-      : { params: new HttpParams().set('tradingAccountId', String(tradingAccountId)) };
+    const options =
+      tradingAccountId === undefined
+        ? {}
+        : { params: new HttpParams().set('tradingAccountId', String(tradingAccountId)) };
     return this.http.get<TradeBot[]>(`${this.baseUrl}/api/tradebots`, options);
   }
 
@@ -187,7 +195,9 @@ export class TraderAlgoApiService {
       .set('interval', req.interval)
       .set('from', req.from)
       .set('to', req.to);
-    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/backtests/candles/indicators`, { params });
+    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/backtests/candles/indicators`, {
+      params,
+    });
   }
 
   createBacktest(payload: CreateBacktestRequest): Observable<BacktestSummary> {

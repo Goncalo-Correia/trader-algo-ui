@@ -7,6 +7,7 @@ import {
   NgZone,
   OnDestroy,
   ViewChild,
+  inject,
 } from '@angular/core';
 import {
   CandlestickSeries,
@@ -30,13 +31,14 @@ import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin
 import { Trade } from '../../structures/trade';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-backtest-chart',
   templateUrl: './backtest-chart.component.html',
   styleUrls: ['./backtest-chart.component.css'],
 })
 export class BacktestChartComponent implements AfterViewInit, OnDestroy {
+  private readonly ngZone = inject(NgZone);
+
   @ViewChild('chartContainer', { static: true })
   private readonly chartContainer!: ElementRef<HTMLDivElement>;
 
@@ -57,15 +59,16 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
   @Input() set trades(trades: Trade[]) {
     this._trades = trades;
-    if (this.chart) this.ngZone.runOutsideAngular(() => {
-      this.applyTradeMarkers();
-      this.applyBracketLines();
-    });
+    if (this.chart)
+      this.ngZone.runOutsideAngular(() => {
+        this.applyTradeMarkers();
+        this.applyBracketLines();
+      });
   }
 
   showVolume = true;
-  showRsi    = true;
-  showMacd   = true;
+  showRsi = true;
+  showMacd = true;
   showTrades = true;
 
   private _candles: CandleWithIndicatorsResponse[] = [];
@@ -74,19 +77,19 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private _isNySessionOnly = false;
 
   private chart?: IChartApi;
-  private candleSeries?:    ISeriesApi<'Candlestick'>;
-  private sma20Series?:     ISeriesApi<'Line'>;
-  private sma100Series?:    ISeriesApi<'Line'>;
-  private volumeSeries?:    ISeriesApi<'Histogram'>;
-  private deltaSeries?:     ISeriesApi<'Histogram'>;
-  private rsiSeries?:       ISeriesApi<'Line'>;
-  private rsiMaSeries?:     ISeriesApi<'Line'>;
-  private rsiOverbought?:   ISeriesApi<'Line'>;
-  private rsiOversold?:     ISeriesApi<'Line'>;
-  private macdLineSeries?:  ISeriesApi<'Line'>;
-  private macdSignalSeries?:ISeriesApi<'Line'>;
-  private macdHistSeries?:  ISeriesApi<'Histogram'>;
-  private macdZeroSeries?:  ISeriesApi<'Line'>;
+  private candleSeries?: ISeriesApi<'Candlestick'>;
+  private sma20Series?: ISeriesApi<'Line'>;
+  private sma100Series?: ISeriesApi<'Line'>;
+  private volumeSeries?: ISeriesApi<'Histogram'>;
+  private deltaSeries?: ISeriesApi<'Histogram'>;
+  private rsiSeries?: ISeriesApi<'Line'>;
+  private rsiMaSeries?: ISeriesApi<'Line'>;
+  private rsiOverbought?: ISeriesApi<'Line'>;
+  private rsiOversold?: ISeriesApi<'Line'>;
+  private macdLineSeries?: ISeriesApi<'Line'>;
+  private macdSignalSeries?: ISeriesApi<'Line'>;
+  private macdHistSeries?: ISeriesApi<'Histogram'>;
+  private macdZeroSeries?: ISeriesApi<'Line'>;
 
   private activeCandlePlugin?: ActiveCandlePlugin;
   private sessionMarkersPlugin?: SessionMarkersPlugin;
@@ -101,8 +104,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private renderedCount = 0;
   private firstRenderedTime: UTCTimestamp | null = null;
   private lastMacdHistValue: number | null = null;
-
-  constructor(private readonly ngZone: NgZone) {}
 
   ngAfterViewInit(): void {
     this.ngZone.runOutsideAngular(() => {
@@ -120,41 +121,74 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
       // Pane 0 — candlesticks + SMAs
       this.candleSeries = this.chart.addSeries(CandlestickSeries, {
-        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
-        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderVisible: false,
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
       });
 
       this.activeCandlePlugin = new ActiveCandlePlugin();
       this.candleSeries.attachPrimitive(this.activeCandlePlugin);
 
-      const smaOpts = { priceScaleId: 'right', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.sma20Series  = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#f59e0b' });
+      const smaOpts = {
+        priceScaleId: 'right',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      } as const;
+      this.sma20Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#f59e0b' });
       this.sma100Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#818cf8' });
 
       // Pane 1 — volume + delta
-      this.volumeSeries = this.chart.addSeries(HistogramSeries, { priceScaleId: 'volume', priceFormat: { type: 'volume' } }, 1);
+      this.volumeSeries = this.chart.addSeries(
+        HistogramSeries,
+        { priceScaleId: 'volume', priceFormat: { type: 'volume' } },
+        1,
+      );
       this.volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.7, bottom: 0 } });
 
-      this.deltaSeries = this.chart.addSeries(HistogramSeries, {
-        priceScaleId: 'delta',
-        priceFormat: { type: 'custom', formatter: (p: number) => p.toFixed(1) + '%', minMove: 0.1 },
-      }, 1);
+      this.deltaSeries = this.chart.addSeries(
+        HistogramSeries,
+        {
+          priceScaleId: 'delta',
+          priceFormat: { type: 'custom', formatter: (p: number) => p.toFixed(1) + '%', minMove: 0.1 },
+        },
+        1,
+      );
       this.deltaSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
 
       // Pane 2 — RSI
       const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.rsiSeries     = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#9c27b0', lastValueVisible: true }, 2);
-      this.rsiMaSeries   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
+      this.rsiSeries = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#9c27b0', lastValueVisible: true }, 2);
+      this.rsiMaSeries = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ef5350' }, 2);
-      this.rsiOversold   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
+      this.rsiOversold = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
       this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
       // Pane 3 — MACD
-      const macdOpts = { priceScaleId: 'macd', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.macdLineSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#2962ff', lastValueVisible: true }, 3);
-      this.macdSignalSeries = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#ff6d00', lastValueVisible: true }, 3);
-      this.macdHistSeries   = this.chart.addSeries(HistogramSeries, { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false }, 3);
-      this.macdZeroSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: '#4a4d5a' }, 3);
+      const macdOpts = {
+        priceScaleId: 'macd',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      } as const;
+      this.macdLineSeries = this.chart.addSeries(
+        LineSeries,
+        { ...macdOpts, color: '#2962ff', lastValueVisible: true },
+        3,
+      );
+      this.macdSignalSeries = this.chart.addSeries(
+        LineSeries,
+        { ...macdOpts, color: '#ff6d00', lastValueVisible: true },
+        3,
+      );
+      this.macdHistSeries = this.chart.addSeries(
+        HistogramSeries,
+        { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false },
+        3,
+      );
+      this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: '#4a4d5a' }, 3);
       this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
     });
 
@@ -296,9 +330,9 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     }
     if (!this._isNySessionOnly || this._candles.length === 0) return;
     const first = this._candles[0].time;
-    const last  = this._candles[this._candles.length - 1].time;
+    const last = this._candles[this._candles.length - 1].time;
     const fromMs = (first > 9_999_999_999 ? first : first * 1000) - 86_400_000;
-    const toMs   = (last  > 9_999_999_999 ? last  : last  * 1000) + 86_400_000;
+    const toMs = (last > 9_999_999_999 ? last : last * 1000) + 86_400_000;
     this.sessionMarkersPlugin = new SessionMarkersPlugin(fromMs, toMs);
     this.candleSeries.attachPrimitive(this.sessionMarkersPlugin);
   }
@@ -329,11 +363,11 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       this.candleSeries?.update({ time, open: c.open, high: c.high, low: c.low, close: c.close });
       this.volumeSeries?.update(this.toVolumeBar(c));
       this.deltaSeries?.update(this.toDeltaBar(c));
-      if (c.sma_20 !== null)  this.sma20Series?.update({ time, value: c.sma_20 });
+      if (c.sma_20 !== null) this.sma20Series?.update({ time, value: c.sma_20 });
       if (c.sma_100 !== null) this.sma100Series?.update({ time, value: c.sma_100 });
-      if (c.rsi !== null)        this.rsiSeries?.update({ time, value: c.rsi });
+      if (c.rsi !== null) this.rsiSeries?.update({ time, value: c.rsi });
       if (c.rsi_smooth !== null) this.rsiMaSeries?.update({ time, value: c.rsi_smooth });
-      if (c.macd_line !== null)        this.macdLineSeries?.update({ time, value: c.macd_line });
+      if (c.macd_line !== null) this.macdLineSeries?.update({ time, value: c.macd_line });
       if (c.macd_signal_line !== null) this.macdSignalSeries?.update({ time, value: c.macd_signal_line });
       if (c.macd_histogram !== null) {
         this.macdHistSeries?.update(this.toMacdHistogramBar(c.macd_histogram, time));
@@ -359,9 +393,15 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private applyAllSeries(candles: CandleWithIndicatorsResponse[]): void {
     const shouldFitInitialContent = candles.length > 0 && !this.hasAppliedInitialViewport;
 
-    this.candleSeries?.setData(candles.map(c => ({
-      time: this.toTime(c.time), open: c.open, high: c.high, low: c.low, close: c.close,
-    })));
+    this.candleSeries?.setData(
+      candles.map(c => ({
+        time: this.toTime(c.time),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      })),
+    );
     this.applySessionMarkers();
     this.applyTradeMarkers();
     this.applyBracketLines();
@@ -399,7 +439,9 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       candles.filter(c => c.macd_line !== null).map(c => ({ time: this.toTime(c.time), value: c.macd_line! })),
     );
     this.macdSignalSeries?.setData(
-      candles.filter(c => c.macd_signal_line !== null).map(c => ({ time: this.toTime(c.time), value: c.macd_signal_line! })),
+      candles
+        .filter(c => c.macd_signal_line !== null)
+        .map(c => ({ time: this.toTime(c.time), value: c.macd_signal_line! })),
     );
     this.macdHistSeries?.setData(this.toMacdHistogram(candles));
 
@@ -423,7 +465,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
   private applyPlayback(unixSeconds: number | null): void {
     if (this.activeCandlePlugin) {
-      this.activeCandlePlugin.setTime(unixSeconds !== null ? unixSeconds as UTCTimestamp : null);
+      this.activeCandlePlugin.setTime(unixSeconds !== null ? (unixSeconds as UTCTimestamp) : null);
     }
   }
 
@@ -438,8 +480,8 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   }
 
   private toDeltaBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const buy   = c.taker_buy_base_asset_volume;
-    const sell  = c.taker_sell_base_asset_volume;
+    const buy = c.taker_buy_base_asset_volume;
+    const sell = c.taker_sell_base_asset_volume;
     const total = buy + sell;
     const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
     return { time: this.toTime(c.time), value: delta, color: delta >= 0 ? '#26a69a' : '#ef5350' };
@@ -460,9 +502,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private toMacdHistogramBar(h: number, time: UTCTimestamp): HistogramData<Time> {
     const prev = this.lastMacdHistValue;
     const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
-    const color = h >= 0
-      ? (growing ? '#26a69a' : '#26a69a55')
-      : (growing ? '#ef5350' : '#ef535055');
+    const color = h >= 0 ? (growing ? '#26a69a' : '#26a69a55') : growing ? '#ef5350' : '#ef535055';
     this.lastMacdHistValue = h;
     return { time, value: h, color };
   }

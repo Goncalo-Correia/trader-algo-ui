@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestDetail } from '../../structures/backtest';
 import { Trade } from '../../structures/trade';
+import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
+import { LowerCasePipe, DecimalPipe } from '@angular/common';
 
 function darkThemeBase(): Highcharts.Options {
   return {
@@ -37,13 +39,17 @@ function darkThemeBase(): Highcharts.Options {
 }
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-backtest-detail',
   templateUrl: './backtest-detail.component.html',
   styleUrls: ['./backtest-detail.component.css'],
+  imports: [RouterLink, HighchartsChartComponent, LowerCasePipe, DecimalPipe],
 })
 export class BacktestDetailComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(TraderAlgoApiService);
+
   detail: BacktestDetail | null = null;
   readonly trackById = (_: number, trade: Trade): number => trade.id;
   isLoading = true;
@@ -52,12 +58,6 @@ export class BacktestDetailComponent implements OnInit {
 
   equityChartOptions: Highcharts.Options = {};
   candleChartOptions: Highcharts.Options = {};
-
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-    private readonly api: TraderAlgoApiService,
-  ) {}
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -68,7 +68,9 @@ export class BacktestDetailComponent implements OnInit {
         this.isLoading = false;
         this.buildCharts(detail);
       },
-      error: () => { this.isLoading = false; },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 
@@ -77,7 +79,9 @@ export class BacktestDetailComponent implements OnInit {
     this.deleting = true;
     this.api.deleteBacktest(this.backtestId).subscribe({
       next: () => this.router.navigate(['/backtests']),
-      error: () => { this.deleting = false; },
+      error: () => {
+        this.deleting = false;
+      },
     });
   }
 
@@ -91,15 +95,20 @@ export class BacktestDetailComponent implements OnInit {
 
   formatDate(unixSeconds: number): string {
     return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
-      year: 'numeric', month: 'short', day: '2-digit',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
     });
   }
 
   formatTs(ms: number | null): string {
     if (ms === null) return '—';
     const d = new Date(ms > 9_999_999_999 ? ms : ms * 1000);
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return (
+      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
+      ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
   }
 
   getTradePnl(trade: Trade): number | null {
@@ -129,8 +138,13 @@ export class BacktestDetailComponent implements OnInit {
       ],
     };
 
-    const candleData: [number, number, number, number, number][] =
-      detail.candles.map(c => [c.time * 1000, c.open, c.high, c.low, c.close]);
+    const candleData: [number, number, number, number, number][] = detail.candles.map(c => [
+      c.time * 1000,
+      c.open,
+      c.high,
+      c.low,
+      c.close,
+    ]);
 
     const buyEntries = detail.trades
       .filter(t => t.side === 'Buy' && t.entryPrice !== null && t.openedAt !== null)

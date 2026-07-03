@@ -1,4 +1,4 @@
-import { ErrorHandler, Injectable } from '@angular/core';
+import { ErrorHandler, Injectable, inject } from '@angular/core';
 import { isAppError } from './app-error';
 import { LoggerService } from './logger.service';
 
@@ -8,7 +8,7 @@ import { LoggerService } from './logger.service';
  */
 @Injectable()
 export class GlobalErrorHandler implements ErrorHandler {
-  constructor(private readonly logger: LoggerService) {}
+  private readonly logger = inject(LoggerService);
 
   handleError(error: unknown): void {
     if (isAppError(error)) {

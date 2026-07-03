@@ -1,25 +1,32 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestSummary } from '../../structures/backtest';
+import { RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-backtests-page',
   templateUrl: './backtests-page.component.html',
   styleUrls: ['./backtests-page.component.css'],
+  imports: [RouterLink, DecimalPipe],
 })
 export class BacktestsPageComponent implements OnInit {
+  private readonly api = inject(TraderAlgoApiService);
+
   backtests: BacktestSummary[] = [];
   readonly trackById = (_: number, backtest: BacktestSummary): number => backtest.id;
   isLoading = true;
 
-  constructor(private readonly api: TraderAlgoApiService) {}
-
   ngOnInit(): void {
     this.api.getBacktests().subscribe({
-      next: data => { this.backtests = data; this.isLoading = false; },
-      error: ()   => { this.isLoading = false; },
+      next: data => {
+        this.backtests = data;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 
@@ -30,25 +37,35 @@ export class BacktestsPageComponent implements OnInit {
 
   statusClass(status: string): string {
     switch (status) {
-      case 'Completed': return 'status-completed';
-      case 'Running':   return 'status-running';
-      case 'Pending':   return 'status-pending';
-      case 'Cancelled': return 'status-cancelled';
-      case 'Failed':    return 'status-failed';
-      default:          return '';
+      case 'Completed':
+        return 'status-completed';
+      case 'Running':
+        return 'status-running';
+      case 'Pending':
+        return 'status-pending';
+      case 'Cancelled':
+        return 'status-cancelled';
+      case 'Failed':
+        return 'status-failed';
+      default:
+        return '';
     }
   }
 
   formatDate(unixSeconds: number): string {
     return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
-      year: 'numeric', month: 'short', day: '2-digit',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
     });
   }
 
   formatTs(unixMs: number | null): string {
     if (unixMs === null) return '—';
     return new Date(unixMs).toLocaleDateString(undefined, {
-      year: 'numeric', month: 'short', day: '2-digit',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
     });
   }
 }

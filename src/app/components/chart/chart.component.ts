@@ -1,4 +1,16 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, NgZone, OnDestroy, Output, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  NgZone,
+  OnDestroy,
+  Output,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import {
   CandlestickData,
   CandlestickSeries,
@@ -30,13 +42,16 @@ import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/sessi
 import { Trade } from '../../structures/trade';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-chart',
   templateUrl: './chart.component.html',
   styleUrls: ['./chart.component.css'],
 })
 export class ChartComponent implements AfterViewInit, OnDestroy {
+  private readonly ngZone = inject(NgZone);
+  private readonly traderAlgoApi = inject(TraderAlgoApiService);
+  private readonly liveChartData = inject(LiveChartDataService);
+
   @ViewChild('chartContainer', { static: true })
   private readonly chartContainer!: ElementRef<HTMLDivElement>;
 
@@ -56,7 +71,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  @Input() set initialInterval(value: string) { this.selectedInterval = value; }
+  @Input() set initialInterval(value: string) {
+    this.selectedInterval = value;
+  }
 
   @Input() set activeTrade(trade: Trade | null) {
     this._activeTrade = trade;
@@ -84,30 +101,30 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   // ── Public UI state ──────────────────────────────────────────────────────────
   selectedInterval = '';
-  isLoading        = true;
-  statusMessage    = 'Loading candles...';
-  liveStatus       = '';
-  isConnected      = false;
+  isLoading = true;
+  statusMessage = 'Loading candles...';
+  liveStatus = '';
+  isConnected = false;
   predictingKey: string | null = null;
-  showCurrentSession  = true;
+  showCurrentSession = true;
   showPreviousSession = true;
-  showVolumeProfile   = true;
-  showVolume          = true;
-  showRsi             = true;
-  showMacd            = true;
-  showPredictMenu     = false;
-  showTrades          = true;
+  showVolumeProfile = true;
+  showVolume = true;
+  showRsi = true;
+  showMacd = true;
+  showPredictMenu = false;
+  showTrades = true;
 
   readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
   readonly trackByKronosKey = (_: number, button: { key: string }): string => button.key;
 
   readonly kronosButtons = [
-    { label: 'Mini P',  key: 'mini-precise'  },
-    { label: 'Mini D',  key: 'mini-diverse'  },
+    { label: 'Mini P', key: 'mini-precise' },
+    { label: 'Mini D', key: 'mini-diverse' },
     { label: 'Small P', key: 'small-precise' },
     { label: 'Small D', key: 'small-diverse' },
-    { label: 'Base P',  key: 'base-precise'  },
-    { label: 'Base D',  key: 'base-diverse'  },
+    { label: 'Base P', key: 'base-precise' },
+    { label: 'Base D', key: 'base-diverse' },
   ];
 
   // ── Private state ────────────────────────────────────────────────────────────
@@ -129,40 +146,46 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private rsiMaSeries?: ISeriesApi<'Line'>;
   private rsiOverbought?: ISeriesApi<'Line'>;
   private rsiOversold?: ISeriesApi<'Line'>;
-  private macdLineSeries?:   ISeriesApi<'Line'>;
+  private macdLineSeries?: ISeriesApi<'Line'>;
   private macdSignalSeries?: ISeriesApi<'Line'>;
-  private macdHistSeries?:   ISeriesApi<'Histogram'>;
-  private macdZeroSeries?:   ISeriesApi<'Line'>;
+  private macdHistSeries?: ISeriesApi<'Histogram'>;
+  private macdZeroSeries?: ISeriesApi<'Line'>;
 
   private volumeProfilePlugin?: VolumeProfilePlugin;
   private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
 
   private tradeEntryLine?: IPriceLine;
-  private tradeSlLine?:    IPriceLine;
-  private tradeTpLine?:    IPriceLine;
+  private tradeSlLine?: IPriceLine;
+  private tradeTpLine?: IPriceLine;
 
-  private currentSession?:  SessionOhlcvResponse;
+  private currentSession?: SessionOhlcvResponse;
   private previousSession?: SessionOhlcvResponse;
   private sessionLines: IPriceLine[] = [];
 
-  private loadedCandles:       CandleWithIndicatorsResponse[] = [];
-  private loadedVolumeProfile: VolumeProfileLevel[]           = [];
+  private loadedCandles: CandleWithIndicatorsResponse[] = [];
+  private loadedVolumeProfile: VolumeProfileLevel[] = [];
 
-  private candlesSubscription?:       Subscription;
-  private liveCandlesSubscription?:   Subscription;
-  private predictSubscription?:       Subscription;
-  private sessionSubscription?:       Subscription;
+  private candlesSubscription?: Subscription;
+  private liveCandlesSubscription?: Subscription;
+  private predictSubscription?: Subscription;
+  private sessionSubscription?: Subscription;
   private volumeProfileSubscription?: Subscription;
-  private tradeHistorySubscription?:  Subscription;
+  private tradeHistorySubscription?: Subscription;
 
-  private lookback      = 100;
+  private lookback = 100;
   private isLoadingMore = false;
 
   private readonly timeLabelFormatter = new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit', minute: '2-digit', hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   });
   private readonly dateTimeLabelFormatter = new Intl.DateTimeFormat(undefined, {
-    month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   });
 
   private readonly onVisibleRangeChange = (range: LogicalRange | null) => {
@@ -177,12 +200,6 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       if (price !== null) this.priceSelected.emit(price);
     });
   };
-
-  constructor(
-    private readonly ngZone: NgZone,
-    private readonly traderAlgoApi: TraderAlgoApiService,
-    private readonly liveChartData: LiveChartDataService,
-  ) {}
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -208,46 +225,90 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
       // Pane 0 — candlesticks + SMAs
       this.series = this.chart.addSeries(CandlestickSeries, {
-        upColor: CHART_COLORS.bullish, downColor: CHART_COLORS.bearish, borderVisible: false,
-        wickUpColor: CHART_COLORS.bullish, wickDownColor: CHART_COLORS.bearish,
+        upColor: CHART_COLORS.bullish,
+        downColor: CHART_COLORS.bearish,
+        borderVisible: false,
+        wickUpColor: CHART_COLORS.bullish,
+        wickDownColor: CHART_COLORS.bearish,
       });
       this.series.attachPrimitive(new SessionMarkersPlugin());
       this.volumeProfilePlugin = new VolumeProfilePlugin();
       this.series.attachPrimitive(this.volumeProfilePlugin);
 
       this.predictSeries = this.chart.addSeries(CandlestickSeries, {
-        upColor: CHART_COLORS.accent, downColor: CHART_COLORS.highlight, borderVisible: false,
-        wickUpColor: CHART_COLORS.accent, wickDownColor: CHART_COLORS.highlight,
+        upColor: CHART_COLORS.accent,
+        downColor: CHART_COLORS.highlight,
+        borderVisible: false,
+        wickUpColor: CHART_COLORS.accent,
+        wickDownColor: CHART_COLORS.highlight,
       });
 
-      const smaOpts = { priceScaleId: 'right', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.sma20Series  = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma20 });
+      const smaOpts = {
+        priceScaleId: 'right',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      } as const;
+      this.sma20Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma20 });
       this.sma100Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma100 });
 
       // Pane 1 — volume + delta
-      this.volumeSeries = this.chart.addSeries(HistogramSeries, { priceScaleId: 'volume', priceFormat: { type: 'volume' } }, 1);
+      this.volumeSeries = this.chart.addSeries(
+        HistogramSeries,
+        { priceScaleId: 'volume', priceFormat: { type: 'volume' } },
+        1,
+      );
       this.volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.7, bottom: 0 } });
 
-      this.deltaSeries = this.chart.addSeries(HistogramSeries, {
-        priceScaleId: 'delta',
-        priceFormat: { type: 'custom', formatter: (p: number) => p.toFixed(1) + '%', minMove: 0.1 },
-      }, 1);
+      this.deltaSeries = this.chart.addSeries(
+        HistogramSeries,
+        {
+          priceScaleId: 'delta',
+          priceFormat: { type: 'custom', formatter: (p: number) => p.toFixed(1) + '%', minMove: 0.1 },
+        },
+        1,
+      );
       this.deltaSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
 
       // Pane 2 — RSI
       const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.rsiSeries     = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.rsi, lastValueVisible: true }, 2);
-      this.rsiMaSeries   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.highlight, lastValueVisible: true }, 2);
+      this.rsiSeries = this.chart.addSeries(
+        LineSeries,
+        { ...rsiOpts, color: CHART_COLORS.rsi, lastValueVisible: true },
+        2,
+      );
+      this.rsiMaSeries = this.chart.addSeries(
+        LineSeries,
+        { ...rsiOpts, color: CHART_COLORS.highlight, lastValueVisible: true },
+        2,
+      );
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bearish }, 2);
-      this.rsiOversold   = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bullish }, 2);
+      this.rsiOversold = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bullish }, 2);
       this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
       // Pane 3 — MACD
-      const macdOpts = { priceScaleId: 'macd', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
-      this.macdLineSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: CHART_COLORS.accent, lastValueVisible: true }, 3);
-      this.macdSignalSeries = this.chart.addSeries(LineSeries,      { ...macdOpts, color: CHART_COLORS.macdSignal, lastValueVisible: true }, 3);
-      this.macdHistSeries   = this.chart.addSeries(HistogramSeries, { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false }, 3);
-      this.macdZeroSeries   = this.chart.addSeries(LineSeries,      { ...macdOpts, color: CHART_COLORS.zeroLine }, 3);
+      const macdOpts = {
+        priceScaleId: 'macd',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      } as const;
+      this.macdLineSeries = this.chart.addSeries(
+        LineSeries,
+        { ...macdOpts, color: CHART_COLORS.accent, lastValueVisible: true },
+        3,
+      );
+      this.macdSignalSeries = this.chart.addSeries(
+        LineSeries,
+        { ...macdOpts, color: CHART_COLORS.macdSignal, lastValueVisible: true },
+        3,
+      );
+      this.macdHistSeries = this.chart.addSeries(
+        HistogramSeries,
+        { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false },
+        3,
+      );
+      this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: CHART_COLORS.zeroLine }, 3);
       this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
@@ -345,7 +406,10 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         this.predictingKey = null;
         this.ngZone.runOutsideAngular(() => this.predictSeries?.setData(candles.map(c => this.toChartCandle(c))));
       },
-      error: err => { console.error('Predict request failed.', err); this.predictingKey = null; },
+      error: err => {
+        console.error('Predict request failed.', err);
+        this.predictingKey = null;
+      },
     });
   }
 
@@ -356,49 +420,62 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     if (!this.series) return;
 
     const entryRef = trade.entryPrice ?? trade.requestedPrice;
-    const isBuy    = trade.side === 'Buy';
+    const isBuy = trade.side === 'Buy';
 
     if (entryRef !== null && entryRef !== undefined) {
       this.tradeEntryLine = this.series.createPriceLine({
         price: Number(entryRef),
         color: CHART_COLORS.highlight,
-        lineWidth: 1, lineStyle: LineStyle.Solid,
-        axisLabelVisible: true, title: `${trade.side} Entry`,
+        lineWidth: 1,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: `${trade.side} Entry`,
       });
     }
 
     if (trade.stopLoss !== null && trade.stopLoss !== undefined && entryRef !== null && entryRef !== undefined) {
-      const slPrice = isBuy
-        ? Number(entryRef) - Number(trade.stopLoss)
-        : Number(entryRef) + Number(trade.stopLoss);
+      const slPrice = isBuy ? Number(entryRef) - Number(trade.stopLoss) : Number(entryRef) + Number(trade.stopLoss);
       this.tradeSlLine = this.series.createPriceLine({
         price: slPrice,
-        color: CHART_COLORS.bearish, lineWidth: 1, lineStyle: LineStyle.Solid,
-        axisLabelVisible: true, title: 'SL',
+        color: CHART_COLORS.bearish,
+        lineWidth: 1,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: 'SL',
       });
     }
     if (trade.takeProfit !== null && trade.takeProfit !== undefined && entryRef !== null && entryRef !== undefined) {
-      const tpPrice = isBuy
-        ? Number(entryRef) + Number(trade.takeProfit)
-        : Number(entryRef) - Number(trade.takeProfit);
+      const tpPrice = isBuy ? Number(entryRef) + Number(trade.takeProfit) : Number(entryRef) - Number(trade.takeProfit);
       this.tradeTpLine = this.series.createPriceLine({
         price: tpPrice,
-        color: CHART_COLORS.bullish, lineWidth: 1, lineStyle: LineStyle.Solid,
-        axisLabelVisible: true, title: 'TP',
+        color: CHART_COLORS.bullish,
+        lineWidth: 1,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: 'TP',
       });
     }
   }
 
   private clearTradeLines(): void {
-    if (this.tradeEntryLine) { this.series?.removePriceLine(this.tradeEntryLine); this.tradeEntryLine = undefined; }
-    if (this.tradeSlLine)    { this.series?.removePriceLine(this.tradeSlLine);    this.tradeSlLine    = undefined; }
-    if (this.tradeTpLine)    { this.series?.removePriceLine(this.tradeTpLine);    this.tradeTpLine    = undefined; }
+    if (this.tradeEntryLine) {
+      this.series?.removePriceLine(this.tradeEntryLine);
+      this.tradeEntryLine = undefined;
+    }
+    if (this.tradeSlLine) {
+      this.series?.removePriceLine(this.tradeSlLine);
+      this.tradeSlLine = undefined;
+    }
+    if (this.tradeTpLine) {
+      this.series?.removePriceLine(this.tradeTpLine);
+      this.tradeTpLine = undefined;
+    }
   }
 
   private shouldRenderTradeLines(trade: Trade | null): trade is Trade {
-    return !!trade
-      && trade.symbolCode === this.selectedSymbol
-      && (trade.status === 'Pending' || trade.status === 'Active');
+    return (
+      !!trade && trade.symbolCode === this.selectedSymbol && (trade.status === 'Pending' || trade.status === 'Active')
+    );
   }
 
   // ── Trade history markers ────────────────────────────────────────────────────
@@ -429,9 +506,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       return;
     }
     const markers: SeriesMarker<Time>[] = [];
-    const symbolTrades = this.historyTrades.filter(
-      t => t.symbolCode === this.selectedSymbol && t.status === 'Closed',
-    );
+    const symbolTrades = this.historyTrades.filter(t => t.symbolCode === this.selectedSymbol && t.status === 'Closed');
     for (const t of symbolTrades) {
       if (t.openedAt !== null && t.entryPrice !== null) {
         const isBuy = t.side === 'Buy';
@@ -471,17 +546,17 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.volumeProfileSubscription?.unsubscribe();
     this.tradeHistorySubscription?.unsubscribe();
 
-    this.isLoading           = true;
-    this.isConnected         = false;
-    this.isLoadingMore       = false;
-    this.lookback            = 100;
-    this.loadedCandles       = [];
+    this.isLoading = true;
+    this.isConnected = false;
+    this.isLoadingMore = false;
+    this.lookback = 100;
+    this.loadedCandles = [];
     this.loadedVolumeProfile = [];
-    this.currentSession      = undefined;
-    this.previousSession     = undefined;
-    this.statusMessage       = 'Loading candles...';
-    this.liveStatus          = '';
-    this.predictingKey       = null;
+    this.currentSession = undefined;
+    this.previousSession = undefined;
+    this.statusMessage = 'Loading candles...';
+    this.liveStatus = '';
+    this.predictingKey = null;
 
     this.ngZone.runOutsideAngular(() => {
       this.series?.setData([]);
@@ -517,18 +592,25 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   private loadCandles(): void {
     this.candlesSubscription = this.traderAlgoApi
-      .getCandlesWithIndicators({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
+      .getCandlesWithIndicators({
+        symbol: this.selectedSymbol,
+        interval: this.selectedInterval,
+        lookback: this.lookback,
+      })
       .subscribe({
         next: candles => {
           this.isLoading = false;
-          if (candles.length === 0) { this.statusMessage = 'No data available.'; return; }
+          if (candles.length === 0) {
+            this.statusMessage = 'No data available.';
+            return;
+          }
           this.statusMessage = '';
           this.loadedCandles = candles;
           this.ngZone.runOutsideAngular(() => this.applyAllSeries(candles, true));
         },
         error: err => {
           console.error('Failed to load candles.', err);
-          this.isLoading    = false;
+          this.isLoading = false;
           this.statusMessage = 'Failed to load candles.';
         },
       });
@@ -538,7 +620,11 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.isLoadingMore = true;
     this.lookback += 100;
     this.traderAlgoApi
-      .getCandlesWithIndicators({ symbol: this.selectedSymbol, interval: this.selectedInterval, lookback: this.lookback })
+      .getCandlesWithIndicators({
+        symbol: this.selectedSymbol,
+        interval: this.selectedInterval,
+        lookback: this.lookback,
+      })
       .subscribe({
         next: candles => {
           this.isLoadingMore = false;
@@ -546,7 +632,10 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
           this.loadedCandles = candles;
           this.ngZone.runOutsideAngular(() => this.applyAllSeries(candles, false));
         },
-        error: err => { console.error('Failed to load more candles.', err); this.isLoadingMore = false; },
+        error: err => {
+          console.error('Failed to load more candles.', err);
+          this.isLoadingMore = false;
+        },
       });
   }
 
@@ -572,11 +661,11 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     const rsiCandles = candles.filter(c => c.rsi !== null);
     if (rsiCandles.length >= 2) {
       this.rsiOverbought?.setData([
-        { time: this.toChartTime(rsiCandles[0].time),                value: 70 },
+        { time: this.toChartTime(rsiCandles[0].time), value: 70 },
         { time: this.toChartTime(rsiCandles[rsiCandles.length - 1].time), value: 70 },
       ]);
       this.rsiOversold?.setData([
-        { time: this.toChartTime(rsiCandles[0].time),                value: 30 },
+        { time: this.toChartTime(rsiCandles[0].time), value: 30 },
         { time: this.toChartTime(rsiCandles[rsiCandles.length - 1].time), value: 30 },
       ]);
     }
@@ -585,14 +674,16 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       candles.filter(c => c.macd_line !== null).map(c => ({ time: this.toChartTime(c.time), value: c.macd_line! })),
     );
     this.macdSignalSeries?.setData(
-      candles.filter(c => c.macd_signal_line !== null).map(c => ({ time: this.toChartTime(c.time), value: c.macd_signal_line! })),
+      candles
+        .filter(c => c.macd_signal_line !== null)
+        .map(c => ({ time: this.toChartTime(c.time), value: c.macd_signal_line! })),
     );
     this.macdHistSeries?.setData(this.toMacdHistogram(candles));
 
     const macdCandles = candles.filter(c => c.macd_line !== null);
     if (macdCandles.length >= 2) {
       this.macdZeroSeries?.setData([
-        { time: this.toChartTime(macdCandles[0].time),                value: 0 },
+        { time: this.toChartTime(macdCandles[0].time), value: 0 },
         { time: this.toChartTime(macdCandles[macdCandles.length - 1].time), value: 0 },
       ]);
     }
@@ -606,13 +697,13 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       .subscribe({
         next: candle => {
           this.isConnected = true;
-          this.liveStatus  = 'Live';
+          this.liveStatus = 'Live';
           this.upsertLiveCandle(candle);
           const t = this.toChartTime(candle.time);
           this.ngZone.runOutsideAngular(() => {
             this.series?.update(this.toChartCandle(candle));
-            if (candle.sma_20 !== null)         this.sma20Series?.update({ time: t, value: candle.sma_20 });
-            if (candle.sma_100 !== null)        this.sma100Series?.update({ time: t, value: candle.sma_100 });
+            if (candle.sma_20 !== null) this.sma20Series?.update({ time: t, value: candle.sma_20 });
+            if (candle.sma_100 !== null) this.sma100Series?.update({ time: t, value: candle.sma_100 });
             this.volumeSeries?.update(this.toVolumeBar(candle));
             if (!this._isAlpaca) this.deltaSeries?.update(this.toDeltaBar(candle));
             if (candle.rsi !== null) {
@@ -620,45 +711,56 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
               this.rsiOverbought?.update({ time: t, value: 70 });
               this.rsiOversold?.update({ time: t, value: 30 });
             }
-            if (candle.rsi_smooth !== null)      this.rsiMaSeries?.update({ time: t, value: candle.rsi_smooth });
-            if (candle.macd_line !== null)        this.macdLineSeries?.update({ time: t, value: candle.macd_line });
-            if (candle.macd_signal_line !== null) this.macdSignalSeries?.update({ time: t, value: candle.macd_signal_line });
+            if (candle.rsi_smooth !== null) this.rsiMaSeries?.update({ time: t, value: candle.rsi_smooth });
+            if (candle.macd_line !== null) this.macdLineSeries?.update({ time: t, value: candle.macd_line });
+            if (candle.macd_signal_line !== null)
+              this.macdSignalSeries?.update({ time: t, value: candle.macd_signal_line });
             if (candle.macd_histogram !== null) {
               const prev = this.loadedCandles.at(-2)?.macd_histogram ?? null;
               const h = candle.macd_histogram;
               const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
-              const color = h >= 0
-                ? (growing ? CHART_COLORS.bullish : CHART_COLORS.bullishFaded)
-                : (growing ? CHART_COLORS.bearish : CHART_COLORS.bearishFaded);
+              const color =
+                h >= 0
+                  ? growing
+                    ? CHART_COLORS.bullish
+                    : CHART_COLORS.bullishFaded
+                  : growing
+                    ? CHART_COLORS.bearish
+                    : CHART_COLORS.bearishFaded;
               this.macdHistSeries?.update({ time: t, value: h, color });
               this.macdZeroSeries?.update({ time: t, value: 0 });
             }
           });
         },
-        error: err => { console.error('Live candle stream error.', err); this.isConnected = false; this.liveStatus = 'Disconnected'; },
-        complete: () => { this.isConnected = false; this.liveStatus = 'Stream closed'; },
+        error: err => {
+          console.error('Live candle stream error.', err);
+          this.isConnected = false;
+          this.liveStatus = 'Disconnected';
+        },
+        complete: () => {
+          this.isConnected = false;
+          this.liveStatus = 'Stream closed';
+        },
       });
   }
 
   private loadVolumeProfile(): void {
-    this.volumeProfileSubscription = this.traderAlgoApi
-      .getSessionVolumeProfile(this.selectedSymbol)
-      .subscribe({
-        next: levels => {
-          this.loadedVolumeProfile = levels;
-          if (this.showVolumeProfile) this.ngZone.runOutsideAngular(() => this.volumeProfilePlugin?.setData(levels));
-        },
-        error: err => console.error('Failed to load volume profile.', err),
-      });
+    this.volumeProfileSubscription = this.traderAlgoApi.getSessionVolumeProfile(this.selectedSymbol).subscribe({
+      next: levels => {
+        this.loadedVolumeProfile = levels;
+        if (this.showVolumeProfile) this.ngZone.runOutsideAngular(() => this.volumeProfilePlugin?.setData(levels));
+      },
+      error: err => console.error('Failed to load volume profile.', err),
+    });
   }
 
   private loadSessionOhlcv(): void {
     this.sessionSubscription = forkJoin({
-      current:  this.traderAlgoApi.getCurrentSessionOhlcv(this.selectedSymbol),
+      current: this.traderAlgoApi.getCurrentSessionOhlcv(this.selectedSymbol),
       previous: this.traderAlgoApi.getPreviousSessionOhlcv(this.selectedSymbol),
     }).subscribe({
       next: ({ current, previous }) => {
-        this.currentSession  = current;
+        this.currentSession = current;
         this.previousSession = previous;
         this.ngZone.runOutsideAngular(() => this.applyVisibleSessionLines());
       },
@@ -678,9 +780,21 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   private applySessionLines(s: SessionOhlcvResponse, prefix: string, color: string, lineStyle: LineStyle): void {
     if (!this.series) return;
-    for (const [key, price] of [['O', s.open], ['H', s.high], ['L', s.low], ['C', s.close]] as [string, number][]) {
+    for (const [key, price] of [
+      ['O', s.open],
+      ['H', s.high],
+      ['L', s.low],
+      ['C', s.close],
+    ] as [string, number][]) {
       this.sessionLines.push(
-        this.series.createPriceLine({ price, color, title: `${prefix}-${key}`, lineStyle, lineWidth: 1, axisLabelVisible: true }),
+        this.series.createPriceLine({
+          price,
+          color,
+          title: `${prefix}-${key}`,
+          lineStyle,
+          lineWidth: 1,
+          axisLabelVisible: true,
+        }),
       );
     }
   }
@@ -699,15 +813,23 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private toVolumeBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
     const takerTotal = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
     const vol = takerTotal > 0 ? takerTotal : c.volume;
-    return { time: this.toChartTime(c.time), value: vol, color: c.close >= c.open ? CHART_COLORS.bullish : CHART_COLORS.bearish };
+    return {
+      time: this.toChartTime(c.time),
+      value: vol,
+      color: c.close >= c.open ? CHART_COLORS.bullish : CHART_COLORS.bearish,
+    };
   }
 
   private toDeltaBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const buy   = c.taker_buy_base_asset_volume;
-    const sell  = c.taker_sell_base_asset_volume;
+    const buy = c.taker_buy_base_asset_volume;
+    const sell = c.taker_sell_base_asset_volume;
     const total = buy + sell;
     const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
-    return { time: this.toChartTime(c.time), value: delta, color: delta >= 0 ? CHART_COLORS.bullish : CHART_COLORS.bearish };
+    return {
+      time: this.toChartTime(c.time),
+      value: delta,
+      color: delta >= 0 ? CHART_COLORS.bullish : CHART_COLORS.bearish,
+    };
   }
 
   private applyDeltaPaneVisibility(): void {
@@ -718,12 +840,17 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     const result: HistogramData<Time>[] = [];
     for (const c of candles) {
       if (c.macd_histogram === null) continue;
-      const h    = c.macd_histogram;
+      const h = c.macd_histogram;
       const prev = result.at(-1)?.value ?? null;
       const growing = prev === null || (h >= 0 ? h >= prev : h <= prev);
-      const color = h >= 0
-        ? (growing ? CHART_COLORS.bullish : CHART_COLORS.bullishFaded)
-        : (growing ? CHART_COLORS.bearish : CHART_COLORS.bearishFaded);
+      const color =
+        h >= 0
+          ? growing
+            ? CHART_COLORS.bullish
+            : CHART_COLORS.bullishFaded
+          : growing
+            ? CHART_COLORS.bearish
+            : CHART_COLORS.bearishFaded;
       result.push({ time: this.toChartTime(c.time), value: h, color });
     }
     return result;
@@ -739,8 +866,12 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     return (time > 9_999_999_999 ? Math.floor(time / 1000) : time) as UTCTimestamp;
   }
 
-  private formatTimeLabel(time: Time): string     { return this.timeLabelFormatter.format(this.toDate(time)); }
-  private formatDateTimeLabel(time: Time): string { return this.dateTimeLabelFormatter.format(this.toDate(time)); }
+  private formatTimeLabel(time: Time): string {
+    return this.timeLabelFormatter.format(this.toDate(time));
+  }
+  private formatDateTimeLabel(time: Time): string {
+    return this.dateTimeLabelFormatter.format(this.toDate(time));
+  }
 
   private toDate(time: Time): Date {
     if (typeof time === 'number') return new Date(time * 1000);
@@ -749,15 +880,23 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   }
 
   private kronosRequest(key: string): ReturnType<TraderAlgoApiService['kronosMiniPrecise']> {
-    const s = this.selectedSymbol, i = this.selectedInterval;
+    const s = this.selectedSymbol,
+      i = this.selectedInterval;
     switch (key) {
-      case 'mini-precise':  return this.traderAlgoApi.kronosMiniPrecise(s, i);
-      case 'mini-diverse':  return this.traderAlgoApi.kronosMiniDiverse(s, i);
-      case 'small-precise': return this.traderAlgoApi.kronosSmallPrecise(s, i);
-      case 'small-diverse': return this.traderAlgoApi.kronosSmallDiverse(s, i);
-      case 'base-precise':  return this.traderAlgoApi.kronosBasePrecise(s, i);
-      case 'base-diverse':  return this.traderAlgoApi.kronosBaseDiverse(s, i);
-      default: throw new Error(`Unknown kronos variant: ${key}`);
+      case 'mini-precise':
+        return this.traderAlgoApi.kronosMiniPrecise(s, i);
+      case 'mini-diverse':
+        return this.traderAlgoApi.kronosMiniDiverse(s, i);
+      case 'small-precise':
+        return this.traderAlgoApi.kronosSmallPrecise(s, i);
+      case 'small-diverse':
+        return this.traderAlgoApi.kronosSmallDiverse(s, i);
+      case 'base-precise':
+        return this.traderAlgoApi.kronosBasePrecise(s, i);
+      case 'base-diverse':
+        return this.traderAlgoApi.kronosBaseDiverse(s, i);
+      default:
+        throw new Error(`Unknown kronos variant: ${key}`);
     }
   }
 }

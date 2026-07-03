@@ -26,10 +26,6 @@ module.exports = tseslint.config(
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-member-accessibility': 'off',
-      // The app is intentionally NgModule-based with constructor DI; the
-      // standalone / inject() migrations are deferred (see project notes).
-      '@angular-eslint/prefer-standalone': 'off',
-      '@angular-eslint/prefer-inject': 'off',
       // Components explicitly use ChangeDetectionStrategy.Eager: this app's
       // components mutate plain fields and rely on zone.js CD (see main.ts).
       // The OnPush migration is deferred (see project notes).

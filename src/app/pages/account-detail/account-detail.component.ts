@@ -1,22 +1,30 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
 import { TradingAccount, UpdateTradingAccountRequest } from '../../structures/trading-account';
 import { Trade } from '../../structures/trade';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
+import { FormsModule } from '@angular/forms';
+import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
+import { LowerCasePipe, DecimalPipe } from '@angular/common';
 
 const NAMES_OVERRIDE_KEY = 'trader-account-names';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-account-detail',
   templateUrl: './account-detail.component.html',
   styleUrls: ['./account-detail.component.css'],
+  imports: [RouterLink, FormsModule, HighchartsChartComponent, LowerCasePipe, DecimalPipe],
 })
 export class AccountDetailComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(TraderAlgoApiService);
+  private readonly tradeBotEvents = inject(TradeBotEventsService);
+
   account: TradingAccount | null = null;
   trades: Trade[] = [];
   readonly trackById = (_: number, trade: Trade): number => trade.id;
@@ -32,13 +40,6 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   private chartRef: Highcharts.Chart | null = null;
   private pendingData: [number, number][] | null = null;
   private tradeBotEventSubscription?: Subscription;
-
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-    private readonly api: TraderAlgoApiService,
-    private readonly tradeBotEvents: TradeBotEventsService,
-  ) {}
 
   ngOnInit(): void {
     this.accountId = Number(this.route.snapshot.paramMap.get('id'));
@@ -61,15 +62,17 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   private loadAccountDetail(): void {
     forkJoin({
       account: this.api.getTradingAccount(this.accountId),
-      trades:  this.api.getTradeHistory(this.accountId),
+      trades: this.api.getTradeHistory(this.accountId),
     }).subscribe({
       next: ({ account, trades }) => {
         this.account = account;
-        this.trades  = trades;
+        this.trades = trades;
         this.isLoading = false;
         this.applyPnlData();
       },
-      error: () => { this.isLoading = false; },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 
@@ -82,9 +85,7 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   }
 
   get totalPnl(): number {
-    return this.trades
-      .filter(t => t.status === 'Closed')
-      .reduce((sum, t) => sum + (t.pnl ?? 0), 0);
+    return this.trades.filter(t => t.status === 'Closed').reduce((sum, t) => sum + (t.pnl ?? 0), 0);
   }
 
   startEditName(): void {
@@ -113,7 +114,9 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
     this.deleting = true;
     this.api.deleteTradingAccount(this.accountId).subscribe({
       next: () => this.router.navigate(['/accounts']),
-      error: () => { this.deleting = false; },
+      error: () => {
+        this.deleting = false;
+      },
     });
   }
 
@@ -122,8 +125,13 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
     const payload: UpdateTradingAccountRequest = { isActive: !this.account.isActive };
     this.saving = true;
     this.api.updateTradingAccount(this.accountId, payload).subscribe({
-      next: updated => { this.account = updated; this.saving = false; },
-      error: ()      => { this.saving = false; },
+      next: updated => {
+        this.account = updated;
+        this.saving = false;
+      },
+      error: () => {
+        this.saving = false;
+      },
     });
   }
 
@@ -136,8 +144,11 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   formatTs(ms: number | null): string {
     if (ms === null) return '—';
     const d = new Date(ms > 9_999_999_999 ? ms : ms * 1000);
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return (
+      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
+      ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
   }
 
   private applyPnlData(): void {
@@ -215,8 +226,11 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   }
 
   private storedNames(): Record<number, string> {
-    try { return JSON.parse(localStorage.getItem(NAMES_OVERRIDE_KEY) ?? '{}'); }
-    catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem(NAMES_OVERRIDE_KEY) ?? '{}');
+    } catch {
+      return {};
+    }
   }
 
   private connectTradeBotEvents(): void {

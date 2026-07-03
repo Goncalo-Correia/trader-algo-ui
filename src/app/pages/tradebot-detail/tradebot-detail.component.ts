@@ -1,19 +1,25 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
 import { TradeBot, TradeBotEvent, UpdateTradeBotRequest } from '../../structures/trade-bot';
 import { Trade } from '../../structures/trade';
+import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-tradebot-detail',
   templateUrl: './tradebot-detail.component.html',
   styleUrls: ['./tradebot-detail.component.css'],
+  imports: [RouterLink, FormsModule, DecimalPipe],
 })
 export class TradebotDetailComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(TraderAlgoApiService);
+  private readonly eventsSvc = inject(TradeBotEventsService);
+
   bot: TradeBot | null = null;
   isLoading = true;
   isToggling = false;
@@ -34,12 +40,6 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
 
   private eventSub: Subscription | null = null;
 
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly api: TraderAlgoApiService,
-    private readonly eventsSvc: TradeBotEventsService,
-  ) {}
-
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.api.getTradeBot(id).subscribe({
@@ -50,7 +50,9 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
         this.loadTradeHistory(bot);
         this.connectEvents(bot);
       },
-      error: () => { this.isLoading = false; },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 
@@ -61,56 +63,58 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
   toggleBot(): void {
     if (!this.bot || this.isToggling) return;
     this.isToggling = true;
-    const action = this.bot.isEnabled
-      ? this.api.disableTradeBot(this.bot.id)
-      : this.api.enableTradeBot(this.bot.id);
+    const action = this.bot.isEnabled ? this.api.disableTradeBot(this.bot.id) : this.api.enableTradeBot(this.bot.id);
     action.subscribe({
-      next: bot => { this.bot = bot; this.syncDraft(bot); this.isToggling = false; },
-      error: ()  => { this.isToggling = false; },
+      next: bot => {
+        this.bot = bot;
+        this.syncDraft(bot);
+        this.isToggling = false;
+      },
+      error: () => {
+        this.isToggling = false;
+      },
     });
   }
 
   saveConfig(): void {
     if (!this.bot || this.isSaving) return;
     this.isSaving = true;
-    this.saveError   = '';
+    this.saveError = '';
     this.saveMessage = '';
 
     const payload: UpdateTradeBotRequest = {
-      symbolCode:         this.bot.symbolCode   ?? '',
-      intervalCode:       this.bot.intervalCode ?? '',
-      quantity:           this.draftQuantity    ?? this.bot.quantity,
-      stopLoss:           this.draftStopLoss,
-      takeProfit:         this.draftTakeProfit,
-      breakeven:          this.bot.breakeven,
-      breakevenStop:      this.bot.breakevenStop ?? null,
-      isNySessionOnly:    this.bot.isNySessionOnly,
-      delay:              this.bot.delay ?? false,
-      dailyProfitGoal:    this.bot.dailyProfitGoal,
-      maxLossesPerDay:    this.bot.maxLossesPerDay,
+      symbolCode: this.bot.symbolCode ?? '',
+      intervalCode: this.bot.intervalCode ?? '',
+      quantity: this.draftQuantity ?? this.bot.quantity,
+      stopLoss: this.draftStopLoss,
+      takeProfit: this.draftTakeProfit,
+      breakeven: this.bot.breakeven,
+      breakevenStop: this.bot.breakevenStop ?? null,
+      isNySessionOnly: this.bot.isNySessionOnly,
+      delay: this.bot.delay ?? false,
+      dailyProfitGoal: this.bot.dailyProfitGoal,
+      maxLossesPerDay: this.bot.maxLossesPerDay,
       maxCandlesPerTrade: this.bot.maxCandlesPerTrade,
-      fee:                this.bot.fee ?? null,
-      isEnabled:          this.bot.isEnabled,
+      fee: this.bot.fee ?? null,
+      isEnabled: this.bot.isEnabled,
     };
 
     this.api.updateTradeBot(this.bot.id, payload).subscribe({
       next: bot => {
         this.bot = bot;
         this.syncDraft(bot);
-        this.isSaving    = false;
+        this.isSaving = false;
         this.saveMessage = 'Settings saved.';
       },
       error: () => {
-        this.isSaving  = false;
+        this.isSaving = false;
         this.saveError = 'Failed to save settings.';
       },
     });
   }
 
   get recentTrades(): Trade[] {
-    return [...this.trades]
-      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-      .slice(0, 50);
+    return [...this.trades].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 50);
   }
 
   tradePnlClass(trade: Trade): string {
@@ -124,12 +128,18 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
 
   eventTypeClass(type: string): string {
     switch (type) {
-      case 'TradeOpened':   return 'evt-opened';
-      case 'TradeClosed':   return 'evt-closed';
-      case 'BotEnabled':    return 'evt-enabled';
-      case 'BotDisabled':   return 'evt-disabled';
-      case 'SignalIgnored': return 'evt-ignored';
-      default:              return '';
+      case 'TradeOpened':
+        return 'evt-opened';
+      case 'TradeClosed':
+        return 'evt-closed';
+      case 'BotEnabled':
+        return 'evt-enabled';
+      case 'BotDisabled':
+        return 'evt-disabled';
+      case 'SignalIgnored':
+        return 'evt-ignored';
+      default:
+        return '';
     }
   }
 
@@ -157,23 +167,27 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
     if (!ts) return '—';
     const ms = typeof ts === 'number' ? (ts > 9_999_999_999 ? ts : ts * 1000) : Number(ts);
     const d = new Date(ms);
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return (
+      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
+      ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
   }
 
   private syncDraft(bot: TradeBot): void {
-    this.draftQuantity   = bot.quantity;
-    this.draftStopLoss   = bot.stopLoss;
+    this.draftQuantity = bot.quantity;
+    this.draftStopLoss = bot.stopLoss;
     this.draftTakeProfit = bot.takeProfit;
   }
 
   private loadTradeHistory(bot: TradeBot): void {
     this.isLoadingTrades = true;
-    const request = bot.tradingAccountId !== null
-      ? this.api.getTradeHistory(bot.tradingAccountId)
-      : bot.backtestId !== null
-        ? this.api.getBacktestTrades(bot.backtestId)
-        : null;
+    const request =
+      bot.tradingAccountId !== null
+        ? this.api.getTradeHistory(bot.tradingAccountId)
+        : bot.backtestId !== null
+          ? this.api.getBacktestTrades(bot.backtestId)
+          : null;
 
     if (!request) {
       this.trades = [];
@@ -182,8 +196,13 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
     }
 
     request.subscribe({
-      next: trades => { this.trades = trades; this.isLoadingTrades = false; },
-      error: ()     => { this.isLoadingTrades = false; },
+      next: trades => {
+        this.trades = trades;
+        this.isLoadingTrades = false;
+      },
+      error: () => {
+        this.isLoadingTrades = false;
+      },
     });
   }
 
@@ -194,7 +213,9 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
       next: event => {
         this.eventLog = [{ ...event, receivedAt: Date.now() }, ...this.eventLog].slice(0, 100);
         if (event.type === 'BotEnabled' || event.type === 'BotDisabled') {
-          this.api.getTradeBot(this.bot!.id).subscribe(bot => { this.bot = bot; });
+          this.api.getTradeBot(this.bot!.id).subscribe(bot => {
+            this.bot = bot;
+          });
         }
         if (event.type === 'TradeClosed') {
           this.loadTradeHistory(this.bot!);

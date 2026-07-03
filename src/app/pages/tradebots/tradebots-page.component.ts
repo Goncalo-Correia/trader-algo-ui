@@ -1,21 +1,22 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBot } from '../../structures/trade-bot';
+import { RouterLink } from '@angular/router';
 
 @Component({
-  standalone: false,
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-tradebots-page',
   templateUrl: './tradebots-page.component.html',
   styleUrls: ['./tradebots-page.component.css'],
+  imports: [RouterLink],
 })
 export class TradeBotsPageComponent implements OnInit {
+  private readonly api = inject(TraderAlgoApiService);
+
   bots: TradeBot[] = [];
   readonly trackById = (_: number, bot: TradeBot): number => bot.id;
   isLoading = true;
   togglingId: number | null = null;
-
-  constructor(private readonly api: TraderAlgoApiService) {}
 
   ngOnInit(): void {
     this.loadBots();
@@ -25,16 +26,16 @@ export class TradeBotsPageComponent implements OnInit {
     event.stopPropagation();
     if (this.togglingId !== null) return;
     this.togglingId = bot.id;
-    const action = bot.isEnabled
-      ? this.api.disableTradeBot(bot.id)
-      : this.api.enableTradeBot(bot.id);
+    const action = bot.isEnabled ? this.api.disableTradeBot(bot.id) : this.api.enableTradeBot(bot.id);
     action.subscribe({
       next: updated => {
         const idx = this.bots.findIndex(b => b.id === updated.id);
         if (idx >= 0) this.bots = [...this.bots.slice(0, idx), updated, ...this.bots.slice(idx + 1)];
         this.togglingId = null;
       },
-      error: () => { this.togglingId = null; },
+      error: () => {
+        this.togglingId = null;
+      },
     });
   }
 
@@ -66,14 +67,22 @@ export class TradeBotsPageComponent implements OnInit {
     if (!ts) return 'Never';
     const ms = typeof ts === 'number' ? (ts > 9_999_999_999 ? ts : ts * 1000) : Number(ts);
     const d = new Date(ms);
-    return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-      + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return (
+      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
+      ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
   }
 
   private loadBots(): void {
     this.api.getTradeBots().subscribe({
-      next: bots => { this.bots = bots; this.isLoading = false; },
-      error: ()   => { this.isLoading = false; },
+      next: bots => {
+        this.bots = bots;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 }

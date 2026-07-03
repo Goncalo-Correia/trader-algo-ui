@@ -1,11 +1,11 @@
 <div class="detail-page">
-
   <a class="back-link" routerLink="/backtests">Backtests</a>
 
-  <div class="loading-state" *ngIf="isLoading">Loading backtest...</div>
+  @if (isLoading) {
+    <div class="loading-state">Loading backtest...</div>
+  }
 
-  <ng-container *ngIf="!isLoading && detail">
-
+  @if (!isLoading && detail) {
     <div class="detail-header">
       <div class="header-left">
         <h1 class="detail-title">Backtest #{{ detail.id }}</h1>
@@ -18,7 +18,6 @@
         </button>
       </div>
     </div>
-
     <div class="stats-bar">
       <div class="stats-row">
         <div class="stat-item">
@@ -51,45 +50,68 @@
         </div>
         <div class="stat-item">
           <span class="stat-label">Bot</span>
-          <a class="stat-value stat-link" *ngIf="detail.tradeBotId != null" [routerLink]="['/tradebots', detail.tradeBotId]">#{{ detail.tradeBotId }}</a>
-          <span class="stat-value" *ngIf="detail.tradeBotId == null">-</span>
+          @if (detail.tradeBotId != null) {
+            <a class="stat-value stat-link" [routerLink]="['/tradebots', detail.tradeBotId]"
+              >#{{ detail.tradeBotId }}</a
+            >
+          }
+          @if (detail.tradeBotId == null) {
+            <span class="stat-value">-</span>
+          }
         </div>
         <div class="stat-item">
           <span class="stat-label">Qty</span>
-          <span class="stat-value">{{ detail.quantity != null ? (detail.quantity | number:'1.0-8') : '-' }}</span>
+          <span class="stat-value">{{ detail.quantity != null ? (detail.quantity | number: '1.0-8') : '-' }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">TP / SL</span>
-          <span class="stat-value">{{ detail.takeProfit != null ? detail.takeProfit : '-' }} / {{ detail.stopLoss != null ? detail.stopLoss : '-' }}</span>
+          <span class="stat-value"
+            >{{ detail.takeProfit != null ? detail.takeProfit : '-' }} /
+            {{ detail.stopLoss != null ? detail.stopLoss : '-' }}</span
+          >
         </div>
         <div class="stat-item">
           <span class="stat-label">NY Session</span>
-          <span class="stat-value" [class.active-flag]="detail.isNySessionOnly">{{ detail.isNySessionOnly != null ? (detail.isNySessionOnly ? 'On' : 'Off') : '-' }}</span>
+          <span class="stat-value" [class.active-flag]="detail.isNySessionOnly">{{
+            detail.isNySessionOnly != null ? (detail.isNySessionOnly ? 'On' : 'Off') : '-'
+          }}</span>
         </div>
-        <div class="stat-item" *ngIf="detail.dailyProfitGoal !== null">
-          <span class="stat-label">Daily Goal</span>
-          <span class="stat-value">${{ detail.dailyProfitGoal | number:'1.2-2' }}</span>
-        </div>
-        <div class="stat-item" *ngIf="detail.maxLossesPerDay !== null">
-          <span class="stat-label">Max Losses/Day</span>
-          <span class="stat-value">{{ detail.maxLossesPerDay }}</span>
-        </div>
-        <div class="stat-item" *ngIf="detail.maxCandlesPerTrade !== null">
-          <span class="stat-label">Max Candles/Trade</span>
-          <span class="stat-value">{{ detail.maxCandlesPerTrade }}</span>
-        </div>
-        <div class="stat-item" *ngIf="detail.breakeven != null">
-          <span class="stat-label">Breakeven</span>
-          <span class="stat-value">{{ detail.breakeven }}</span>
-        </div>
-        <div class="stat-item" *ngIf="detail.breakevenStop != null">
-          <span class="stat-label">Breakeven Stop</span>
-          <span class="stat-value">{{ detail.breakevenStop }}</span>
-        </div>
-        <div class="stat-item" *ngIf="detail.fee != null">
-          <span class="stat-label">Fee</span>
-          <span class="stat-value">${{ detail.fee | number:'1.2-2' }}</span>
-        </div>
+        @if (detail.dailyProfitGoal !== null) {
+          <div class="stat-item">
+            <span class="stat-label">Daily Goal</span>
+            <span class="stat-value">${{ detail.dailyProfitGoal | number: '1.2-2' }}</span>
+          </div>
+        }
+        @if (detail.maxLossesPerDay !== null) {
+          <div class="stat-item">
+            <span class="stat-label">Max Losses/Day</span>
+            <span class="stat-value">{{ detail.maxLossesPerDay }}</span>
+          </div>
+        }
+        @if (detail.maxCandlesPerTrade !== null) {
+          <div class="stat-item">
+            <span class="stat-label">Max Candles/Trade</span>
+            <span class="stat-value">{{ detail.maxCandlesPerTrade }}</span>
+          </div>
+        }
+        @if (detail.breakeven != null) {
+          <div class="stat-item">
+            <span class="stat-label">Breakeven</span>
+            <span class="stat-value">{{ detail.breakeven }}</span>
+          </div>
+        }
+        @if (detail.breakevenStop != null) {
+          <div class="stat-item">
+            <span class="stat-label">Breakeven Stop</span>
+            <span class="stat-value">{{ detail.breakevenStop }}</span>
+          </div>
+        }
+        @if (detail.fee != null) {
+          <div class="stat-item">
+            <span class="stat-label">Fee</span>
+            <span class="stat-value">${{ detail.fee | number: '1.2-2' }}</span>
+          </div>
+        }
         <div class="stat-item">
           <span class="stat-label">Delay</span>
           <span class="stat-value" [class.active-flag]="detail.delay">{{ detail.delay ? 'On' : 'Off' }}</span>
@@ -98,90 +120,111 @@
       <div class="stats-row stats-row-financial">
         <div class="stat-item">
           <span class="stat-label">Initial</span>
-          <span class="stat-value">${{ detail.initialBalance | number:'1.2-2' }}</span>
+          <span class="stat-value">${{ detail.initialBalance | number: '1.2-2' }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">Final</span>
-          <span class="stat-value">${{ detail.finalBalance | number:'1.2-2' }}</span>
+          <span class="stat-value">${{ detail.finalBalance | number: '1.2-2' }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">PnL</span>
           <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
-            {{ detail.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (detail.pnl | number:'1.2-2')) : '-' }}
+            {{ detail.pnl !== null ? (pnlPositive ? '+' : '') + '$' + (detail.pnl | number: '1.2-2') : '-' }}
           </span>
         </div>
-        <div class="stat-item" *ngIf="detail.maxDrawdown != null">
-          <span class="stat-label">Max Drawdown</span>
-          <span class="stat-value negative">-${{ detail.maxDrawdown | number:'1.2-2' }}</span>
-        </div>
-        <div class="stat-item" *ngIf="detail.maxTrailingDrawdown != null">
-          <span class="stat-label">Max Trailing DD</span>
-          <span class="stat-value negative">-${{ detail.maxTrailingDrawdown | number:'1.2-2' }}</span>
-        </div>
+        @if (detail.maxDrawdown != null) {
+          <div class="stat-item">
+            <span class="stat-label">Max Drawdown</span>
+            <span class="stat-value negative">-${{ detail.maxDrawdown | number: '1.2-2' }}</span>
+          </div>
+        }
+        @if (detail.maxTrailingDrawdown != null) {
+          <div class="stat-item">
+            <span class="stat-label">Max Trailing DD</span>
+            <span class="stat-value negative">-${{ detail.maxTrailingDrawdown | number: '1.2-2' }}</span>
+          </div>
+        }
       </div>
     </div>
-
-    <div class="chart-section" *ngIf="detail.equityCurve.length">
-      <div class="section-title">PnL Progression</div>
-      <div class="chart-wrap">
-        <app-highcharts-chart [options]="equityChartOptions"></app-highcharts-chart>
+    @if (detail.equityCurve.length) {
+      <div class="chart-section">
+        <div class="section-title">PnL Progression</div>
+        <div class="chart-wrap">
+          <app-highcharts-chart [options]="equityChartOptions"></app-highcharts-chart>
+        </div>
       </div>
-    </div>
-
+    }
     <div class="trades-section">
       <div class="section-title">Trades</div>
-      <div class="empty-state" *ngIf="detail.trades.length === 0">No trades executed.</div>
-      <table class="trades-table" *ngIf="detail.trades.length > 0">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Side</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Entry</th>
-            <th>Close</th>
-            <th>Close Reason</th>
-            <th>PnL</th>
-            <th>Account</th>
-            <th>Opened</th>
-            <th>Closed</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let trade of sortedTrades; trackBy: trackById">
-            <td class="td-id">{{ trade.id }}</td>
-            <td>
-              <span class="side-badge" [class.side-buy]="trade.side === 'Buy'" [class.side-sell]="trade.side === 'Sell'">
-                {{ trade.side }}
-              </span>
-            </td>
-            <td class="td-dim">{{ trade.orderType }}</td>
-            <td>
-              <span class="status-badge status-{{ trade.status | lowercase }}">{{ trade.status }}</span>
-            </td>
-            <td>{{ trade.entryPrice !== null ? (trade.entryPrice | number:'1.2-5') : '-' }}</td>
-            <td>{{ trade.closedPrice !== null ? (trade.closedPrice | number:'1.2-5') : '-' }}</td>
-            <td class="td-dim">{{ trade.closeReason ?? '-' }}</td>
-            <td>
-              <ng-container *ngIf="getTradePnl(trade) !== null">
-                <span [class.positive]="getTradePnl(trade)! >= 0" [class.negative]="getTradePnl(trade)! < 0">
-                  {{ getTradePnl(trade)! >= 0 ? '+' : '' }}{{ getTradePnl(trade)! | number:'1.2-2' }}
-                </span>
-              </ng-container>
-              <span class="td-dim" *ngIf="getTradePnl(trade) === null">-</span>
-            </td>
-            <td>
-              <span *ngIf="trade.accountPnl != null">${{ trade.accountPnl | number:'1.2-2' }}</span>
-              <span class="td-dim" *ngIf="trade.accountPnl == null">-</span>
-            </td>
-            <td class="td-dim">{{ formatTs(trade.openedAt) }}</td>
-            <td class="td-dim">{{ formatTs(trade.closedAt) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      @if (detail.trades.length === 0) {
+        <div class="empty-state">No trades executed.</div>
+      }
+      @if (detail.trades.length > 0) {
+        <table class="trades-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Side</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Entry</th>
+              <th>Close</th>
+              <th>Close Reason</th>
+              <th>PnL</th>
+              <th>Account</th>
+              <th>Opened</th>
+              <th>Closed</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (trade of sortedTrades; track trackById($index, trade)) {
+              <tr>
+                <td class="td-id">{{ trade.id }}</td>
+                <td>
+                  <span
+                    class="side-badge"
+                    [class.side-buy]="trade.side === 'Buy'"
+                    [class.side-sell]="trade.side === 'Sell'"
+                  >
+                    {{ trade.side }}
+                  </span>
+                </td>
+                <td class="td-dim">{{ trade.orderType }}</td>
+                <td>
+                  <span class="status-badge status-{{ trade.status | lowercase }}">{{ trade.status }}</span>
+                </td>
+                <td>{{ trade.entryPrice !== null ? (trade.entryPrice | number: '1.2-5') : '-' }}</td>
+                <td>{{ trade.closedPrice !== null ? (trade.closedPrice | number: '1.2-5') : '-' }}</td>
+                <td class="td-dim">{{ trade.closeReason ?? '-' }}</td>
+                <td>
+                  @if (getTradePnl(trade) !== null) {
+                    <span [class.positive]="getTradePnl(trade)! >= 0" [class.negative]="getTradePnl(trade)! < 0">
+                      {{ getTradePnl(trade)! >= 0 ? '+' : '' }}{{ getTradePnl(trade)! | number: '1.2-2' }}
+                    </span>
+                  }
+                  @if (getTradePnl(trade) === null) {
+                    <span class="td-dim">-</span>
+                  }
+                </td>
+                <td>
+                  @if (trade.accountPnl != null) {
+                    <span>${{ trade.accountPnl | number: '1.2-2' }}</span>
+                  }
+                  @if (trade.accountPnl == null) {
+                    <span class="td-dim">-</span>
+                  }
+                </td>
+                <td class="td-dim">{{ formatTs(trade.openedAt) }}</td>
+                <td class="td-dim">{{ formatTs(trade.closedAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
     </div>
+  }
 
-  </ng-container>
-
-  <div class="error-state" *ngIf="!isLoading && !detail">Backtest not found.</div>
+  @if (!isLoading && !detail) {
+    <div class="error-state">Backtest not found.</div>
+  }
 </div>

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
@@ -53,6 +53,7 @@ interface PerformanceMetricSection {
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
   styleUrls: ['./ml-training-detail.component.css'],
@@ -75,8 +76,6 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   balanceChartOptions: Highcharts.Options = {};
   metricHistoryChartOptions: Highcharts.Options = {};
   rewardMetricSections: PerformanceMetricSection[] = [];
-
-  readonly trackByIndex = (i: number): number => i;
 
   private runId!: number;
   private pollSub: Subscription | null = null;

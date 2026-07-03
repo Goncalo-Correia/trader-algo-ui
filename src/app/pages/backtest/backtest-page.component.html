@@ -1,38 +1,46 @@
 <div class="backtest-layout">
-
   <!-- ── Chart ──────────────────────────────────────────────────────────── -->
   <div class="chart-area">
     <div class="chart-wrap">
-      <app-backtest-chart
-        *ngIf="backtestCandles.length"
-        [candles]="backtestCandles"
-        [playbackTime]="activePlaybackTime"
-        [trades]="backtestTrades"
-        [isNySessionOnly]="isNySessionOnly"
-      ></app-backtest-chart>
-      <div class="chart-empty" *ngIf="!backtestCandles.length && !running">
-        Configure a backtest and click <strong>Run Backtest</strong> to start streaming.
-      </div>
-      <div class="chart-empty" *ngIf="!backtestCandles.length && running">
-        Connecting to backtest stream…
-      </div>
+      @if (backtestCandles.length) {
+        <app-backtest-chart
+          [candles]="backtestCandles"
+          [playbackTime]="activePlaybackTime"
+          [trades]="backtestTrades"
+          [isNySessionOnly]="isNySessionOnly"
+        ></app-backtest-chart>
+      }
+      @if (!backtestCandles.length && !running) {
+        <div class="chart-empty">Configure a backtest and click <strong>Run Backtest</strong> to start streaming.</div>
+      }
+      @if (!backtestCandles.length && running) {
+        <div class="chart-empty">Connecting to backtest stream…</div>
+      }
     </div>
   </div>
 
   <!-- ── Control Panel ──────────────────────────────────────────────────── -->
   <div class="control-panel">
-
     <div class="panel-section">
       <div class="section-label">Symbol</div>
-      <select class="ctrl-select full-width" [ngModel]="selectedSymbol" (ngModelChange)="onSymbolChange($event)" [disabled]="running">
-        <option *ngFor="let s of symbols; trackBy: trackBySymbolId" [value]="s.code">{{ s.code }}</option>
+      <select
+        class="ctrl-select full-width"
+        [ngModel]="selectedSymbol"
+        (ngModelChange)="onSymbolChange($event)"
+        [disabled]="running"
+      >
+        @for (s of symbols; track trackBySymbolId($index, s)) {
+          <option [value]="s.code">{{ s.code }}</option>
+        }
       </select>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Interval</div>
       <select class="ctrl-select full-width" [(ngModel)]="selectedInterval" [disabled]="running">
-        <option *ngFor="let i of intervals; trackBy: trackByIntervalId" [value]="i.code">{{ i.displayName }}</option>
+        @for (i of intervals; track trackByIntervalId($index, i)) {
+          <option [value]="i.code">{{ i.displayName }}</option>
+        }
       </select>
     </div>
 
@@ -54,7 +62,9 @@
     <div class="panel-section">
       <div class="section-label">Strategy</div>
       <select class="ctrl-select full-width" [(ngModel)]="selectedStrategy" [disabled]="running">
-        <option *ngFor="let s of strategies; trackBy: trackByStrategyId" [ngValue]="s.id">{{ s.name }}</option>
+        @for (s of strategies; track trackByStrategyId($index, s)) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
       </select>
       <div class="section-hint">A scoped bot is created for each backtest.</div>
     </div>
@@ -66,29 +76,67 @@
 
     <div class="panel-section">
       <div class="section-label">Take Profit</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="takeProfit" min="0" step="any" [disabled]="running" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="takeProfit"
+        min="0"
+        step="any"
+        [disabled]="running"
+      />
     </div>
 
     <div class="panel-section">
       <div class="section-label">Stop Loss</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="stopLoss" min="0" step="any" [disabled]="running" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="stopLoss"
+        min="0"
+        step="any"
+        [disabled]="running"
+      />
     </div>
 
     <div class="panel-section">
       <div class="section-label">Breakeven</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="breakeven" min="0" step="any" [disabled]="running" placeholder="e.g. 50" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="breakeven"
+        min="0"
+        step="any"
+        [disabled]="running"
+        placeholder="e.g. 50"
+      />
       <div class="section-hint">Move SL to entry when profit reaches this value.</div>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Breakeven Stop</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="breakevenStop" min="0" step="any" [disabled]="running" placeholder="e.g. 25" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="breakevenStop"
+        min="0"
+        step="any"
+        [disabled]="running"
+        placeholder="e.g. 25"
+      />
       <div class="section-hint">Lock in profit at this offset above entry when breakeven triggers.</div>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Fee ($)</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="fee" min="0" step="any" [disabled]="running" placeholder="e.g. 0.65" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="fee"
+        min="0"
+        step="any"
+        [disabled]="running"
+        placeholder="e.g. 0.65"
+      />
       <div class="section-hint">Deducted from PnL on each closed trade.</div>
     </div>
 
@@ -107,19 +155,43 @@
 
     <div class="panel-section">
       <div class="section-label">Daily Profit Goal ($)</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="dailyProfitGoal" min="0" step="any" [disabled]="running" placeholder="e.g. 200" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="dailyProfitGoal"
+        min="0"
+        step="any"
+        [disabled]="running"
+        placeholder="e.g. 200"
+      />
       <div class="section-hint">Stop entries once realized daily PnL reaches this amount.</div>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Max Losses Per Day</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="maxLossesPerDay" min="1" step="1" [disabled]="running" placeholder="e.g. 3" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="maxLossesPerDay"
+        min="1"
+        step="1"
+        [disabled]="running"
+        placeholder="e.g. 3"
+      />
       <div class="section-hint">Stop entries after this many losing trades in a day.</div>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Max Candles Per Trade</div>
-      <input class="ctrl-input full-width" type="number" [(ngModel)]="maxCandlesPerTrade" min="1" step="1" [disabled]="running" placeholder="e.g. 10" />
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="maxCandlesPerTrade"
+        min="1"
+        step="1"
+        [disabled]="running"
+        placeholder="e.g. 10"
+      />
       <div class="section-hint">Force-close the trade after this many candles.</div>
     </div>
 
@@ -136,75 +208,98 @@
       <div class="section-hint">Pace the stream at 100 ms per candle.</div>
     </div>
 
-    <button class="btn-run"
-            [disabled]="running || !quantity || quantity <= 0"
-            (click)="runBacktest()">
+    <button class="btn-run" [disabled]="running || !quantity || quantity <= 0" (click)="runBacktest()">
       {{ running ? 'Running…' : 'Run Backtest' }}
     </button>
 
     <!-- Error -->
-    <div class="error-card" *ngIf="errorMessage">
-      {{ errorMessage }}
-    </div>
+    @if (errorMessage) {
+      <div class="error-card">
+        {{ errorMessage }}
+      </div>
+    }
 
     <!-- Stream status -->
-    <div class="playback-status" *ngIf="running && backtestCandles.length">
-      <div class="status-row">
-        <span class="status-dot blink"></span>
-        <span>{{ backtestCandles.length }} candle{{ backtestCandles.length !== 1 ? 's' : '' }} received</span>
+    @if (running && backtestCandles.length) {
+      <div class="playback-status">
+        <div class="status-row">
+          <span class="status-dot blink"></span>
+          <span>{{ backtestCandles.length }} candle{{ backtestCandles.length !== 1 ? 's' : '' }} received</span>
+        </div>
+        @if (streamedCandleDate) {
+          <div class="status-row dim">{{ streamedCandleDate }}</div>
+        }
       </div>
-      <div class="status-row dim" *ngIf="streamedCandleDate">{{ streamedCandleDate }}</div>
-    </div>
+    }
 
-    <div class="result-card" *ngIf="backtestTotalPnl !== null">
-      <div class="result-row">
-        <span class="result-label">Backtest PnL</span>
-        <span class="result-value" [class.positive]="backtestTotalPnl! >= 0" [class.negative]="backtestTotalPnl! < 0">
-          {{ backtestTotalPnl! >= 0 ? '+' : '' }}${{ backtestTotalPnl! | number:'1.2-2' }}
-        </span>
+    @if (backtestTotalPnl !== null) {
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Backtest PnL</span>
+          <span class="result-value" [class.positive]="backtestTotalPnl! >= 0" [class.negative]="backtestTotalPnl! < 0">
+            {{ backtestTotalPnl! >= 0 ? '+' : '' }}${{ backtestTotalPnl! | number: '1.2-2' }}
+          </span>
+        </div>
       </div>
-    </div>
+    }
 
     <!-- Active trade -->
-    <div class="result-card" *ngIf="activeTrade as trade">
-      <div class="result-row">
-        <span class="result-label">Active Trade</span>
-        <span class="result-value">{{ trade.side }}</span>
+    @if (activeTrade; as trade) {
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Active Trade</span>
+          <span class="result-value">{{ trade.side }}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">PnL</span>
+          <span
+            class="result-value"
+            [class.positive]="activeTradePnl !== null && activeTradePnl >= 0"
+            [class.negative]="activeTradePnl !== null && activeTradePnl < 0"
+          >
+            {{
+              activeTradePnl !== null
+                ? (activeTradePnl >= 0 ? '+' : '') + '$' + (activeTradePnl | number: '1.2-2')
+                : '-'
+            }}
+          </span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Entry</span>
+          <span class="result-value">{{ trade.entryPrice !== null ? (trade.entryPrice | number: '1.2-8') : '-' }}</span>
+        </div>
+        @if (breakevenActive) {
+          <div class="result-row">
+            <span class="result-label">Stop Loss</span>
+            <span class="result-value breakeven-badge">⚡ Breakeven</span>
+          </div>
+        }
       </div>
-      <div class="result-row">
-        <span class="result-label">PnL</span>
-        <span class="result-value" [class.positive]="activeTradePnl !== null && activeTradePnl >= 0" [class.negative]="activeTradePnl !== null && activeTradePnl < 0">
-          {{ activeTradePnl !== null ? ((activeTradePnl >= 0 ? '+' : '') + '$' + (activeTradePnl | number:'1.2-2')) : '-' }}
-        </span>
-      </div>
-      <div class="result-row">
-        <span class="result-label">Entry</span>
-        <span class="result-value">{{ trade.entryPrice !== null ? (trade.entryPrice | number:'1.2-8') : '-' }}</span>
-      </div>
-      <div class="result-row" *ngIf="breakevenActive">
-        <span class="result-label">Stop Loss</span>
-        <span class="result-value breakeven-badge">⚡ Breakeven</span>
-      </div>
-    </div>
+    }
 
     <!-- Final result -->
-    <div class="result-card" *ngIf="streamDone && backtestResult">
-      <div class="result-row">
-        <span class="result-label">Final PnL</span>
-        <span class="result-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
-          {{ backtestResult.pnl !== null ? ((pnlPositive ? '+' : '') + '$' + (backtestResult.pnl | number:'1.2-2')) : '—' }}
-        </span>
+    @if (streamDone && backtestResult) {
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-label">Final PnL</span>
+          <span class="result-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
+            {{
+              backtestResult.pnl !== null
+                ? (pnlPositive ? '+' : '') + '$' + (backtestResult.pnl | number: '1.2-2')
+                : '—'
+            }}
+          </span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Final Balance</span>
+          <span class="result-value">${{ backtestResult.finalBalance | number: '1.2-2' }}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Trades</span>
+          <span class="result-value">{{ backtestResult.tradeCount }}</span>
+        </div>
+        <a class="btn-view-report" [routerLink]="['/backtests', backtestResult.id]">View Report →</a>
       </div>
-      <div class="result-row">
-        <span class="result-label">Final Balance</span>
-        <span class="result-value">${{ backtestResult.finalBalance | number:'1.2-2' }}</span>
-      </div>
-      <div class="result-row">
-        <span class="result-label">Trades</span>
-        <span class="result-value">{{ backtestResult.tradeCount }}</span>
-      </div>
-      <a class="btn-view-report" [routerLink]="['/backtests', backtestResult.id]">View Report →</a>
-    </div>
+    }
   </div>
-
 </div>

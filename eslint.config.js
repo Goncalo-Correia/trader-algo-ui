@@ -30,15 +30,16 @@ module.exports = tseslint.config(
       // standalone / inject() migrations are deferred (see project notes).
       '@angular-eslint/prefer-standalone': 'off',
       '@angular-eslint/prefer-inject': 'off',
+      // Components explicitly use ChangeDetectionStrategy.Eager: this app's
+      // components mutate plain fields and rely on zone.js CD (see main.ts).
+      // The OnPush migration is deferred (see project notes).
+      '@angular-eslint/prefer-on-push-component-change-detection': 'off',
     },
   },
   {
     files: ['**/*.html'],
     extends: [...angular.configs.templateRecommended],
     rules: {
-      // Built-in control flow (@if/@for) migration is deferred; the app still
-      // uses the *ngIf / *ngFor structural directives.
-      '@angular-eslint/template/prefer-control-flow': 'off',
       // Enforce strict equality in templates, but keep the deliberate
       // `x != null` idiom (which checks null AND undefined) working.
       '@angular-eslint/template/eqeqeq': ['error', { allowNullOrUndefined: true }],

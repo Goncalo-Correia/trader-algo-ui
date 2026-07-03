@@ -1,54 +1,64 @@
 <div class="backtests-page">
-
   <div class="page-header">
     <h1 class="page-title">Backtests</h1>
     <a class="btn-primary" routerLink="/backtest">+ New Backtest</a>
   </div>
 
-  <div class="loading-state" *ngIf="isLoading">Loading backtests…</div>
+  @if (isLoading) {
+    <div class="loading-state">Loading backtests…</div>
+  }
 
-  <div class="empty-state" *ngIf="!isLoading && backtests.length === 0">
-    No backtests yet. <a routerLink="/backtest">Run one →</a>
-  </div>
+  @if (!isLoading && backtests.length === 0) {
+    <div class="empty-state">No backtests yet. <a routerLink="/backtest">Run one →</a></div>
+  }
 
-  <div class="table-wrap" *ngIf="!isLoading && backtests.length > 0">
-    <table class="bt-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Status</th>
-          <th>Strategy</th>
-          <th>Symbol</th>
-          <th>Interval</th>
-          <th>From</th>
-          <th>To</th>
-          <th>Candles</th>
-          <th>Trades</th>
-          <th>PnL</th>
-          <th>Completed</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let bt of backtests; trackBy: trackById" [routerLink]="['/backtests', bt.id]" class="clickable-row">
-          <td class="td-id">{{ bt.id }}</td>
-          <td><span [class]="'status-badge ' + statusClass(bt.status)">{{ bt.status }}</span></td>
-          <td><span class="strategy-tag">{{ bt.strategyName }}</span></td>
-          <td class="td-bold">{{ bt.symbolCode }}</td>
-          <td class="td-dim">{{ bt.intervalCode }}</td>
-          <td class="td-dim">{{ formatDate(bt.from) }}</td>
-          <td class="td-dim">{{ formatDate(bt.to) }}</td>
-          <td class="td-dim">{{ bt.candleCount }}</td>
-          <td class="td-dim">{{ bt.tradeCount }}</td>
-          <td>
-            <span [class]="pnlClass(bt.pnl)" *ngIf="bt.pnl !== null">
-              {{ bt.pnl >= 0 ? '+' : '' }}${{ bt.pnl | number:'1.2-2' }}
-            </span>
-            <span class="td-dim" *ngIf="bt.pnl === null">—</span>
-          </td>
-          <td class="td-dim">{{ formatTs(bt.completedAt) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
+  @if (!isLoading && backtests.length > 0) {
+    <div class="table-wrap">
+      <table class="bt-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Status</th>
+            <th>Strategy</th>
+            <th>Symbol</th>
+            <th>Interval</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Candles</th>
+            <th>Trades</th>
+            <th>PnL</th>
+            <th>Completed</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (bt of backtests; track trackById($index, bt)) {
+            <tr [routerLink]="['/backtests', bt.id]" class="clickable-row">
+              <td class="td-id">{{ bt.id }}</td>
+              <td>
+                <span [class]="'status-badge ' + statusClass(bt.status)">{{ bt.status }}</span>
+              </td>
+              <td>
+                <span class="strategy-tag">{{ bt.strategyName }}</span>
+              </td>
+              <td class="td-bold">{{ bt.symbolCode }}</td>
+              <td class="td-dim">{{ bt.intervalCode }}</td>
+              <td class="td-dim">{{ formatDate(bt.from) }}</td>
+              <td class="td-dim">{{ formatDate(bt.to) }}</td>
+              <td class="td-dim">{{ bt.candleCount }}</td>
+              <td class="td-dim">{{ bt.tradeCount }}</td>
+              <td>
+                @if (bt.pnl !== null) {
+                  <span [class]="pnlClass(bt.pnl)"> {{ bt.pnl >= 0 ? '+' : '' }}${{ bt.pnl | number: '1.2-2' }} </span>
+                }
+                @if (bt.pnl === null) {
+                  <span class="td-dim">—</span>
+                }
+              </td>
+              <td class="td-dim">{{ formatTs(bt.completedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </div>

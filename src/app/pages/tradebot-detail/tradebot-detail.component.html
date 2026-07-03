@@ -1,154 +1,178 @@
 <div class="detail-page">
-
   <a class="back-link" routerLink="/tradebots">Back to Trade Bots</a>
 
-  <div class="loading-state" *ngIf="isLoading">Loading...</div>
-  <div class="loading-state" *ngIf="!isLoading && !bot">Bot not found.</div>
+  @if (isLoading) {
+    <div class="loading-state">Loading...</div>
+  }
+  @if (!isLoading && !bot) {
+    <div class="loading-state">Bot not found.</div>
+  }
 
-  <ng-container *ngIf="!isLoading && bot">
-
+  @if (!isLoading && bot) {
     <div class="detail-header">
       <div class="header-meta">
         <span class="header-symbol">{{ bot.symbolCode }}</span>
         <span class="header-interval">{{ bot.intervalCode }}</span>
         <span class="header-sep">/</span>
         <span class="header-account">{{ scopeLabel }}</span>
-        <span *ngIf="bot.tradingStrategy" class="header-strategy">{{ bot.tradingStrategy }}</span>
+        @if (bot.tradingStrategy) {
+          <span class="header-strategy">{{ bot.tradingStrategy }}</span>
+        }
       </div>
       <div class="header-actions">
         <span class="status-badge" [class.status-enabled]="bot.isEnabled" [class.status-disabled]="!bot.isEnabled">
           {{ bot.isEnabled ? 'Enabled' : 'Disabled' }}
         </span>
-        <button
-          class="btn-toggle"
-          [class.is-enabled]="bot.isEnabled"
-          [disabled]="isToggling"
-          (click)="toggleBot()"
-        >{{ isToggling ? 'Working...' : bot.isEnabled ? 'Disable Bot' : 'Enable Bot' }}</button>
+        <button class="btn-toggle" [class.is-enabled]="bot.isEnabled" [disabled]="isToggling" (click)="toggleBot()">
+          {{ isToggling ? 'Working...' : bot.isEnabled ? 'Disable Bot' : 'Enable Bot' }}
+        </button>
       </div>
     </div>
-
     <div class="detail-body">
-
       <div class="detail-left">
-
         <div class="detail-card">
           <div class="card-title">Configuration</div>
           <div class="config-grid">
             <label class="cfg-label">Symbol</label>
             <span class="cfg-value">{{ bot.symbolCode }}</span>
-
             <label class="cfg-label">Interval</label>
             <span class="cfg-value">{{ bot.intervalCode }}</span>
-
             <label class="cfg-label">Quantity</label>
-            <input class="cfg-input" type="number" [(ngModel)]="draftQuantity" min="0" step="any" placeholder="0.00000000" />
-
+            <input
+              class="cfg-input"
+              type="number"
+              [(ngModel)]="draftQuantity"
+              min="0"
+              step="any"
+              placeholder="0.00000000"
+            />
             <label class="cfg-label">Take Profit</label>
             <input class="cfg-input" type="number" [(ngModel)]="draftTakeProfit" min="0" step="any" placeholder="-" />
-
             <label class="cfg-label">Stop Loss</label>
             <input class="cfg-input" type="number" [(ngModel)]="draftStopLoss" min="0" step="any" placeholder="-" />
           </div>
           <button class="btn-save" [disabled]="isSaving" (click)="saveConfig()">
             {{ isSaving ? 'Saving...' : 'Save Changes' }}
           </button>
-          <div class="msg success" *ngIf="saveMessage">{{ saveMessage }}</div>
-          <div class="msg error" *ngIf="saveError">{{ saveError }}</div>
+          @if (saveMessage) {
+            <div class="msg success">{{ saveMessage }}</div>
+          }
+          @if (saveError) {
+            <div class="msg error">{{ saveError }}</div>
+          }
         </div>
-
         <div class="detail-card">
           <div class="card-title">Info</div>
           <div class="info-grid">
             <span class="info-label">Scope</span>
             <span class="info-value">{{ scopeLabel }}</span>
-
             <span class="info-label">Strategy</span>
             <span class="info-value">{{ bot.tradingStrategy }}</span>
-
             <span class="info-label">Last Signal</span>
             <span class="info-value">{{ formatDateTime(bot.lastSignalAt) }}</span>
-
             <span class="info-label">Created</span>
             <span class="info-value">{{ formatTs(bot.createdAt) }}</span>
-
             <span class="info-label">Updated</span>
             <span class="info-value">{{ formatTs(bot.updatedAt) }}</span>
           </div>
         </div>
-
       </div>
-
       <div class="detail-right">
         <div class="detail-card events-card">
           <div class="card-title">
             Live Events
-            <span class="live-dot" *ngIf="bot.tradingAccountId !== null"></span>
+            @if (bot.tradingAccountId !== null) {
+              <span class="live-dot"></span>
+            }
           </div>
-          <div class="events-empty" *ngIf="bot.tradingAccountId === null">Backtest-scoped bots do not have an account event stream.</div>
-          <div class="events-empty" *ngIf="bot.tradingAccountId !== null && !eventLog.length">Waiting for events...</div>
-          <div class="event-list" *ngIf="bot.tradingAccountId !== null">
-            <div class="event-item" *ngFor="let e of eventLog; trackBy: trackByReceivedAt">
-              <span [class]="'event-type ' + eventTypeClass(e.type)">{{ e.type }}</span>
-              <span class="event-detail" *ngIf="e.tradeId">#{{ e.tradeId }}</span>
-              <span class="event-detail" *ngIf="e.symbolCode">{{ e.symbolCode }}</span>
-              <span class="event-detail" *ngIf="e.reason">{{ e.reason }}</span>
-              <span class="event-detail" *ngIf="e.message">{{ e.message }}</span>
-              <span class="event-time">{{ formatDateTime(e.receivedAt) }}</span>
+          @if (bot.tradingAccountId === null) {
+            <div class="events-empty">Backtest-scoped bots do not have an account event stream.</div>
+          }
+          @if (bot.tradingAccountId !== null && !eventLog.length) {
+            <div class="events-empty">Waiting for events...</div>
+          }
+          @if (bot.tradingAccountId !== null) {
+            <div class="event-list">
+              @for (e of eventLog; track trackByReceivedAt($index, e)) {
+                <div class="event-item">
+                  <span [class]="'event-type ' + eventTypeClass(e.type)">{{ e.type }}</span>
+                  @if (e.tradeId) {
+                    <span class="event-detail">#{{ e.tradeId }}</span>
+                  }
+                  @if (e.symbolCode) {
+                    <span class="event-detail">{{ e.symbolCode }}</span>
+                  }
+                  @if (e.reason) {
+                    <span class="event-detail">{{ e.reason }}</span>
+                  }
+                  @if (e.message) {
+                    <span class="event-detail">{{ e.message }}</span>
+                  }
+                  <span class="event-time">{{ formatDateTime(e.receivedAt) }}</span>
+                </div>
+              }
             </div>
-          </div>
+          }
         </div>
       </div>
-
     </div>
-
     <div class="detail-card full-width-card">
       <div class="card-title">{{ tradeHistoryTitle }}</div>
-
-      <div class="loading-state" *ngIf="isLoadingTrades">Loading trades...</div>
-      <div class="events-empty" *ngIf="!isLoadingTrades && recentTrades.length === 0">No trades found.</div>
-
-      <div class="table-wrap" *ngIf="!isLoadingTrades && recentTrades.length > 0">
-        <table class="trades-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Side</th>
-              <th>Symbol</th>
-              <th>Qty</th>
-              <th>Entry</th>
-              <th>Exit</th>
-              <th>PnL</th>
-              <th>Status</th>
-              <th>Close Reason</th>
-              <th>Opened</th>
-              <th>Closed</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let t of recentTrades; trackBy: trackByTradeId">
-              <td class="td-id">{{ t.id }}</td>
-              <td><span [class]="'side-badge ' + sideClass(t.side)">{{ t.side }}</span></td>
-              <td class="td-bold">{{ t.symbolCode }}</td>
-              <td class="td-mono">{{ t.quantity | number:'1.0-8' }}</td>
-              <td class="td-mono">{{ (t.entryPrice ?? t.requestedPrice) | number:'1.2-8' }}</td>
-              <td class="td-mono">{{ t.closedPrice !== null ? (t.closedPrice | number:'1.2-8') : '-' }}</td>
-              <td>
-                <span *ngIf="t.pnl !== null" [class]="tradePnlClass(t)">
-                  {{ t.pnl >= 0 ? '+' : '' }}${{ t.pnl | number:'1.2-4' }}
-                </span>
-                <span class="td-dim" *ngIf="t.pnl === null">-</span>
-              </td>
-              <td class="td-dim">{{ t.status }}</td>
-              <td class="td-dim">{{ t.closeReason ?? '-' }}</td>
-              <td class="td-dim">{{ formatDateTime(t.openedAt) }}</td>
-              <td class="td-dim">{{ formatDateTime(t.closedAt) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (isLoadingTrades) {
+        <div class="loading-state">Loading trades...</div>
+      }
+      @if (!isLoadingTrades && recentTrades.length === 0) {
+        <div class="events-empty">No trades found.</div>
+      }
+      @if (!isLoadingTrades && recentTrades.length > 0) {
+        <div class="table-wrap">
+          <table class="trades-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Side</th>
+                <th>Symbol</th>
+                <th>Qty</th>
+                <th>Entry</th>
+                <th>Exit</th>
+                <th>PnL</th>
+                <th>Status</th>
+                <th>Close Reason</th>
+                <th>Opened</th>
+                <th>Closed</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of recentTrades; track trackByTradeId($index, t)) {
+                <tr>
+                  <td class="td-id">{{ t.id }}</td>
+                  <td>
+                    <span [class]="'side-badge ' + sideClass(t.side)">{{ t.side }}</span>
+                  </td>
+                  <td class="td-bold">{{ t.symbolCode }}</td>
+                  <td class="td-mono">{{ t.quantity | number: '1.0-8' }}</td>
+                  <td class="td-mono">{{ t.entryPrice ?? t.requestedPrice | number: '1.2-8' }}</td>
+                  <td class="td-mono">{{ t.closedPrice !== null ? (t.closedPrice | number: '1.2-8') : '-' }}</td>
+                  <td>
+                    @if (t.pnl !== null) {
+                      <span [class]="tradePnlClass(t)">
+                        {{ t.pnl >= 0 ? '+' : '' }}${{ t.pnl | number: '1.2-4' }}
+                      </span>
+                    }
+                    @if (t.pnl === null) {
+                      <span class="td-dim">-</span>
+                    }
+                  </td>
+                  <td class="td-dim">{{ t.status }}</td>
+                  <td class="td-dim">{{ t.closeReason ?? '-' }}</td>
+                  <td class="td-dim">{{ formatDateTime(t.openedAt) }}</td>
+                  <td class="td-dim">{{ formatDateTime(t.closedAt) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
-
-  </ng-container>
-
+  }
 </div>

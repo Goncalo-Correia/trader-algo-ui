@@ -1,43 +1,49 @@
 <div class="ml-page">
-
   <div class="page-header">
     <h1 class="page-title">ML Policies</h1>
     <a class="btn-primary" routerLink="/ml/policies/new">+ New Policy</a>
   </div>
 
-  <div class="loading-state" *ngIf="isLoading">Loading policies…</div>
+  @if (isLoading) {
+    <div class="loading-state">Loading policies…</div>
+  }
 
-  <div class="empty-state" *ngIf="!isLoading && policies.length === 0">
-    No policies yet. <a routerLink="/ml/policies/new">Create one →</a>
-  </div>
+  @if (!isLoading && policies.length === 0) {
+    <div class="empty-state">No policies yet. <a routerLink="/ml/policies/new">Create one →</a></div>
+  }
 
-  <div class="table-wrap" *ngIf="!isLoading && policies.length > 0">
-    <table class="bt-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Symbol</th>
-          <th>Interval</th>
-          <th>Timesteps</th>
-          <th>Initial Balance</th>
-          <th>Quantity</th>
-          <th>Runs</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let p of policies; trackBy: trackById" [routerLink]="['/ml/policies', p.id]" class="clickable-row">
-          <td class="td-id">{{ p.id }}</td>
-          <td class="td-bold">{{ p.symbolCode }}</td>
-          <td class="td-dim">{{ p.intervalCode }}</td>
-          <td class="td-dim">{{ p.totalTimesteps }}</td>
-          <td class="td-dim">${{ p.initialBalance | number:'1.2-2' }}</td>
-          <td class="td-dim">{{ p.quantity | number:'1.0-8' }}</td>
-          <td><span class="run-count">{{ p.trainingRunCount }}</span></td>
-          <td class="td-dim">{{ formatTs(p.createdAt) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
+  @if (!isLoading && policies.length > 0) {
+    <div class="table-wrap">
+      <table class="bt-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Symbol</th>
+            <th>Interval</th>
+            <th>Timesteps</th>
+            <th>Initial Balance</th>
+            <th>Quantity</th>
+            <th>Runs</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of policies; track trackById($index, p)) {
+            <tr [routerLink]="['/ml/policies', p.id]" class="clickable-row">
+              <td class="td-id">{{ p.id }}</td>
+              <td class="td-bold">{{ p.symbolCode }}</td>
+              <td class="td-dim">{{ p.intervalCode }}</td>
+              <td class="td-dim">{{ p.totalTimesteps }}</td>
+              <td class="td-dim">${{ p.initialBalance | number: '1.2-2' }}</td>
+              <td class="td-dim">{{ p.quantity | number: '1.0-8' }}</td>
+              <td>
+                <span class="run-count">{{ p.trainingRunCount }}</span>
+              </td>
+              <td class="td-dim">{{ formatTs(p.createdAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </div>

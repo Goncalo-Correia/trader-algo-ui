@@ -1,22 +1,22 @@
-<div class="multi-chart-layout" *ngIf="panes.length">
-
-  <!-- 2 × 2 chart grid -->
-  <div class="chart-grid">
-    <app-chart
-      *ngFor="let pane of panes; trackBy: trackByIndex"
-      [symbol]="selectedSymbol"
-      [initialInterval]="pane.interval"
-      [availableIntervals]="intervals"
-      [activeTrade]="activeTrade"
-    ></app-chart>
+@if (panes.length) {
+  <div class="multi-chart-layout">
+    <!-- 2 × 2 chart grid -->
+    <div class="chart-grid">
+      @for (pane of panes; track $index) {
+        <app-chart
+          [symbol]="selectedSymbol"
+          [initialInterval]="pane.interval"
+          [availableIntervals]="intervals"
+          [activeTrade]="activeTrade"
+        ></app-chart>
+      }
+    </div>
+    <!-- Single trade panel -->
+    <app-trade-panel
+      [symbols]="symbols"
+      [initialSymbol]="selectedSymbol"
+      (symbolChange)="onSymbolChange($event)"
+      (tradeChange)="onTradeChange($event)"
+    ></app-trade-panel>
   </div>
-
-  <!-- Single trade panel -->
-  <app-trade-panel
-    [symbols]="symbols"
-    [initialSymbol]="selectedSymbol"
-    (symbolChange)="onSymbolChange($event)"
-    (tradeChange)="onTradeChange($event)"
-  ></app-trade-panel>
-
-</div>
+}

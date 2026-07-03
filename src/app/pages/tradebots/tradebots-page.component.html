@@ -1,63 +1,72 @@
 <div class="tradebots-page">
-
   <div class="page-header">
     <h1 class="page-title">Trade Bots</h1>
   </div>
 
-  <div class="loading-state" *ngIf="isLoading">Loading trade bots...</div>
+  @if (isLoading) {
+    <div class="loading-state">Loading trade bots...</div>
+  }
 
-  <div class="empty-state" *ngIf="!isLoading && bots.length === 0">
-    No trade bots configured. Account bots can be configured from Algo Trader, and backtest bots are created with each backtest.
-  </div>
+  @if (!isLoading && bots.length === 0) {
+    <div class="empty-state">
+      No trade bots configured. Account bots can be configured from Algo Trader, and backtest bots are created with each
+      backtest.
+    </div>
+  }
 
-  <div class="table-wrap" *ngIf="!isLoading && bots.length > 0">
-    <table class="bt-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Status</th>
-          <th>Scope</th>
-          <th>Strategy</th>
-          <th>Symbol</th>
-          <th>Interval</th>
-          <th>Quantity</th>
-          <th>Take Profit</th>
-          <th>Stop Loss</th>
-          <th>Last Signal</th>
-          <th>Created</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let bot of bots; trackBy: trackById" [routerLink]="['/tradebots', bot.id]" class="clickable-row">
-          <td class="td-id">{{ bot.id }}</td>
-          <td>
-            <span [class]="'status-badge ' + statusClass(bot)">
-              {{ bot.isEnabled ? 'Enabled' : 'Disabled' }}
-            </span>
-          </td>
-          <td>
-            <span [class]="'scope-badge ' + scopeClass(bot)">{{ scopeLabel(bot) }}</span>
-          </td>
-          <td class="td-dim">{{ bot.tradingStrategy }}</td>
-          <td class="td-bold">{{ bot.symbolCode }}</td>
-          <td class="td-dim">{{ bot.intervalCode }}</td>
-          <td class="td-mono">{{ bot.quantity }}</td>
-          <td class="td-dim">{{ bot.takeProfit !== null ? bot.takeProfit : '-' }}</td>
-          <td class="td-dim">{{ bot.stopLoss !== null ? bot.stopLoss : '-' }}</td>
-          <td class="td-dim">{{ formatSignal(bot.lastSignalAt) }}</td>
-          <td class="td-dim">{{ formatTs(bot.createdAt) }}</td>
-          <td class="td-action">
-            <button
-              class="toggle-btn"
-              [class.enabled]="bot.isEnabled"
-              [disabled]="togglingId === bot.id"
-              (click)="toggleBot(bot, $event)"
-            >{{ bot.isEnabled ? 'Disable' : 'Enable' }}</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
+  @if (!isLoading && bots.length > 0) {
+    <div class="table-wrap">
+      <table class="bt-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Status</th>
+            <th>Scope</th>
+            <th>Strategy</th>
+            <th>Symbol</th>
+            <th>Interval</th>
+            <th>Quantity</th>
+            <th>Take Profit</th>
+            <th>Stop Loss</th>
+            <th>Last Signal</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (bot of bots; track trackById($index, bot)) {
+            <tr [routerLink]="['/tradebots', bot.id]" class="clickable-row">
+              <td class="td-id">{{ bot.id }}</td>
+              <td>
+                <span [class]="'status-badge ' + statusClass(bot)">
+                  {{ bot.isEnabled ? 'Enabled' : 'Disabled' }}
+                </span>
+              </td>
+              <td>
+                <span [class]="'scope-badge ' + scopeClass(bot)">{{ scopeLabel(bot) }}</span>
+              </td>
+              <td class="td-dim">{{ bot.tradingStrategy }}</td>
+              <td class="td-bold">{{ bot.symbolCode }}</td>
+              <td class="td-dim">{{ bot.intervalCode }}</td>
+              <td class="td-mono">{{ bot.quantity }}</td>
+              <td class="td-dim">{{ bot.takeProfit !== null ? bot.takeProfit : '-' }}</td>
+              <td class="td-dim">{{ bot.stopLoss !== null ? bot.stopLoss : '-' }}</td>
+              <td class="td-dim">{{ formatSignal(bot.lastSignalAt) }}</td>
+              <td class="td-dim">{{ formatTs(bot.createdAt) }}</td>
+              <td class="td-action">
+                <button
+                  class="toggle-btn"
+                  [class.enabled]="bot.isEnabled"
+                  [disabled]="togglingId === bot.id"
+                  (click)="toggleBot(bot, $event)"
+                >
+                  {{ bot.isEnabled ? 'Disable' : 'Enable' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </div>

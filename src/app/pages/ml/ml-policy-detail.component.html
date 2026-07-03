@@ -1,13 +1,15 @@
 <div class="detail-page">
-
   <a class="back-link" routerLink="/ml">← ML Policies</a>
 
-  <div class="loading-state" *ngIf="isLoading">Loading policy…</div>
+  @if (isLoading) {
+    <div class="loading-state">Loading policy…</div>
+  }
 
-  <div class="error-state" *ngIf="!isLoading && notFound">Policy not found.</div>
+  @if (!isLoading && notFound) {
+    <div class="error-state">Policy not found.</div>
+  }
 
-  <ng-container *ngIf="!isLoading && policy as p">
-
+  @if (!isLoading && policy; as p) {
     <div class="detail-header">
       <div class="header-left">
         <h1 class="detail-title">Policy #{{ p.id }}</h1>
@@ -23,91 +25,132 @@
         </button>
       </div>
     </div>
-
-    <div class="error-card" *ngIf="deleteError">{{ deleteError }}</div>
-
+    @if (deleteError) {
+      <div class="error-card">{{ deleteError }}</div>
+    }
     <div class="stats-bar">
       <div class="stats-row">
-        <div class="stat-item"><span class="stat-label">Symbol</span><span class="stat-value">{{ p.symbolCode }}</span></div>
-        <div class="stat-item"><span class="stat-label">Interval</span><span class="stat-value">{{ p.intervalCode }}</span></div>
-        <div class="stat-item"><span class="stat-label">Timesteps</span><span class="stat-value">{{ p.totalTimesteps }}</span></div>
-        <div class="stat-item"><span class="stat-label">Initial Balance</span><span class="stat-value">${{ p.initialBalance | number:'1.2-2' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Quantity</span><span class="stat-value">{{ p.quantity | number:'1.0-8' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Created</span><span class="stat-value">{{ formatTs(p.createdAt) }}</span></div>
+        <div class="stat-item">
+          <span class="stat-label">Symbol</span><span class="stat-value">{{ p.symbolCode }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Interval</span><span class="stat-value">{{ p.intervalCode }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Timesteps</span><span class="stat-value">{{ p.totalTimesteps }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Initial Balance</span
+          ><span class="stat-value">${{ p.initialBalance | number: '1.2-2' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Quantity</span><span class="stat-value">{{ p.quantity | number: '1.0-8' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Created</span><span class="stat-value">{{ formatTs(p.createdAt) }}</span>
+        </div>
       </div>
       <div class="stats-row stats-row-financial">
-        <div class="stat-item"><span class="stat-label">Take Profit</span><span class="stat-value">{{ p.takeProfit ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Stop Loss</span><span class="stat-value">{{ p.stopLoss ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Breakeven</span><span class="stat-value">{{ p.breakeven ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Breakeven Stop</span><span class="stat-value">{{ p.breakevenStop ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Fee</span><span class="stat-value">{{ p.fee ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Slippage</span><span class="stat-value">{{ p.slippage ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Max Trailing DD</span><span class="stat-value">{{ p.maxTrailingDrawdown ?? '—' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Max Candles/Trade</span><span class="stat-value">{{ p.maxCandlesPerTrade ?? '—' }}</span></div>
+        <div class="stat-item">
+          <span class="stat-label">Take Profit</span><span class="stat-value">{{ p.takeProfit ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Stop Loss</span><span class="stat-value">{{ p.stopLoss ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Breakeven</span><span class="stat-value">{{ p.breakeven ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Breakeven Stop</span><span class="stat-value">{{ p.breakevenStop ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Fee</span><span class="stat-value">{{ p.fee ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Slippage</span><span class="stat-value">{{ p.slippage ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Max Trailing DD</span
+          ><span class="stat-value">{{ p.maxTrailingDrawdown ?? '—' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Max Candles/Trade</span
+          ><span class="stat-value">{{ p.maxCandlesPerTrade ?? '—' }}</span>
+        </div>
       </div>
     </div>
-
-    <div class="run-form" *ngIf="showRunForm">
-      <div class="section-title">New Training Run</div>
-      <div class="run-form-row">
-        <div class="field">
-          <div class="field-label">From</div>
-          <input class="ctrl" type="date" [(ngModel)]="fromDate" [disabled]="submitting" />
+    @if (showRunForm) {
+      <div class="run-form">
+        <div class="section-title">New Training Run</div>
+        <div class="run-form-row">
+          <div class="field">
+            <div class="field-label">From</div>
+            <input class="ctrl" type="date" [(ngModel)]="fromDate" [disabled]="submitting" />
+          </div>
+          <div class="field">
+            <div class="field-label">To</div>
+            <input class="ctrl" type="date" [(ngModel)]="toDate" [disabled]="submitting" />
+          </div>
+          <button class="btn-run" [disabled]="submitting" (click)="startTraining()">
+            {{ submitting ? 'Starting…' : 'Start Training' }}
+          </button>
         </div>
-        <div class="field">
-          <div class="field-label">To</div>
-          <input class="ctrl" type="date" [(ngModel)]="toDate" [disabled]="submitting" />
-        </div>
-        <button class="btn-run" [disabled]="submitting" (click)="startTraining()">
-          {{ submitting ? 'Starting…' : 'Start Training' }}
-        </button>
+        @if (runError) {
+          <div class="error-card">{{ runError }}</div>
+        }
+        <div class="field-hint">Trains over the selected date range using this policy's hyperparameters.</div>
       </div>
-      <div class="error-card" *ngIf="runError">{{ runError }}</div>
-      <div class="field-hint">Trains over the selected date range using this policy's hyperparameters.</div>
-    </div>
-
+    }
     <div class="trades-section">
       <div class="section-title">Training Runs</div>
-
-      <div class="empty-state" *ngIf="runs.length === 0">
-        No training runs yet for this policy.
-      </div>
-
-      <table class="bt-table" *ngIf="runs.length > 0">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Status</th>
-            <th>From</th>
-            <th>To</th>
-            <th>Trades</th>
-            <th>PnL %</th>
-            <th>Final Balance</th>
-            <th>Started</th>
-            <th>Completed</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let run of runs; trackBy: trackById" [routerLink]="['/ml/runs', run.id]" class="clickable-row">
-            <td class="td-id">{{ run.id }}</td>
-            <td><span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span></td>
-            <td class="td-dim">{{ formatDate(run.from) }}</td>
-            <td class="td-dim">{{ formatDate(run.to) }}</td>
-            <td class="td-dim">{{ runTrades(run) ?? '—' }}</td>
-            <td>
-              <span [class]="pnlClass(runPnlPct(run))" *ngIf="runPnlPct(run) !== null">
-                {{ runPnlPct(run)! >= 0 ? '+' : '' }}{{ runPnlPct(run) | number:'1.2-2' }}%
-              </span>
-              <span class="td-dim" *ngIf="runPnlPct(run) === null">—</span>
-            </td>
-            <td class="td-dim">{{ runFinalBalance(run) !== null ? ('$' + (runFinalBalance(run) | number:'1.2-2')) : '—' }}</td>
-            <td class="td-dim">{{ formatTs(run.startedAt) }}</td>
-            <td class="td-dim">{{ formatTs(run.completedAt) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      @if (runs.length === 0) {
+        <div class="empty-state">No training runs yet for this policy.</div>
+      }
+      @if (runs.length > 0) {
+        <table class="bt-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Status</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Trades</th>
+              <th>PnL %</th>
+              <th>Final Balance</th>
+              <th>Started</th>
+              <th>Completed</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of runs; track trackById($index, run)) {
+              <tr [routerLink]="['/ml/runs', run.id]" class="clickable-row">
+                <td class="td-id">{{ run.id }}</td>
+                <td>
+                  <span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span>
+                </td>
+                <td class="td-dim">{{ formatDate(run.from) }}</td>
+                <td class="td-dim">{{ formatDate(run.to) }}</td>
+                <td class="td-dim">{{ runTrades(run) ?? '—' }}</td>
+                <td>
+                  @if (runPnlPct(run) !== null) {
+                    <span [class]="pnlClass(runPnlPct(run))">
+                      {{ runPnlPct(run)! >= 0 ? '+' : '' }}{{ runPnlPct(run) | number: '1.2-2' }}%
+                    </span>
+                  }
+                  @if (runPnlPct(run) === null) {
+                    <span class="td-dim">—</span>
+                  }
+                </td>
+                <td class="td-dim">
+                  {{ runFinalBalance(run) !== null ? '$' + (runFinalBalance(run) | number: '1.2-2') : '—' }}
+                </td>
+                <td class="td-dim">{{ formatTs(run.startedAt) }}</td>
+                <td class="td-dim">{{ formatTs(run.completedAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
     </div>
-
-  </ng-container>
-
+  }
 </div>

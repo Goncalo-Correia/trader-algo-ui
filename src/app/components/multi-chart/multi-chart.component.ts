@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
@@ -11,6 +11,7 @@ interface PaneConfig {
 
 @Component({
   standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-multi-chart',
   templateUrl: './multi-chart.component.html',
   styleUrls: ['./multi-chart.component.css'],
@@ -19,7 +20,6 @@ export class MultiChartComponent implements OnInit {
   symbols:   SymbolResponse[]  = [];
   intervals: IntervalResponse[] = [];
   panes:     PaneConfig[]       = [];
-  readonly trackByIndex = (index: number): number => index;
 
   selectedSymbol = '';
   activeTrade:  Trade | null = null;

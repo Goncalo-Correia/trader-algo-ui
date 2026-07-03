@@ -1,25 +1,24 @@
-<div class="algo-trader-layout" *ngIf="selectedSymbol">
-
-  <div class="chart-area">
-    <app-chart
-      [symbol]="selectedSymbol"
-      [symbolProvider]="selectedSymbolProvider"
-      [initialInterval]="defaultInterval"
-      [availableIntervals]="intervals"
-      [activeTrade]="activeTrade"
-      [tradingAccountId]="tradingAccountId"
-    ></app-chart>
+@if (selectedSymbol) {
+  <div class="algo-trader-layout">
+    <div class="chart-area">
+      <app-chart
+        [symbol]="selectedSymbol"
+        [symbolProvider]="selectedSymbolProvider"
+        [initialInterval]="defaultInterval"
+        [availableIntervals]="intervals"
+        [activeTrade]="activeTrade"
+        [tradingAccountId]="tradingAccountId"
+      ></app-chart>
+    </div>
+    <app-trade-panel
+      [symbols]="symbols"
+      [intervals]="intervals"
+      [initialSymbol]="selectedSymbol"
+      [defaultInterval]="defaultInterval"
+      [showTradeBot]="true"
+      (symbolChange)="onSymbolChange($event)"
+      (tradeChange)="onTradeChange($event)"
+      (accountChange)="onAccountChange($event)"
+    ></app-trade-panel>
   </div>
-
-  <app-trade-panel
-    [symbols]="symbols"
-    [intervals]="intervals"
-    [initialSymbol]="selectedSymbol"
-    [defaultInterval]="defaultInterval"
-    [showTradeBot]="true"
-    (symbolChange)="onSymbolChange($event)"
-    (tradeChange)="onTradeChange($event)"
-    (accountChange)="onAccountChange($event)"
-  ></app-trade-panel>
-
-</div>
+}

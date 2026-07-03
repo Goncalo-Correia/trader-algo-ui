@@ -9,8 +9,8 @@ import { generatedApiConfig } from './environment.generated';
 export const environment = {
   production: false,
   traderAlgoApi: {
-    baseUrl: 'http://localhost:32772',
-    wsUrl: 'ws://localhost:32772',
+    baseUrl: 'http://localhost:32768',
+    wsUrl: 'ws://localhost:32768',
     apiKey: generatedApiConfig.apiKey,
   },
 };

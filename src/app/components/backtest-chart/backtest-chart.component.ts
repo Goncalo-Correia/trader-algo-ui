@@ -25,7 +25,7 @@ import {
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
-import { CandleWithIndicatorsResponse } from '../../structures/candle';
+import { CandleWithIndicators } from '../../structures/candle';
 import { ActiveCandlePlugin } from '../../chart-plugins/active-candle.plugin';
 import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
 import { Trade } from '../../structures/trade';
@@ -42,7 +42,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   @ViewChild('chartContainer', { static: true })
   private readonly chartContainer!: ElementRef<HTMLDivElement>;
 
-  @Input() set candles(data: CandleWithIndicatorsResponse[]) {
+  @Input() set candles(data: CandleWithIndicators[]) {
     this._candles = data;
     if (this.chart) this.ngZone.runOutsideAngular(() => this.renderCandles(data));
   }
@@ -71,7 +71,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   showMacd = true;
   showTrades = true;
 
-  private _candles: CandleWithIndicatorsResponse[] = [];
+  private _candles: CandleWithIndicators[] = [];
   private _playbackTime: number | null = null;
   private _trades: Trade[] = [];
   private _isNySessionOnly = false;
@@ -343,7 +343,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
    * `series.update()` (O(1) each) instead of re-`setData`-ing every series with the full array
    * on every frame. Anything else (first load, a new run, a shorter/replaced array) redraws.
    */
-  private renderCandles(data: CandleWithIndicatorsResponse[]): void {
+  private renderCandles(data: CandleWithIndicators[]): void {
     const isAppend =
       this.renderedCount > 0 &&
       this.firstRenderedTime !== null &&
@@ -357,20 +357,20 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private appendCandles(newCandles: CandleWithIndicatorsResponse[]): void {
+  private appendCandles(newCandles: CandleWithIndicators[]): void {
     for (const c of newCandles) {
       const time = this.toTime(c.time);
       this.candleSeries?.update({ time, open: c.open, high: c.high, low: c.low, close: c.close });
       this.volumeSeries?.update(this.toVolumeBar(c));
       this.deltaSeries?.update(this.toDeltaBar(c));
-      if (c.sma_20 !== null) this.sma20Series?.update({ time, value: c.sma_20 });
-      if (c.sma_100 !== null) this.sma100Series?.update({ time, value: c.sma_100 });
+      if (c.sma20 !== null) this.sma20Series?.update({ time, value: c.sma20 });
+      if (c.sma100 !== null) this.sma100Series?.update({ time, value: c.sma100 });
       if (c.rsi !== null) this.rsiSeries?.update({ time, value: c.rsi });
-      if (c.rsi_smooth !== null) this.rsiMaSeries?.update({ time, value: c.rsi_smooth });
-      if (c.macd_line !== null) this.macdLineSeries?.update({ time, value: c.macd_line });
-      if (c.macd_signal_line !== null) this.macdSignalSeries?.update({ time, value: c.macd_signal_line });
-      if (c.macd_histogram !== null) {
-        this.macdHistSeries?.update(this.toMacdHistogramBar(c.macd_histogram, time));
+      if (c.rsiSmooth !== null) this.rsiMaSeries?.update({ time, value: c.rsiSmooth });
+      if (c.macdLine !== null) this.macdLineSeries?.update({ time, value: c.macdLine });
+      if (c.macdSignalLine !== null) this.macdSignalSeries?.update({ time, value: c.macdSignalLine });
+      if (c.macdHistogram !== null) {
+        this.macdHistSeries?.update(this.toMacdHistogramBar(c.macdHistogram, time));
       }
     }
 
@@ -390,7 +390,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this.macdZeroSeries?.update({ time, value: 0 });
   }
 
-  private applyAllSeries(candles: CandleWithIndicatorsResponse[]): void {
+  private applyAllSeries(candles: CandleWithIndicators[]): void {
     const shouldFitInitialContent = candles.length > 0 && !this.hasAppliedInitialViewport;
 
     this.candleSeries?.setData(
@@ -407,10 +407,10 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this.applyBracketLines();
 
     this.sma20Series?.setData(
-      candles.filter(c => c.sma_20 !== null).map(c => ({ time: this.toTime(c.time), value: c.sma_20! })),
+      candles.filter(c => c.sma20 !== null).map(c => ({ time: this.toTime(c.time), value: c.sma20! })),
     );
     this.sma100Series?.setData(
-      candles.filter(c => c.sma_100 !== null).map(c => ({ time: this.toTime(c.time), value: c.sma_100! })),
+      candles.filter(c => c.sma100 !== null).map(c => ({ time: this.toTime(c.time), value: c.sma100! })),
     );
 
     this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
@@ -420,7 +420,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       candles.filter(c => c.rsi !== null).map(c => ({ time: this.toTime(c.time), value: c.rsi! })),
     );
     this.rsiMaSeries?.setData(
-      candles.filter(c => c.rsi_smooth !== null).map(c => ({ time: this.toTime(c.time), value: c.rsi_smooth! })),
+      candles.filter(c => c.rsiSmooth !== null).map(c => ({ time: this.toTime(c.time), value: c.rsiSmooth! })),
     );
 
     const rsiCandles = candles.filter(c => c.rsi !== null);
@@ -436,16 +436,16 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     }
 
     this.macdLineSeries?.setData(
-      candles.filter(c => c.macd_line !== null).map(c => ({ time: this.toTime(c.time), value: c.macd_line! })),
+      candles.filter(c => c.macdLine !== null).map(c => ({ time: this.toTime(c.time), value: c.macdLine! })),
     );
     this.macdSignalSeries?.setData(
       candles
-        .filter(c => c.macd_signal_line !== null)
-        .map(c => ({ time: this.toTime(c.time), value: c.macd_signal_line! })),
+        .filter(c => c.macdSignalLine !== null)
+        .map(c => ({ time: this.toTime(c.time), value: c.macdSignalLine! })),
     );
     this.macdHistSeries?.setData(this.toMacdHistogram(candles));
 
-    const macdCandles = candles.filter(c => c.macd_line !== null);
+    const macdCandles = candles.filter(c => c.macdLine !== null);
     if (macdCandles.length >= 2) {
       this.macdZeroSeries?.setData([
         { time: this.toTime(macdCandles[0].time), value: 0 },
@@ -473,26 +473,26 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     return (unixSeconds > 9_999_999_999 ? Math.floor(unixSeconds / 1000) : unixSeconds) as UTCTimestamp;
   }
 
-  private toVolumeBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const takerTotal = c.taker_buy_base_asset_volume + c.taker_sell_base_asset_volume;
+  private toVolumeBar(c: CandleWithIndicators): HistogramData<Time> {
+    const takerTotal = c.takerBuyVolume + c.takerSellVolume;
     const vol = takerTotal > 0 ? takerTotal : c.volume;
     return { time: this.toTime(c.time), value: vol, color: c.close >= c.open ? '#26a69a' : '#ef5350' };
   }
 
-  private toDeltaBar(c: CandleWithIndicatorsResponse): HistogramData<Time> {
-    const buy = c.taker_buy_base_asset_volume;
-    const sell = c.taker_sell_base_asset_volume;
+  private toDeltaBar(c: CandleWithIndicators): HistogramData<Time> {
+    const buy = c.takerBuyVolume;
+    const sell = c.takerSellVolume;
     const total = buy + sell;
     const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
     return { time: this.toTime(c.time), value: delta, color: delta >= 0 ? '#26a69a' : '#ef5350' };
   }
 
-  private toMacdHistogram(candles: CandleWithIndicatorsResponse[]): HistogramData<Time>[] {
+  private toMacdHistogram(candles: CandleWithIndicators[]): HistogramData<Time>[] {
     this.lastMacdHistValue = null;
     const result: HistogramData<Time>[] = [];
     for (const c of candles) {
-      if (c.macd_histogram === null) continue;
-      result.push(this.toMacdHistogramBar(c.macd_histogram, this.toTime(c.time)));
+      if (c.macdHistogram === null) continue;
+      result.push(this.toMacdHistogramBar(c.macdHistogram, this.toTime(c.time)));
     }
     return result;
   }

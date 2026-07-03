@@ -5,7 +5,7 @@ import { LiveChartDataService } from '../../services/live-chart-data.service';
 import { isAlpacaSymbol, SymbolResponse } from '../../structures/symbol';
 import { IntervalResponse } from '../../structures/interval';
 import { StrategyResponse } from '../../structures/strategy';
-import { CandleWithIndicatorsResponse } from '../../structures/candle';
+import { CandleWithIndicators } from '../../structures/candle';
 import { BacktestSummary, CreateBacktestRequest } from '../../structures/backtest';
 import { Trade } from '../../structures/trade';
 import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
@@ -51,7 +51,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   maxLossesPerDay: number | null = null;
   maxCandlesPerTrade: number | null = null;
 
-  backtestCandles: CandleWithIndicatorsResponse[] = [];
+  backtestCandles: CandleWithIndicators[] = [];
   backtestTrades: Trade[] = [];
   activePlaybackTime: number | null = null;
 
@@ -229,7 +229,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private appendCandles(candles: CandleWithIndicatorsResponse[]): void {
+  private appendCandles(candles: CandleWithIndicators[]): void {
     if (candles.length === 0) return;
     this.backtestCandles = this.backtestCandles.concat(candles);
     this.activePlaybackTime = candles[candles.length - 1].time;

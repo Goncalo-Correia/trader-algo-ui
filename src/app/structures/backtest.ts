@@ -1,4 +1,4 @@
-import { CandleWithIndicatorsResponse } from './candle';
+import { CandleWithIndicators, CandleWithIndicatorsDto } from './candle';
 import { Trade } from './trade';
 
 export interface BacktestCandleRequest {
@@ -67,8 +67,8 @@ export interface TradeBracketUpdate {
 }
 
 export type BacktestStreamEvent =
-  | { type: 'candle'; data: CandleWithIndicatorsResponse }
-  | { type: 'candleBatch'; data: CandleWithIndicatorsResponse[] }
+  | { type: 'candle'; data: CandleWithIndicators }
+  | { type: 'candleBatch'; data: CandleWithIndicators[] }
   | { type: 'tradeOpened'; data: Trade }
   | { type: 'tradeClosed'; data: Trade }
   | { type: 'tradeBracketUpdate'; data: TradeBracketUpdate };
@@ -81,6 +81,13 @@ export interface EquityPoint {
 
 export interface BacktestDetail extends BacktestSummary {
   trades: Trade[];
-  candles: CandleWithIndicatorsResponse[];
+  candles: CandleWithIndicators[];
+  equityCurve: EquityPoint[];
+}
+
+/** Wire shape of {@link BacktestDetail}: candles arrive snake_case. */
+export interface BacktestDetailDto extends BacktestSummary {
+  trades: Trade[];
+  candles: CandleWithIndicatorsDto[];
   equityCurve: EquityPoint[];
 }

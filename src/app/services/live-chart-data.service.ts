@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
+import {
+  CandleResponse,
+  CandleWithIndicators,
+  CandleWithIndicatorsDto,
+  toCandleWithIndicators,
+} from '../structures/candle';
 import { BacktestStreamEvent, TradeBracketUpdate } from '../structures/backtest';
 import { Trade } from '../structures/trade';
 import { MlStreamDecision, MlTrainingStreamEvent } from '../structures/ml-training';
@@ -23,9 +28,11 @@ export class LiveChartDataService {
     return connectWebSocket<CandleResponse>(url, { parse: raw => parseCandleFrames<CandleResponse>(raw) });
   }
 
-  streamCandlesWithIndicators(symbol: string, interval: ChartInterval): Observable<CandleWithIndicatorsResponse> {
+  streamCandlesWithIndicators(symbol: string, interval: ChartInterval): Observable<CandleWithIndicators> {
     const url = `${this.candlesWithIndicatorsUrl}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`;
-    return connectWebSocket<CandleWithIndicatorsResponse>(url, { parse: raw => parseCandleFrames<CandleWithIndicatorsResponse>(raw) });
+    return connectWebSocket<CandleWithIndicators>(url, {
+      parse: raw => parseCandleFrames<CandleWithIndicatorsDto>(raw).map(toCandleWithIndicators),
+    });
   }
 
   streamBacktest(backtestId: number, delay = false): Observable<BacktestStreamEvent> {
@@ -42,7 +49,7 @@ export class LiveChartDataService {
 }
 
 /** Accepts either a single candle frame or a batch, dropping any that fail shape validation. */
-function parseCandleFrames<T extends CandleResponse | CandleWithIndicatorsResponse>(raw: unknown): T[] {
+function parseCandleFrames<T extends CandleResponse | CandleWithIndicatorsDto>(raw: unknown): T[] {
   const items = Array.isArray(raw) ? raw : [raw];
   // Shape is validated at this single network boundary; the cast is the only assertion.
   return items.filter(hasCandleShape) as T[];
@@ -64,11 +71,11 @@ function parseBacktestEvent(raw: unknown): BacktestStreamEvent[] {
   if (typeof raw !== 'object' || raw === null) return [];
   const envelope = raw as { type?: unknown; data?: unknown };
   if (envelope.type === 'candle' && hasCandleShape(envelope.data)) {
-    return [{ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse }];
+    return [{ type: 'candle', data: toCandleWithIndicators(envelope.data as CandleWithIndicatorsDto) }];
   }
   if (envelope.type === 'candleBatch' && Array.isArray(envelope.data)) {
-    const candles = envelope.data.filter(hasCandleShape) as CandleWithIndicatorsResponse[];
-    return candles.length ? [{ type: 'candleBatch', data: candles }] : [];
+    const candles = envelope.data.filter(hasCandleShape) as CandleWithIndicatorsDto[];
+    return candles.length ? [{ type: 'candleBatch', data: candles.map(toCandleWithIndicators) }] : [];
   }
   if (envelope.type === 'tradeOpened' && isTrade(envelope.data)) {
     return [{ type: 'tradeOpened', data: envelope.data }];
@@ -98,7 +105,7 @@ function parseTrainingEvent(raw: unknown): MlTrainingStreamEvent[] {
   if (typeof raw !== 'object' || raw === null) return [];
   const envelope = raw as { type?: unknown; data?: unknown };
   if (envelope.type === 'candle' && hasCandleShape(envelope.data)) {
-    return [{ type: 'candle', data: envelope.data as CandleWithIndicatorsResponse }];
+    return [{ type: 'candle', data: toCandleWithIndicators(envelope.data as CandleWithIndicatorsDto) }];
   }
   if (envelope.type === 'mlDecision' && isMlDecision(envelope.data)) {
     return [{ type: 'mlDecision', data: envelope.data }];

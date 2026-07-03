@@ -3,7 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
-import { CandleWithIndicatorsResponse } from '../../structures/candle';
+import { CandleWithIndicators } from '../../structures/candle';
 import {
   MlDecisionLog,
   MlflowMetricPoint,
@@ -81,7 +81,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   tracking: MlflowTrackingResponse | null = null;
 
   // Price chart (lightweight-charts) inputs.
-  candles: CandleWithIndicatorsResponse[] = [];
+  candles: CandleWithIndicators[] = [];
   chartTrades: Trade[] = [];
 
   balanceChartOptions: Highcharts.Options = {};

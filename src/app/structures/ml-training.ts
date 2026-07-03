@@ -1,4 +1,4 @@
-import { CandleWithIndicatorsResponse } from './candle';
+import { CandleWithIndicators } from './candle';
 
 export type MlTrainingStatus = 'Pending' | 'Running' | 'Completed' | 'Failed';
 
@@ -136,5 +136,5 @@ export interface MlStreamDecision {
 }
 
 export type MlTrainingStreamEvent =
-  | { type: 'candle'; data: CandleWithIndicatorsResponse }
+  | { type: 'candle'; data: CandleWithIndicators }
   | { type: 'mlDecision'; data: MlStreamDecision };

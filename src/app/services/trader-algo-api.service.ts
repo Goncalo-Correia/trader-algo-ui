@@ -1,7 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { CandleRequest, CandleResponse, CandleWithIndicatorsResponse } from '../structures/candle';
+import { map, Observable } from 'rxjs';
+import {
+  CandleRequest,
+  CandleResponse,
+  CandleWithIndicators,
+  CandleWithIndicatorsDto,
+  toCandleWithIndicators,
+} from '../structures/candle';
 import { IntervalResponse } from '../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../structures/session';
 import { SymbolResponse } from '../structures/symbol';
@@ -12,7 +18,13 @@ import {
   CreateTradingAccountRequest,
   UpdateTradingAccountRequest,
 } from '../structures/trading-account';
-import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestRequest } from '../structures/backtest';
+import {
+  BacktestCandleRequest,
+  BacktestDetail,
+  BacktestDetailDto,
+  BacktestSummary,
+  CreateBacktestRequest,
+} from '../structures/backtest';
 import { StrategyResponse } from '../structures/strategy';
 import {
   CreateTrainingRequest,
@@ -40,26 +52,27 @@ export class TraderAlgoApiService {
     return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/charts/candles`, { params });
   }
 
-  getCandlesWithIndicators(request: CandleRequest = {}): Observable<CandleWithIndicatorsResponse[]> {
+  getCandlesWithIndicators(request: CandleRequest = {}): Observable<CandleWithIndicators[]> {
     let params = new HttpParams();
     Object.entries(request).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         params = params.set(key, String(value));
       }
     });
-    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/charts/candles/indicators`, { params });
+    return this.http
+      .get<CandleWithIndicatorsDto[]>(`${this.baseUrl}/api/charts/candles/indicators`, { params })
+      .pipe(map(dtos => dtos.map(toCandleWithIndicators)));
   }
 
-  getCandlesWithIndicatorsByDateInterval(req: BacktestCandleRequest): Observable<CandleWithIndicatorsResponse[]> {
+  getCandlesWithIndicatorsByDateInterval(req: BacktestCandleRequest): Observable<CandleWithIndicators[]> {
     const params = new HttpParams()
       .set('from', req.from)
       .set('to', req.to)
       .set('symbol', req.symbol)
       .set('interval', req.interval);
-    return this.http.get<CandleWithIndicatorsResponse[]>(
-      `${this.baseUrl}/api/charts/candles/indicators/date-interval`,
-      { params },
-    );
+    return this.http
+      .get<CandleWithIndicatorsDto[]>(`${this.baseUrl}/api/charts/candles/indicators/date-interval`, { params })
+      .pipe(map(dtos => dtos.map(toCandleWithIndicators)));
   }
 
   kronosMiniPrecise(symbol: string, interval: string): Observable<CandleResponse[]> {
@@ -189,15 +202,15 @@ export class TraderAlgoApiService {
     return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/backtests/candles`, { params });
   }
 
-  getBacktestCandlesWithIndicators(req: BacktestCandleRequest): Observable<CandleWithIndicatorsResponse[]> {
+  getBacktestCandlesWithIndicators(req: BacktestCandleRequest): Observable<CandleWithIndicators[]> {
     const params = new HttpParams()
       .set('symbol', req.symbol)
       .set('interval', req.interval)
       .set('from', req.from)
       .set('to', req.to);
-    return this.http.get<CandleWithIndicatorsResponse[]>(`${this.baseUrl}/api/backtests/candles/indicators`, {
-      params,
-    });
+    return this.http
+      .get<CandleWithIndicatorsDto[]>(`${this.baseUrl}/api/backtests/candles/indicators`, { params })
+      .pipe(map(dtos => dtos.map(toCandleWithIndicators)));
   }
 
   createBacktest(payload: CreateBacktestRequest): Observable<BacktestSummary> {
@@ -213,7 +226,9 @@ export class TraderAlgoApiService {
   }
 
   getBacktest(id: number): Observable<BacktestDetail> {
-    return this.http.get<BacktestDetail>(`${this.baseUrl}/api/backtests/${id}`);
+    return this.http
+      .get<BacktestDetailDto>(`${this.baseUrl}/api/backtests/${id}`)
+      .pipe(map(dto => ({ ...dto, candles: dto.candles.map(toCandleWithIndicators) })));
   }
 
   deleteBacktest(id: number): Observable<void> {

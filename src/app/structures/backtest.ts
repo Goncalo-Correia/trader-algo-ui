@@ -1,4 +1,4 @@
-import { CandleWithIndicators, CandleWithIndicatorsDto } from './candle';
+import { CandleWithIndicators } from './candle';
 import { Trade } from './trade';
 
 export interface BacktestCandleRequest {
@@ -79,15 +79,10 @@ export interface EquityPoint {
   tradePnl: number | null;
 }
 
+// The detail endpoint returns summary fields plus trades and the equity curve.
+// Candles are no longer part of this payload (compute/replay split) — fetch them
+// separately from the candles-by-date-interval endpoint when a price chart is needed.
 export interface BacktestDetail extends BacktestSummary {
   trades: Trade[];
-  candles: CandleWithIndicators[];
-  equityCurve: EquityPoint[];
-}
-
-/** Wire shape of {@link BacktestDetail}: candles arrive snake_case. */
-export interface BacktestDetailDto extends BacktestSummary {
-  trades: Trade[];
-  candles: CandleWithIndicatorsDto[];
   equityCurve: EquityPoint[];
 }

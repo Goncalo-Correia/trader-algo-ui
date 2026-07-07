@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { BacktestDetail } from '../../structures/backtest';
+import { CandleWithIndicators } from '../../structures/candle';
 import { Trade } from '../../structures/trade';
 import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
 import { LowerCasePipe, DecimalPipe } from '@angular/common';
@@ -67,7 +68,8 @@ export class BacktestDetailComponent implements OnInit {
       next: detail => {
         this.detail = detail;
         this.isLoading = false;
-        this.buildCharts(detail);
+        this.buildEquityChart(detail);
+        this.loadCandles(detail);
         this.cdr.markForCheck();
       },
       error: () => {
@@ -75,6 +77,26 @@ export class BacktestDetailComponent implements OnInit {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  // Candles are no longer part of the backtest-detail payload; fetch them for the price chart
+  // from the candles-by-date-interval endpoint using the run's symbol/interval and window.
+  private loadCandles(detail: BacktestDetail): void {
+    const toDate = (unixSeconds: number): string => new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+    this.api
+      .getCandlesWithIndicatorsByDateInterval({
+        symbol: detail.symbolCode,
+        interval: detail.intervalCode,
+        from: toDate(detail.from),
+        to: toDate(detail.to),
+      })
+      .subscribe({
+        next: candles => {
+          this.buildCandleChart(detail, candles);
+          this.cdr.markForCheck();
+        },
+        error: err => console.error('Failed to load backtest candles.', err),
+      });
   }
 
   deleteBacktest(): void {
@@ -120,7 +142,7 @@ export class BacktestDetailComponent implements OnInit {
     return null;
   }
 
-  private buildCharts(detail: BacktestDetail): void {
+  private buildEquityChart(detail: BacktestDetail): void {
     this.equityChartOptions = {
       ...darkThemeBase(),
       series: [
@@ -141,8 +163,10 @@ export class BacktestDetailComponent implements OnInit {
         } as Highcharts.SeriesAreaOptions,
       ],
     };
+  }
 
-    const candleData: [number, number, number, number, number][] = detail.candles.map(c => [
+  private buildCandleChart(detail: BacktestDetail, candles: CandleWithIndicators[]): void {
+    const candleData: [number, number, number, number, number][] = candles.map(c => [
       c.time * 1000,
       c.open,
       c.high,

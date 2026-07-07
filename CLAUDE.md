@@ -62,11 +62,18 @@ view will not repaint.
 
 ### DTO ↔ domain boundary
 
-The backend serializes some payloads in **snake_case** (e.g. `CandleWithIndicatorsDto` with `taker_buy_base_asset_volume`,
-`sma_20`, `macd_line`). The `*Dto` types and their `toX()` mappers (e.g. `toCandleWithIndicators` in
-`src/app/structures/candle.ts`) are the **only** place snake_case is allowed. Services map DTOs to camelCase
-domain models before anything else consumes them. When adding an endpoint that returns snake_case, follow this
-pattern — add a `*Dto` interface and a mapper, and `.pipe(map(...))` in the service.
+Backend response DTOs are **camelCase** by default (each field carries `[JsonPropertyName]`), and enums serialize
+as **strings** (`JsonStringEnumConverter`) — so string-union types like `TradeSide` / `BacktestStatus` map 1:1.
+The exception is the candle-with-indicators payload, which the backend serializes in **snake_case** (e.g.
+`CandleWithIndicatorsDto` with `taker_buy_base_asset_volume`, `sma_20`, `macd_line`). The `*Dto` types and their
+`toX()` mappers (e.g. `toCandleWithIndicators` in `src/app/structures/candle.ts`) are the **only** place snake_case
+is allowed. Services map DTOs to camelCase domain models before anything else consumes them. When adding an endpoint
+that returns snake_case, follow this pattern — add a `*Dto` interface and a mapper, and `.pipe(map(...))` in the service.
+
+**Non-obvious contract:** `GET /api/backtests/{id}` (`BacktestDetail`) returns summary fields + `trades` + `equityCurve`
+only — **not** candles (they moved to the replay stream in the compute/replay split). The backtest-detail page fetches
+candles for its price chart separately from `GET /api/charts/candles/indicators/date-interval`
+(`getCandlesWithIndicatorsByDateInterval`). Don't reintroduce a `candles` field on the detail response.
 
 ### HTTP interceptors (DI order in `main.ts`)
 
@@ -90,6 +97,12 @@ the API key is appended as an `apiKey` query param.
 `LiveChartDataService` builds on this for live candles, candles-with-indicators, backtest replay, and ML training
 streams. Backtest/training streams are **event-enveloped** (`{ type, data }`) carrying `candle`, `candleBatch`,
 `tradeOpened`, `tradeClosed`, `tradeBracketUpdate`, and `mlDecision` events.
+
+`TradeBotEventsService` (`/ws/tradebots/events`) is a **separate** live stream carrying the backend `TradeEventDto`
+shape — `{ type, tradingAccountId, tradeId?, symbolCode?, message?, createdAt?, trade? }`. Emitted `type`s are
+`TradeOpened`, `TradePending`, `TradeClosed`, `BotEnabled`, `BotDisabled`, and `SignalIgnored`. The human-readable
+reason for an ignored signal is in `message` (there is no `reason` field), and `tradeBracketUpdate` is a backtest
+event, **not** a live tradebot event.
 
 ### Charting
 

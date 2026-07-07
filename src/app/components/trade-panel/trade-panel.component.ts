@@ -494,6 +494,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private handleTradeBotEvent(event: TradeBotEvent): void {
     switch (event.type) {
       case 'TradeOpened':
+      case 'TradePending':
         this.botMessage = event.tradeId ? `Bot opened trade #${event.tradeId}.` : 'Bot opened a trade.';
         this.loadActiveTrade();
         this.refreshSelectedAccount();
@@ -507,18 +508,8 @@ export class TradePanelComponent implements OnInit, OnDestroy {
       case 'BotDisabled':
         this.loadTradeBot();
         break;
-      case 'TradeBracketUpdate':
-        if (this.activeTrade && event.tradeId === this.activeTrade.id) {
-          this.activeTrade = {
-            ...this.activeTrade,
-            stopLoss: event.stopLoss !== undefined ? event.stopLoss : this.activeTrade.stopLoss,
-            takeProfit: event.takeProfit !== undefined ? event.takeProfit : this.activeTrade.takeProfit,
-          };
-          this.syncAdjustDraft(this.activeTrade);
-        }
-        break;
       case 'SignalIgnored':
-        this.botMessage = event.reason ? `Signal ignored: ${event.reason}.` : 'Signal ignored.';
+        this.botMessage = event.message ? `Signal ignored: ${event.message}` : 'Signal ignored.';
         break;
     }
   }

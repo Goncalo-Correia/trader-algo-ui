@@ -66,6 +66,9 @@ export class MlPolicyFormComponent implements OnInit {
     this.submitting = true;
     this.errorMessage = null;
 
+    // The backend MlPolicyRequest declares breakeven/breakevenStop/fee/slippage/dailyProfit/
+    // dailyDrawdownLimit/maxCandlesPerTrade as non-nullable — posting an explicit null 400s.
+    // A blank field means "disabled/none", which the backend represents as 0.
     const payload: CreatePolicyRequest = {
       symbol: this.selectedSymbol,
       interval: this.selectedInterval,
@@ -74,13 +77,13 @@ export class MlPolicyFormComponent implements OnInit {
       quantity: this.quantity,
       takeProfit: this.takeProfit,
       stopLoss: this.stopLoss,
-      breakeven: this.breakeven,
-      breakevenStop: this.breakevenStop,
-      fee: this.fee,
-      slippage: this.slippage,
-      dailyProfit: this.dailyProfit,
-      dailyDrawdownLimit: this.dailyDrawdownLimit,
-      maxCandlesPerTrade: this.maxCandlesPerTrade,
+      breakeven: this.breakeven ?? 0,
+      breakevenStop: this.breakevenStop ?? 0,
+      fee: this.fee ?? 0,
+      slippage: this.slippage ?? 0,
+      dailyProfit: this.dailyProfit ?? 0,
+      dailyDrawdownLimit: this.dailyDrawdownLimit ?? 0,
+      maxCandlesPerTrade: this.maxCandlesPerTrade ?? 0,
       maxTrailingDrawdown: this.maxTrailingDrawdown,
     };
 

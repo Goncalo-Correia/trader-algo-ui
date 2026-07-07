@@ -37,7 +37,7 @@ from an environment variable, falling back to the origin that serves them — se
 | `/charts` | Live candlestick chart explorer (default route) |
 | `/algo-trader` | Live trading dashboard with trade panel |
 | `/backtest` | Configure and run a new backtest |
-| `/backtests`, `/backtests/:id` | Backtest history and detail (equity curve, trades) |
+| `/backtests`, `/backtests/:id` | Backtest history and detail (price chart, equity curve, trades) |
 | `/tradebots`, `/tradebots/:id` | Trade-bot list and detail (config, history, live events) |
 | `/accounts`, `/accounts/:id` | Trading accounts and per-account PNL |
 | `/ml`, `/ml/policies/new`, `/ml/policies/:id`, `/ml/runs/:id` | ML policies: list policies, create a policy, policy detail (its training runs + start a new run), and run detail (decision-process charts, trades). Risk params are absolute amounts (price offsets / cash), matching backtests. |

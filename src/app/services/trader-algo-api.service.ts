@@ -21,7 +21,6 @@ import {
 import {
   BacktestCandleRequest,
   BacktestDetail,
-  BacktestDetailDto,
   BacktestSummary,
   CreateBacktestRequest,
 } from '../structures/backtest';
@@ -193,26 +192,6 @@ export class TraderAlgoApiService {
     return this.http.post<TradeBot>(`${this.baseUrl}/api/tradebots/${id}/disable`, {});
   }
 
-  getBacktestCandles(req: BacktestCandleRequest): Observable<CandleResponse[]> {
-    const params = new HttpParams()
-      .set('symbol', req.symbol)
-      .set('interval', req.interval)
-      .set('from', req.from)
-      .set('to', req.to);
-    return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/backtests/candles`, { params });
-  }
-
-  getBacktestCandlesWithIndicators(req: BacktestCandleRequest): Observable<CandleWithIndicators[]> {
-    const params = new HttpParams()
-      .set('symbol', req.symbol)
-      .set('interval', req.interval)
-      .set('from', req.from)
-      .set('to', req.to);
-    return this.http
-      .get<CandleWithIndicatorsDto[]>(`${this.baseUrl}/api/backtests/candles/indicators`, { params })
-      .pipe(map(dtos => dtos.map(toCandleWithIndicators)));
-  }
-
   createBacktest(payload: CreateBacktestRequest): Observable<BacktestSummary> {
     return this.http.post<BacktestSummary>(`${this.baseUrl}/api/backtests`, payload);
   }
@@ -226,9 +205,7 @@ export class TraderAlgoApiService {
   }
 
   getBacktest(id: number): Observable<BacktestDetail> {
-    return this.http
-      .get<BacktestDetailDto>(`${this.baseUrl}/api/backtests/${id}`)
-      .pipe(map(dto => ({ ...dto, candles: dto.candles.map(toCandleWithIndicators) })));
+    return this.http.get<BacktestDetail>(`${this.baseUrl}/api/backtests/${id}`);
   }
 
   deleteBacktest(id: number): Observable<void> {

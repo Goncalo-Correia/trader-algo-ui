@@ -1,5 +1,6 @@
 import { IntervalResponse } from './interval';
 import { SymbolResponse } from './symbol';
+import { Trade } from './trade';
 
 export interface TradeBot {
   id: number;
@@ -72,24 +73,22 @@ export interface UpdateTradeBotRequest {
   isEnabled: boolean;
 }
 
+// Mirrors the backend TradeEventDto types published on /ws/tradebots/events.
 export type TradeBotEventType =
   | 'TradeOpened'
+  | 'TradePending'
   | 'TradeClosed'
   | 'BotEnabled'
   | 'BotDisabled'
-  | 'SignalIgnored'
-  | 'TradeBracketUpdate';
+  | 'SignalIgnored';
 
+/** Wire shape of a trade-bot event (backend TradeEventDto). */
 export interface TradeBotEvent {
   type: TradeBotEventType;
   tradingAccountId: number | null;
   tradeId?: number;
   symbolCode?: string;
-  side?: string;
-  status?: string;
-  reason?: string;
   message?: string;
   createdAt?: number;
-  stopLoss?: number | null;
-  takeProfit?: number | null;
+  trade?: Trade | null;
 }

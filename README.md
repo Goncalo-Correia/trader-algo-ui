@@ -6,7 +6,8 @@ trade-bot management. It is a front end for a separate REST + WebSocket backend.
 
 ## Getting started
 
-Requires **Node 22 LTS** (or any `^20.19 || ^22.12 || >=24`, per Angular 22).
+Requires **Node 24.15.0** — pinned in [`.node-version`](.node-version) so local and
+hosted builds match. (Angular 22 itself accepts any `^20.19 || ^22.12 || >=24`.)
 
 ```bash
 npm install
@@ -75,6 +76,12 @@ reconnects with exponential backoff (disabled for the finite backtest replay).
 **Charts** — candlesticks/indicators use `lightweight-charts`; equity/PNL views
 use `Highcharts`, which is **lazy-loaded** so it stays out of the initial bundle.
 Heavy chart updates run outside the Angular zone to avoid extra change detection.
+
+**Change detection** — Angular 22 is zoneless by default, which froze this app's
+rendering, so [`main.ts`](src/main.ts) explicitly opts back into zone-based change
+detection (`provideZoneChangeDetection`) with `zone.js` as a polyfill. Every
+component is `OnPush` and calls `markForCheck()` after async updates — keep both
+when adding components, or the view won't repaint.
 
 **Configuration** — the backend URLs live in `src/environments/`.
 `environment.development.ts` (used by `npm start`) points at the local backend.

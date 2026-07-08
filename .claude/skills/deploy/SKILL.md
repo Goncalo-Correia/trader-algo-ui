@@ -1,6 +1,17 @@
 ---
 name: deploy
 description: Deploy the trader-algo-ui project. Use when the user asks to "deploy" the project (or "deploy to main", "ship it"). Refreshes CLAUDE.md and README.md, commits and pushes the dev branch, then merges dev into main and pushes main.
+allowed-tools:
+  - Bash(git branch *)
+  - Bash(git status *)
+  - Bash(git log *)
+  - Bash(git diff *)
+  - Bash(git add *)
+  - Bash(git commit *)
+  - Bash(git checkout *)
+  - Bash(git pull *)
+  - Bash(git merge *)
+  - Bash(git push *)
 ---
 
 # Deploy

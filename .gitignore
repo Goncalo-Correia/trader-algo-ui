@@ -28,8 +28,9 @@ yarn-error.log
 !.vscode/extensions.json
 .history/*
 
-# Claude Code (local, machine-specific)
-.claude/
+# Claude Code — ignore local, machine-specific files but keep shared project skills
+.claude/*
+!.claude/skills/
 
 # Build-time generated environment (written by scripts/generate-env.mjs)
 /src/environments/environment.generated.ts

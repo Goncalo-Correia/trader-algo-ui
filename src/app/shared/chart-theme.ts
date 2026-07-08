@@ -26,6 +26,7 @@ export const CHART_COLORS = {
   sma100: '#818cf8',
   rsi: '#9c27b0',
   macdSignal: '#ff6d00',
+  atr: '#00bcd4',
   zeroLine: '#4a4d5a',
 
   sessionCurrent: '#42a5f5',

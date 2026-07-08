@@ -114,6 +114,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   showVolume = true;
   showRsi = true;
   showMacd = true;
+  showAtr = true;
   showPredictMenu = false;
   showTrades = true;
 
@@ -152,6 +153,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private macdSignalSeries?: ISeriesApi<'Line'>;
   private macdHistSeries?: ISeriesApi<'Histogram'>;
   private macdZeroSeries?: ISeriesApi<'Line'>;
+  private atrSeries?: ISeriesApi<'Line'>;
 
   private volumeProfilePlugin?: VolumeProfilePlugin;
   private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
@@ -314,6 +316,20 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: CHART_COLORS.zeroLine }, 3);
       this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
+      // Pane 4 — ATR (Average True Range, computed client-side from OHLC)
+      this.atrSeries = this.chart.addSeries(
+        LineSeries,
+        {
+          priceScaleId: 'atr',
+          color: CHART_COLORS.atr,
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        },
+        4,
+      );
+      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
       this.chart.subscribeClick(this.onChartClickHandler);
     });
@@ -388,6 +404,14 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.ngZone.runOutsideAngular(() => {
       const pane = this.chart?.panes()[3];
       if (pane) pane.setStretchFactor(this.showMacd ? 1 : 0);
+    });
+  }
+
+  toggleAtr(): void {
+    this.showAtr = !this.showAtr;
+    this.ngZone.runOutsideAngular(() => {
+      const pane = this.chart?.panes()[4];
+      if (pane) pane.setStretchFactor(this.showAtr ? 1 : 0);
     });
   }
 
@@ -580,6 +604,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.macdSignalSeries?.setData([]);
       this.macdHistSeries?.setData([]);
       this.macdZeroSeries?.setData([]);
+      this.atrSeries?.setData([]);
       this.volumeProfilePlugin?.setData([]);
       this.clearSessionLines();
       this.tradeMarkersPlugin?.setMarkers([]);
@@ -699,6 +724,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       ]);
     }
 
+    this.atrSeries?.setData(this.computeAtr(candles));
+
     if (fitContent) this.chart?.timeScale().fitContent();
   }
 
@@ -744,6 +771,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
               this.macdHistSeries?.update({ time: t, value: h, color });
               this.macdZeroSeries?.update({ time: t, value: 0 });
             }
+            const lastAtr = this.computeAtr(this.loadedCandles).at(-1);
+            if (lastAtr) this.atrSeries?.update(lastAtr);
           });
         },
         error: err => {
@@ -868,6 +897,34 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
             ? CHART_COLORS.bearish
             : CHART_COLORS.bearishFaded;
       result.push({ time: this.toChartTime(c.time), value: h, color });
+    }
+    return result;
+  }
+
+  /**
+   * Average True Range via Wilder's smoothing. Derived purely from OHLC (the
+   * backend does not ship an ATR field), so it stays a chart-local computation.
+   * Returns points aligned to each candle from index `period` onward.
+   */
+  private computeAtr(candles: CandleWithIndicators[], period = 14): { time: UTCTimestamp; value: number }[] {
+    if (candles.length < period + 1) return [];
+
+    // trueRanges[i] is the TR of candles[i + 1] (needs the previous close).
+    const trueRanges: number[] = [];
+    for (let i = 1; i < candles.length; i++) {
+      const c = candles[i];
+      const prevClose = candles[i - 1].close;
+      trueRanges.push(Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose)));
+    }
+
+    const result: { time: UTCTimestamp; value: number }[] = [];
+    let atr = 0;
+    for (let i = 0; i < period; i++) atr += trueRanges[i];
+    atr /= period; // seed: simple average of the first `period` true ranges
+    result.push({ time: this.toChartTime(candles[period].time), value: atr });
+    for (let i = period; i < trueRanges.length; i++) {
+      atr = (atr * (period - 1) + trueRanges[i]) / period;
+      result.push({ time: this.toChartTime(candles[i + 1].time), value: atr });
     }
     return result;
   }

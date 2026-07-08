@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnDestroy,
+  OnInit,
+  inject,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type * as Highcharts from 'highcharts/highstock';
 import { forkJoin, Subscription } from 'rxjs';
@@ -25,6 +34,7 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
   private readonly api = inject(TraderAlgoApiService);
   private readonly tradeBotEvents = inject(TradeBotEventsService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   account: TradingAccount | null = null;
   trades: Trade[] = [];
@@ -64,19 +74,21 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
     forkJoin({
       account: this.api.getTradingAccount(this.accountId),
       trades: this.api.getTradeHistory(this.accountId),
-    }).subscribe({
-      next: ({ account, trades }) => {
-        this.account = account;
-        this.trades = trades;
-        this.isLoading = false;
-        this.applyPnlData();
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-    });
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ account, trades }) => {
+          this.account = account;
+          this.trades = trades;
+          this.isLoading = false;
+          this.applyPnlData();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   get accountName(): string {
@@ -104,7 +116,12 @@ export class AccountDetailComponent implements OnInit, OnDestroy {
     } else {
       delete names[this.accountId];
     }
-    localStorage.setItem(NAMES_OVERRIDE_KEY, JSON.stringify(names));
+    try {
+      localStorage.setItem(NAMES_OVERRIDE_KEY, JSON.stringify(names));
+    } catch {
+      // localStorage may be unavailable (private mode / quota / restricted
+      // context) — the override just won't persist; don't break the edit flow.
+    }
     this.editingName = false;
   }
 

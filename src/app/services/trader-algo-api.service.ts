@@ -18,12 +18,7 @@ import {
   CreateTradingAccountRequest,
   UpdateTradingAccountRequest,
 } from '../structures/trading-account';
-import {
-  BacktestCandleRequest,
-  BacktestDetail,
-  BacktestSummary,
-  CreateBacktestRequest,
-} from '../structures/backtest';
+import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestRequest } from '../structures/backtest';
 import { StrategyResponse } from '../structures/strategy';
 import {
   CreateTrainingRequest,
@@ -42,24 +37,16 @@ export class TraderAlgoApiService {
   private readonly baseUrl = environment.traderAlgoApi.baseUrl;
 
   getCandles(request: CandleRequest = {}): Observable<CandleResponse[]> {
-    let params = new HttpParams();
-    Object.entries(request).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params = params.set(key, String(value));
-      }
+    return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/charts/candles`, {
+      params: this.toHttpParams(request),
     });
-    return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/charts/candles`, { params });
   }
 
   getCandlesWithIndicators(request: CandleRequest = {}): Observable<CandleWithIndicators[]> {
-    let params = new HttpParams();
-    Object.entries(request).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params = params.set(key, String(value));
-      }
-    });
     return this.http
-      .get<CandleWithIndicatorsDto[]>(`${this.baseUrl}/api/charts/candles/indicators`, { params })
+      .get<CandleWithIndicatorsDto[]>(`${this.baseUrl}/api/charts/candles/indicators`, {
+        params: this.toHttpParams(request),
+      })
       .pipe(map(dtos => dtos.map(toCandleWithIndicators)));
   }
 
@@ -261,5 +248,16 @@ export class TraderAlgoApiService {
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {
     const params = new HttpParams().set('symbol', symbol).set('interval', interval);
     return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/kronos/${path}`, { params });
+  }
+
+  /** Builds `HttpParams` from a plain object, skipping `null`/`undefined` values. */
+  private toHttpParams(source: object): HttpParams {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(source)) {
+      if (value !== undefined && value !== null) {
+        params = params.set(key, String(value));
+      }
+    }
+    return params;
   }
 }

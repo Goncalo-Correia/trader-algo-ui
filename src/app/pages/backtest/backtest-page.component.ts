@@ -62,6 +62,12 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   private streamSub: Subscription | null = null;
 
+  // Retention cap for streamed candles: keeps the most recent window so a long
+  // backtest can't grow component memory (and parent→child input size) without
+  // bound. Generous enough that typical runs never trim — and thus keep the
+  // chart's cheap incremental-append path — while very long runs window instead.
+  private static readonly MAX_RETAINED_CANDLES = 10_000;
+
   ngOnInit(): void {
     const today = new Date();
     const monthAgo = new Date(today);
@@ -231,7 +237,9 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
 
   private appendCandles(candles: CandleWithIndicators[]): void {
     if (candles.length === 0) return;
-    this.backtestCandles = this.backtestCandles.concat(candles);
+    const combined = this.backtestCandles.concat(candles);
+    const max = BacktestPageComponent.MAX_RETAINED_CANDLES;
+    this.backtestCandles = combined.length > max ? combined.slice(combined.length - max) : combined;
     this.activePlaybackTime = candles[candles.length - 1].time;
   }
 

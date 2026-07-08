@@ -18,7 +18,11 @@ npm run format:check      # Prettier check (CI-style, no writes)
 Run a single spec by narrowing Karma with a focused test (`fdescribe`/`fit`) or:
 `npx ng test --include='src/app/path/to/thing.spec.ts'`.
 
-There is minimal test coverage today — only `src/app/app.component.spec.ts` exists.
+Test coverage is still light but no longer a single smoke test. Focused specs exist for the highest-risk,
+pure-enough logic: `connectWebSocket` parsing/reconnect/teardown (`core/websocket.spec.ts`), the three HTTP
+interceptors (`core/interceptors.spec.ts`), the `AppError` guard, `TraderAlgoApiService` param/DTO mapping and
+empty-response handling, the Wilder ATR core (`shared/atr.spec.ts`), and `MultiChartComponent` config loading.
+Chart components that need a live canvas/backend remain uncovered.
 
 ## Environment generation (runs automatically)
 
@@ -59,6 +63,9 @@ view will not repaint.
 - **`src/app/chart-plugins/*`** — lightweight-charts custom plugins (volume profile, session markers, active candle).
 - **`src/app/shared/chart-theme.ts`** — single source of truth for chart colors (`CHART_COLORS`); do not
   reintroduce hardcoded hex values in chart components.
+- **`src/app/shared/atr.ts`** — pure Wilder ATR core (`computeAtrValues`), extracted so it is unit-testable
+  independently of the chart. `ChartComponent` seeds the full series from it once, then rolls ATR forward
+  incrementally per live candle rather than recomputing the whole array each frame.
 
 ### DTO ↔ domain boundary
 

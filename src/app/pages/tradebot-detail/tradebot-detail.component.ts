@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnDestroy,
+  OnInit,
+  inject,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
@@ -20,6 +29,7 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
   private readonly api = inject(TraderAlgoApiService);
   private readonly eventsSvc = inject(TradeBotEventsService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   bot: TradeBot | null = null;
   isLoading = true;
@@ -202,7 +212,7 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    request.subscribe({
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: trades => {
         this.trades = trades;
         this.isLoadingTrades = false;
@@ -223,10 +233,13 @@ export class TradebotDetailComponent implements OnInit, OnDestroy {
         this.eventLog = [{ ...event, receivedAt: Date.now() }, ...this.eventLog].slice(0, 100);
         this.cdr.markForCheck();
         if (event.type === 'BotEnabled' || event.type === 'BotDisabled') {
-          this.api.getTradeBot(this.bot!.id).subscribe(bot => {
-            this.bot = bot;
-            this.cdr.markForCheck();
-          });
+          this.api
+            .getTradeBot(this.bot!.id)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(bot => {
+              this.bot = bot;
+              this.cdr.markForCheck();
+            });
         }
         if (event.type === 'TradeClosed') {
           this.loadTradeHistory(this.bot!);

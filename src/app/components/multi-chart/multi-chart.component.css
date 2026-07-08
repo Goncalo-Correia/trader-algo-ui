@@ -10,6 +10,17 @@
   height: 100%;
 }
 
+.multi-chart-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: #787b86;
+  font-size: 14px;
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

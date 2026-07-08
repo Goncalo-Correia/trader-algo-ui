@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription, timer } from 'rxjs';
+import { Subject, switchMap, takeUntil, timer } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { CandleWithIndicators } from '../../structures/candle';
@@ -64,11 +65,12 @@ interface PerformanceMetricSection {
   styleUrls: ['./ml-training-detail.component.css'],
   imports: [RouterLink, HighchartsChartComponent, BacktestChartComponent, LowerCasePipe, DecimalPipe],
 })
-export class MlTrainingDetailComponent implements OnInit, OnDestroy {
+export class MlTrainingDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(TraderAlgoApiService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   run: MlTrainingRun | null = null;
   decisions: MlDecisionLog | null = null;
@@ -89,13 +91,21 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   rewardMetricSections: PerformanceMetricSection[] = [];
 
   private runId!: number;
-  private pollSub: Subscription | null = null;
+  // Stops the polling timer once the run settles (Completed/Failed) or errors.
+  private readonly stopPolling$ = new Subject<void>();
 
   ngOnInit(): void {
     this.runId = Number(this.route.snapshot.paramMap.get('id'));
-    // Poll while the run is in flight; stop and load the visualization once it settles.
-    this.pollSub = timer(0, 5000).subscribe(() => {
-      this.api.getTrainingRun(this.runId).subscribe({
+    // Poll while the run is in flight; `switchMap` cancels any request still in
+    // flight when the next tick fires (no overlap), and `takeUntil(stopPolling$)`
+    // plus `takeUntilDestroyed` guarantee the loop tears down on settle/navigation.
+    timer(0, 5000)
+      .pipe(
+        switchMap(() => this.api.getTrainingRun(this.runId)),
+        takeUntil(this.stopPolling$),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
         next: run => {
           this.run = run;
           this.isLoading = false;
@@ -117,11 +127,6 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
       });
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.stopPolling();
   }
 
   get isInFlight(): boolean {
@@ -194,13 +199,16 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     if (this.deleting || !this.run || !confirm('Delete this training run and its decision log?')) return;
     const policyId = this.run.mlPolicyId;
     this.deleting = true;
-    this.api.deleteTraining(this.runId).subscribe({
-      next: () => this.router.navigate(['/ml/policies', policyId]),
-      error: () => {
-        this.deleting = false;
-        this.cdr.markForCheck();
-      },
-    });
+    this.api
+      .deleteTraining(this.runId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.router.navigate(['/ml/policies', policyId]),
+        error: () => {
+          this.deleting = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   statusClass(status: string): string {
@@ -262,8 +270,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   private stopPolling(): void {
-    this.pollSub?.unsubscribe();
-    this.pollSub = null;
+    this.stopPolling$.next();
   }
 
   private loadVisualization(run: MlTrainingRun): void {
@@ -277,48 +284,57 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     // adds trade markers and the trades table, so the two load independently.
     // The lightweight-charts component reacts to its [candles]/[trades] inputs,
     // so order doesn't matter.
-    this.api.getCandlesWithIndicatorsByDateInterval(range).subscribe({
-      next: candles => {
-        this.candles = candles;
-        this.candlesReady = true;
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.candlesError = 'Could not load candles for this run.';
-        this.cdr.markForCheck();
-      },
-    });
+    this.api
+      .getCandlesWithIndicatorsByDateInterval(range)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: candles => {
+          this.candles = candles;
+          this.candlesReady = true;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.candlesError = 'Could not load candles for this run.';
+          this.cdr.markForCheck();
+        },
+      });
 
-    this.api.getTrainingDecisions(run.id).subscribe({
-      next: log => {
-        this.decisions = log;
-        this.chartTrades = this.toChartTrades(log);
-        this.buildBalanceChart(log);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.decisionsError = 'Decision log is not available for this run.';
-        this.cdr.markForCheck();
-      },
-    });
+    this.api
+      .getTrainingDecisions(run.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: log => {
+          this.decisions = log;
+          this.chartTrades = this.toChartTrades(log);
+          this.buildBalanceChart(log);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.decisionsError = 'Decision log is not available for this run.';
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   private loadTracking(runId: number, showError = true): void {
     if (showError) this.trackingError = null;
-    this.api.getTrainingTracking(runId).subscribe({
-      next: tracking => {
-        this.tracking = tracking;
-        this.rewardMetricSections = this.buildRewardMetricSections(tracking);
-        this.buildMetricHistoryChart(tracking);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        if (showError) {
-          this.trackingError = 'Tracking data is not available for this run.';
+    this.api
+      .getTrainingTracking(runId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: tracking => {
+          this.tracking = tracking;
+          this.rewardMetricSections = this.buildRewardMetricSections(tracking);
+          this.buildMetricHistoryChart(tracking);
           this.cdr.markForCheck();
-        }
-      },
-    });
+        },
+        error: () => {
+          if (showError) {
+            this.trackingError = 'Tracking data is not available for this run.';
+            this.cdr.markForCheck();
+          }
+        },
+      });
   }
 
   /**

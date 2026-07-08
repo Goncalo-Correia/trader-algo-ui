@@ -1,4 +1,6 @@
-@if (panes.length) {
+@if (configError) {
+  <div class="multi-chart-empty">{{ configError }}</div>
+} @else if (panes.length) {
   <div class="multi-chart-layout">
     <!-- 2 × 2 chart grid -->
     <div class="chart-grid">

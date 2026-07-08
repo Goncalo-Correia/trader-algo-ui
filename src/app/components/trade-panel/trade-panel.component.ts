@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   EventEmitter,
   Input,
   OnDestroy,
@@ -9,7 +10,8 @@ import {
   Output,
   inject,
 } from '@angular/core';
-import { Observable, Subscription, switchMap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, exhaustMap, Observable, Subject, Subscription, switchMap, takeUntil, timer } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { TradeBotEventsService } from '../../services/trade-bot-events.service';
 import { IntervalResponse } from '../../structures/interval';
@@ -48,6 +50,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);
   private readonly tradeBotEvents = inject(TradeBotEventsService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -127,7 +130,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private subscription?: Subscription;
   private botEventSubscription?: Subscription;
-  private pollingTimer?: ReturnType<typeof setTimeout>;
+  private readonly stopPolling$ = new Subject<void>();
   private readonly POLL_MS = 3_000;
 
   ngOnInit(): void {
@@ -380,20 +383,23 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private loadActiveTrade(): void {
     if (this.selectedAccountId === null) return;
     const accountId = this.selectedAccountId;
-    this.traderAlgoApi.getActiveTrades(accountId).subscribe({
-      next: trades => {
-        if (this.selectedAccountId !== accountId) return;
-        const trade = trades[0] ?? null;
-        this.activeTrade = trade;
-        this.tradeChange.emit(trade);
-        if (trade) {
-          this.syncAdjustDraft(trade);
-          this.startPolling();
-        }
-        this.cdr.markForCheck();
-      },
-      error: err => console.error('Failed to load active trade.', err),
-    });
+    this.traderAlgoApi
+      .getActiveTrades(accountId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: trades => {
+          if (this.selectedAccountId !== accountId) return;
+          const trade = trades[0] ?? null;
+          this.activeTrade = trade;
+          this.tradeChange.emit(trade);
+          if (trade) {
+            this.syncAdjustDraft(trade);
+            this.startPolling();
+          }
+          this.cdr.markForCheck();
+        },
+        error: err => console.error('Failed to load active trade.', err),
+      });
   }
 
   private syncAdjustDraft(trade: Trade): void {
@@ -407,23 +413,26 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     this.isLoadingBot = true;
     this.botError = '';
 
-    this.traderAlgoApi.getTradeBots(accountId).subscribe({
-      next: bots => {
-        if (this.selectedAccountId !== accountId) return;
-        this.isLoadingBot = false;
-        this.tradeBot = bots.find(b => b.tradingAccountId === accountId && b.backtestId === null) ?? null;
-        if (this.tradeBot) this.applyTradeBotToDraft(this.tradeBot);
-        else this.applyDefaultTradeBotDraft();
-        this.cdr.markForCheck();
-      },
-      error: err => {
-        if (this.selectedAccountId !== accountId) return;
-        this.isLoadingBot = false;
-        this.botError = this.extractError(err, 'Failed to load bot settings.');
-        this.applyDefaultTradeBotDraft();
-        this.cdr.markForCheck();
-      },
-    });
+    this.traderAlgoApi
+      .getTradeBots(accountId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: bots => {
+          if (this.selectedAccountId !== accountId) return;
+          this.isLoadingBot = false;
+          this.tradeBot = bots.find(b => b.tradingAccountId === accountId && b.backtestId === null) ?? null;
+          if (this.tradeBot) this.applyTradeBotToDraft(this.tradeBot);
+          else this.applyDefaultTradeBotDraft();
+          this.cdr.markForCheck();
+        },
+        error: err => {
+          if (this.selectedAccountId !== accountId) return;
+          this.isLoadingBot = false;
+          this.botError = this.extractError(err, 'Failed to load bot settings.');
+          this.applyDefaultTradeBotDraft();
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   private persistTradeBot(): Observable<TradeBot> {
@@ -519,38 +528,37 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     if (!this.hasActiveTrade || this.selectedAccountId === null) return;
     const accountId = this.selectedAccountId;
 
-    const poll = () => {
-      if (this.selectedAccountId !== accountId) return;
-      this.traderAlgoApi.getActiveTrades(accountId).subscribe({
-        next: trades => {
-          if (this.selectedAccountId !== accountId) return;
-          const trade = trades[0] ?? null;
+    // `exhaustMap` skips a tick while a request is still in flight (no overlap);
+    // `catchError`→`EMPTY` swallows a failed poll so the timer keeps ticking;
+    // `takeUntil(stopPolling$)` + `takeUntilDestroyed` guarantee teardown.
+    timer(this.POLL_MS, this.POLL_MS)
+      .pipe(
+        exhaustMap(() => this.traderAlgoApi.getActiveTrades(accountId).pipe(catchError(() => EMPTY))),
+        takeUntil(this.stopPolling$),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(trades => {
+        if (this.selectedAccountId !== accountId) {
+          this.stopPolling();
+          return;
+        }
+        const trade = trades[0] ?? null;
+        if (trade?.status === 'Pending' || trade?.status === 'Active') {
           this.activeTrade = trade;
           this.tradeChange.emit(trade);
-          if (trade?.status === 'Pending' || trade?.status === 'Active') {
-            this.syncAdjustDraft(trade);
-            this.pollingTimer = setTimeout(poll, this.POLL_MS);
-          } else {
-            this.activeTrade = null;
-            this.tradeChange.emit(null);
-            this.refreshSelectedAccount();
-          }
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.pollingTimer = setTimeout(poll, this.POLL_MS);
-        },
+          this.syncAdjustDraft(trade);
+        } else {
+          this.activeTrade = null;
+          this.tradeChange.emit(null);
+          this.refreshSelectedAccount();
+          this.stopPolling();
+        }
+        this.cdr.markForCheck();
       });
-    };
-
-    this.pollingTimer = setTimeout(poll, this.POLL_MS);
   }
 
   private stopPolling(): void {
-    if (this.pollingTimer !== undefined) {
-      clearTimeout(this.pollingTimer);
-      this.pollingTimer = undefined;
-    }
+    this.stopPolling$.next();
   }
 
   private clearTradeState(): void {
@@ -574,19 +582,22 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private refreshSelectedAccount(): void {
     if (this.selectedAccountId === null) return;
     const accountId = this.selectedAccountId;
-    this.traderAlgoApi.getTradingAccount(accountId).subscribe({
-      next: account => {
-        if (this.selectedAccountId !== accountId) return;
-        const index = this.accounts.findIndex(a => a.id === account.id);
-        if (index >= 0) {
-          this.accounts = [...this.accounts.slice(0, index), account, ...this.accounts.slice(index + 1)];
-        } else if (account.isActive) {
-          this.accounts = [...this.accounts, account];
-        }
-        this.cdr.markForCheck();
-      },
-      error: err => console.error('Failed to refresh trading account.', err),
-    });
+    this.traderAlgoApi
+      .getTradingAccount(accountId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: account => {
+          if (this.selectedAccountId !== accountId) return;
+          const index = this.accounts.findIndex(a => a.id === account.id);
+          if (index >= 0) {
+            this.accounts = [...this.accounts.slice(0, index), account, ...this.accounts.slice(index + 1)];
+          } else if (account.isActive) {
+            this.accounts = [...this.accounts, account];
+          }
+          this.cdr.markForCheck();
+        },
+        error: err => console.error('Failed to refresh trading account.', err),
+      });
   }
 
   private applyTradeBotToDraft(bot: TradeBot): void {

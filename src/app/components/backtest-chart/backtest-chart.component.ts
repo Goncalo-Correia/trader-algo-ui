@@ -93,6 +93,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
   private activeCandlePlugin?: ActiveCandlePlugin;
   private sessionMarkersPlugin?: SessionMarkersPlugin;
+  private sessionMarkersBounds: { from: number; to: number } | null = null;
   private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
   private slPriceLine?: IPriceLine;
   private tpPriceLine?: IPriceLine;
@@ -324,17 +325,43 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
   private applySessionMarkers(): void {
     if (!this.candleSeries) return;
-    if (this.sessionMarkersPlugin) {
-      this.candleSeries.detachPrimitive(this.sessionMarkersPlugin);
-      this.sessionMarkersPlugin = undefined;
+
+    if (!this._isNySessionOnly || this._candles.length === 0) {
+      this.detachSessionMarkers();
+      return;
     }
-    if (!this._isNySessionOnly || this._candles.length === 0) return;
+
     const first = this._candles[0].time;
     const last = this._candles[this._candles.length - 1].time;
     const fromMs = (first > 9_999_999_999 ? first : first * 1000) - 86_400_000;
     const toMs = (last > 9_999_999_999 ? last : last * 1000) + 86_400_000;
+
+    // The plugin generates one marker per calendar day in [fromMs, toMs]. During
+    // playback only `last` grows, so the marker set is unchanged until the range
+    // crosses into a new day. Rebuild only then — not on every streamed append.
+    const day = 86_400_000;
+    const bounds = { from: Math.floor(fromMs / day), to: Math.floor(toMs / day) };
+    if (
+      this.sessionMarkersPlugin &&
+      this.sessionMarkersBounds &&
+      this.sessionMarkersBounds.from === bounds.from &&
+      this.sessionMarkersBounds.to === bounds.to
+    ) {
+      return;
+    }
+
+    this.detachSessionMarkers();
     this.sessionMarkersPlugin = new SessionMarkersPlugin(fromMs, toMs);
+    this.sessionMarkersBounds = bounds;
     this.candleSeries.attachPrimitive(this.sessionMarkersPlugin);
+  }
+
+  private detachSessionMarkers(): void {
+    if (this.sessionMarkersPlugin) {
+      this.candleSeries?.detachPrimitive(this.sessionMarkersPlugin);
+      this.sessionMarkersPlugin = undefined;
+    }
+    this.sessionMarkersBounds = null;
   }
 
   /**

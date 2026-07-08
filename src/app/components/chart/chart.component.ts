@@ -37,6 +37,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
 import { VolumeProfilePlugin } from '../../chart-plugins/volume-profile.plugin';
 import { CHART_COLORS } from '../../shared/chart-theme';
+import { computeAtrValues } from '../../shared/atr';
 import { CandleResponse, CandleWithIndicators } from '../../structures/candle';
 import { IntervalResponse } from '../../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/session';
@@ -168,6 +169,15 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   private loadedCandles: CandleWithIndicators[] = [];
   private loadedVolumeProfile: VolumeProfileLevel[] = [];
+
+  // Incremental ATR state for the live stream. The full Wilder series is only
+  // computed on load / history expansion (see `seedAtrState`); each live candle
+  // then rolls ATR forward in O(1) instead of re-scanning the whole array.
+  private readonly atrPeriod = 14;
+  private atrPrevValue: number | null = null; // ATR of the last *closed* candle
+  private atrPrevClose: number | null = null; // close of the last *closed* candle
+  private atrCurrentValue: number | null = null; // ATR last emitted for the forming candle
+  private atrLastTime: UTCTimestamp | null = null; // chart time of the forming candle
 
   private candlesSubscription?: Subscription;
   private loadMoreSubscription?: Subscription;
@@ -724,7 +734,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       ]);
     }
 
-    this.atrSeries?.setData(this.computeAtr(candles));
+    this.seedAtrState(candles);
 
     if (fitContent) this.chart?.timeScale().fitContent();
   }
@@ -771,8 +781,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
               this.macdHistSeries?.update({ time: t, value: h, color });
               this.macdZeroSeries?.update({ time: t, value: 0 });
             }
-            const lastAtr = this.computeAtr(this.loadedCandles).at(-1);
-            if (lastAtr) this.atrSeries?.update(lastAtr);
+            this.updateLiveAtr(candle);
           });
         },
         error: err => {
@@ -906,27 +915,74 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
    * backend does not ship an ATR field), so it stays a chart-local computation.
    * Returns points aligned to each candle from index `period` onward.
    */
-  private computeAtr(candles: CandleWithIndicators[], period = 14): { time: UTCTimestamp; value: number }[] {
-    if (candles.length < period + 1) return [];
+  private computeAtr(
+    candles: CandleWithIndicators[],
+    period = this.atrPeriod,
+  ): { time: UTCTimestamp; value: number }[] {
+    return computeAtrValues(candles, period).map(({ index, value }) => ({
+      time: this.toChartTime(candles[index].time),
+      value,
+    }));
+  }
 
-    // trueRanges[i] is the TR of candles[i + 1] (needs the previous close).
-    const trueRanges: number[] = [];
-    for (let i = 1; i < candles.length; i++) {
-      const c = candles[i];
-      const prevClose = candles[i - 1].close;
-      trueRanges.push(Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose)));
+  /**
+   * Draws the full ATR series and primes the incremental state used by
+   * {@link updateLiveAtr}. Called on initial load, interval/symbol changes and
+   * history expansion — anywhere the whole candle array is (re)applied.
+   */
+  private seedAtrState(candles: CandleWithIndicators[]): void {
+    const series = this.computeAtr(candles, this.atrPeriod);
+    this.atrSeries?.setData(series);
+
+    // The last loaded candle is the one the next live frame will update or
+    // replace, so treat it as the "forming" bar and confirm from index len-2.
+    this.atrCurrentValue = series.at(-1)?.value ?? null;
+    this.atrLastTime = candles.length > 0 ? this.toChartTime(candles[candles.length - 1].time) : null;
+    this.atrPrevValue = null;
+    this.atrPrevClose = null;
+
+    const closedIndex = candles.length - 2;
+    if (closedIndex >= this.atrPeriod) {
+      // computeAtr aligns result[k] to candles[atrPeriod + k].
+      this.atrPrevValue = series[closedIndex - this.atrPeriod]?.value ?? null;
+      this.atrPrevClose = candles[closedIndex].close;
+    }
+  }
+
+  /**
+   * Rolls ATR forward for a single live candle in O(1). `loadedCandles` already
+   * includes `candle` (via {@link upsertLiveCandle}). Falls back to a one-off
+   * full recompute only during cold start, before enough confirmed history exists.
+   */
+  private updateLiveAtr(candle: CandleWithIndicators): void {
+    const candles = this.loadedCandles;
+    const current = candles.at(-1);
+    if (!current) return;
+    const t = this.toChartTime(candle.time);
+    const prev = candles.at(-2);
+
+    // A new bar means the previously-forming bar just closed: promote the value
+    // we last emitted for it, and its now-final close, into the confirmed state.
+    if (this.atrLastTime !== null && t !== this.atrLastTime && this.atrCurrentValue !== null && prev) {
+      this.atrPrevValue = this.atrCurrentValue;
+      this.atrPrevClose = prev.close;
     }
 
-    const result: { time: UTCTimestamp; value: number }[] = [];
-    let atr = 0;
-    for (let i = 0; i < period; i++) atr += trueRanges[i];
-    atr /= period; // seed: simple average of the first `period` true ranges
-    result.push({ time: this.toChartTime(candles[period].time), value: atr });
-    for (let i = period; i < trueRanges.length; i++) {
-      atr = (atr * (period - 1) + trueRanges[i]) / period;
-      result.push({ time: this.toChartTime(candles[i + 1].time), value: atr });
+    let value: number | null;
+    if (this.atrPrevValue !== null && this.atrPrevClose !== null) {
+      const tr = Math.max(
+        current.high - current.low,
+        Math.abs(current.high - this.atrPrevClose),
+        Math.abs(current.low - this.atrPrevClose),
+      );
+      value = (this.atrPrevValue * (this.atrPeriod - 1) + tr) / this.atrPeriod;
+    } else {
+      value = this.computeAtr(candles, this.atrPeriod).at(-1)?.value ?? null;
     }
-    return result;
+
+    this.atrCurrentValue = value;
+    this.atrLastTime = t;
+    if (value !== null) this.atrSeries?.update({ time: t, value });
   }
 
   private upsertLiveCandle(candle: CandleWithIndicators): void {

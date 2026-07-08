@@ -28,6 +28,7 @@ export class MultiChartComponent implements OnInit {
 
   selectedSymbol = '';
   activeTrade: Trade | null = null;
+  configError: string | null = null;
 
   ngOnInit(): void {
     forkJoin({
@@ -37,6 +38,17 @@ export class MultiChartComponent implements OnInit {
       next: ({ symbols, intervals }) => {
         const activeSymbols = symbols.filter(s => s.isActive);
         const activeIntervals = intervals.filter(i => i.isActive);
+
+        // Without at least one active symbol and interval there is nothing to
+        // chart — bail out with an empty state instead of dereferencing an
+        // undefined default and crashing the whole page.
+        if (activeSymbols.length === 0 || activeIntervals.length === 0) {
+          this.configError =
+            'No active symbols or intervals are configured. Add and activate at least one of each to view charts.';
+          this.cdr.markForCheck();
+          return;
+        }
+
         const defaultInterval = activeIntervals.find(i => i.isDefault) ?? activeIntervals[0];
         const defaultSymbol = activeSymbols.find(s => s.isDefault) ?? activeSymbols[0];
 
@@ -47,10 +59,14 @@ export class MultiChartComponent implements OnInit {
           interval: activeIntervals[i]?.code ?? defaultInterval.code,
         }));
 
-        this.selectedSymbol = defaultSymbol?.code ?? '';
+        this.selectedSymbol = defaultSymbol.code;
         this.cdr.markForCheck();
       },
-      error: err => console.error('Failed to load chart configuration.', err),
+      error: err => {
+        console.error('Failed to load chart configuration.', err);
+        this.configError = 'Failed to load chart configuration. Please try again.';
+        this.cdr.markForCheck();
+      },
     });
   }
 

@@ -15,7 +15,7 @@ npm start        # dev server at http://localhost:4200
 ```
 
 The backend (REST + WebSocket) must be running. In development it is expected at
-`http://localhost:32768` / `ws://localhost:32768` — see
+`http://localhost:32770` / `ws://localhost:32770` — see
 [`src/environments/`](src/environments/). Production builds read the backend URL
 from an environment variable, falling back to the origin that serves them — see
 [Deployment](#deployment) below.

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm start                 # dev server (ng serve) at http://localhost:4200, proxies backend at localhost:32768
+npm start                 # dev server (ng serve) at http://localhost:4200, proxies backend at localhost:32770
 npm run build             # production build → dist/trader-algo-ui/browser
 npm run watch             # development build in watch mode
 npm test                  # run Karma/Jasmine specs once (headless Chrome)

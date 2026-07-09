@@ -47,17 +47,22 @@
         <div class="run-form-row">
           <label class="field">
             <span class="field-label">From</span>
-            <input class="ctrl" type="date" [(ngModel)]="fromDate" [disabled]="submitting" />
+            <input class="ctrl" type="month" [(ngModel)]="fromMonth" [disabled]="submitting" />
+            <span class="field-hint">{{ fromDisplay }}</span>
           </label>
           <label class="field">
             <span class="field-label">To</span>
-            <input class="ctrl" type="date" [(ngModel)]="toDate" [disabled]="submitting" />
+            <input class="ctrl" type="month" [(ngModel)]="toMonth" [disabled]="submitting" />
+            <span class="field-hint">{{ toDisplay }}</span>
           </label>
           <button class="btn-primary" [disabled]="submitting" (click)="startTraining()">
             {{ submitting ? 'Starting...' : 'Start Training' }}
           </button>
         </div>
-        <div class="field-hint">The API normalizes from to 00:00 UTC and to to 23:59 UTC. Training start is not retried automatically.</div>
+        <div class="field-hint">
+          From is the first day of the month at 00:00; To is the last day of the month at 23:59. Training start is not
+          retried automatically.
+        </div>
         @if (runError) {
           <div class="error-card">{{ runError }}</div>
         }

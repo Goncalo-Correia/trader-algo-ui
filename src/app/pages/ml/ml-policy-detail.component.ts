@@ -59,8 +59,8 @@ export class MlPolicyDetailComponent implements OnInit {
   deleteError: string | null = null;
 
   showRunForm = false;
-  fromDate = '';
-  toDate = '';
+  fromMonth = '';
+  toMonth = '';
   submitting = false;
   runError: string | null = null;
 
@@ -85,8 +85,8 @@ export class MlPolicyDetailComponent implements OnInit {
     const today = new Date();
     const monthAgo = new Date(today);
     monthAgo.setMonth(today.getMonth() - 1);
-    this.toDate = this.toDateInput(today);
-    this.fromDate = this.toDateInput(monthAgo);
+    this.toMonth = this.toMonthInput(today);
+    this.fromMonth = this.toMonthInput(monthAgo);
     this.load();
   }
 
@@ -132,6 +132,27 @@ export class MlPolicyDetailComponent implements OnInit {
   toggleRunForm(): void {
     this.showRunForm = !this.showRunForm;
     this.runError = null;
+  }
+
+  /** First day of the selected From month, at 00:00 (YYYY-MM-DD). */
+  get fromDate(): string {
+    return this.fromMonth ? `${this.fromMonth}-01` : '';
+  }
+
+  /** Last day of the selected To month, at 23:59 (YYYY-MM-DD). */
+  get toDate(): string {
+    if (!this.toMonth) return '';
+    const [year, month] = this.toMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${this.toMonth}-${String(lastDay).padStart(2, '0')}`;
+  }
+
+  get fromDisplay(): string {
+    return this.fromDate ? `${this.fromDate} 00:00` : '';
+  }
+
+  get toDisplay(): string {
+    return this.toDate ? `${this.toDate} 23:59` : '';
   }
 
   startTraining(): void {
@@ -326,9 +347,8 @@ export class MlPolicyDetailComponent implements OnInit {
     return value === undefined ? null : Number(value);
   }
 
-  private toDateInput(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  private toMonthInput(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
   private extractError(err: unknown, fallback: string): string {

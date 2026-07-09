@@ -22,13 +22,35 @@ import { BacktestCandleRequest, BacktestDetail, BacktestSummary, CreateBacktestR
 import { StrategyResponse } from '../structures/strategy';
 import {
   CreateTrainingRequest,
+  MlChartArtifact,
+  MlCheckpointEval,
   MlDecisionLog,
+  MlEquityPoint,
+  MlFeatureQualityRow,
+  MlFoldMetric,
+  MlLearningCurvePoint,
+  MlMetricRow,
+  MlPaginatedResponse,
+  MlRetrainAllRequest,
+  MlRetrainAllResult,
+  MlRunPerformance,
+  MlServedModel,
   MlflowTrackingResponse,
   MlTrainingRun,
+  MlTrainingStreamEvent,
+  MlTrainingTrade,
   MlTrainStartedResponse,
 } from '../structures/ml-training';
-import { CreatePolicyRequest, MlPolicy } from '../structures/ml-policy';
+import {
+  CreatePolicyRequest,
+  MlManualDecisionRequest,
+  MlManualDecisionResponse,
+  MlPolicy,
+  MlPolicyRunTrend,
+  UpdatePolicyRequest,
+} from '../structures/ml-policy';
 import { environment } from '../../environments/environment';
+import { connectWebSocket } from '../core/websocket';
 
 @Injectable({ providedIn: 'root' })
 export class TraderAlgoApiService {
@@ -212,7 +234,7 @@ export class TraderAlgoApiService {
     return this.http.post<MlPolicy>(`${this.baseUrl}/api/ml/policies`, payload);
   }
 
-  updatePolicy(id: number, payload: CreatePolicyRequest): Observable<MlPolicy> {
+  updatePolicy(id: number, payload: UpdatePolicyRequest): Observable<MlPolicy> {
     return this.http.put<MlPolicy>(`${this.baseUrl}/api/ml/policies/${id}`, payload);
   }
 
@@ -220,9 +242,21 @@ export class TraderAlgoApiService {
     return this.http.delete<void>(`${this.baseUrl}/api/ml/policies/${id}`);
   }
 
-  // ── ML training runs ─────────────────────────────────────────────────────
-  getTrainingRuns(): Observable<MlTrainingRun[]> {
-    return this.http.get<MlTrainingRun[]>(`${this.baseUrl}/api/ml/training-runs`);
+  getPolicyRuns(id: number): Observable<MlPolicyRunTrend[]> {
+    return this.http.get<MlPolicyRunTrend[]>(`${this.baseUrl}/api/ml/policies/${id}/runs`);
+  }
+
+  getPolicyPerformance(id: number): Observable<MlRunPerformance> {
+    return this.http.get<MlRunPerformance>(`${this.baseUrl}/api/ml/policies/${id}/performance`);
+  }
+
+  decideLatestCandle(payload: MlManualDecisionRequest): Observable<MlManualDecisionResponse> {
+    return this.http.post<MlManualDecisionResponse>(`${this.baseUrl}/api/ml/decide`, payload);
+  }
+
+  getTrainingRuns(mlPolicyId?: number): Observable<MlTrainingRun[]> {
+    const options = mlPolicyId === undefined ? {} : { params: new HttpParams().set('mlPolicyId', String(mlPolicyId)) };
+    return this.http.get<MlTrainingRun[]>(`${this.baseUrl}/api/ml/training-runs`, options);
   }
 
   getTrainingRun(id: number): Observable<MlTrainingRun> {
@@ -237,17 +271,131 @@ export class TraderAlgoApiService {
     return this.http.get<MlflowTrackingResponse>(`${this.baseUrl}/api/ml/training-runs/${id}/tracking`);
   }
 
+  getTrainingPerformance(id: number): Observable<MlRunPerformance> {
+    return this.http.get<MlRunPerformance>(`${this.baseUrl}/api/ml/training-runs/${id}/performance`);
+  }
+
+  getTrainingLearningCurve(id: number): Observable<MlLearningCurvePoint[]> {
+    return this.http.get<MlLearningCurvePoint[]>(`${this.baseUrl}/api/ml/training-runs/${id}/learning-curve`);
+  }
+
+  getTrainingCheckpointEvals(id: number): Observable<MlCheckpointEval[]> {
+    return this.http.get<MlCheckpointEval[]>(`${this.baseUrl}/api/ml/training-runs/${id}/checkpoint-evals`);
+  }
+
+  getTrainingFolds(id: number): Observable<MlFoldMetric[]> {
+    return this.http.get<MlFoldMetric[]>(`${this.baseUrl}/api/ml/training-runs/${id}/folds`);
+  }
+
+  getTrainingMetrics(id: number, split?: string): Observable<MlMetricRow[] | Record<string, unknown>> {
+    const options = split ? { params: new HttpParams().set('split', split) } : {};
+    return this.http.get<MlMetricRow[] | Record<string, unknown>>(`${this.baseUrl}/api/ml/training-runs/${id}/metrics`, options);
+  }
+
+  getTrainingEquity(
+    id: number,
+    options: { split?: string; stitched?: boolean; limit?: number; offset?: number } = {},
+  ): Observable<MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[]> {
+    return this.http.get<MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[]>(
+      `${this.baseUrl}/api/ml/training-runs/${id}/equity`,
+      { params: this.toHttpParams(options) },
+    );
+  }
+
+  getTrainingTrades(
+    id: number,
+    options: { split?: string; limit?: number; offset?: number } = {},
+  ): Observable<MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[]> {
+    return this.http.get<MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[]>(
+      `${this.baseUrl}/api/ml/training-runs/${id}/trades`,
+      { params: this.toHttpParams(options) },
+    );
+  }
+
+  getTrainingFeatureQuality(id: number): Observable<MlFeatureQualityRow[]> {
+    return this.http.get<MlFeatureQualityRow[]>(`${this.baseUrl}/api/ml/training-runs/${id}/feature-quality`);
+  }
+
+  getTrainingCharts(id: number): Observable<MlChartArtifact[]> {
+    return this.http.get<MlChartArtifact[]>(`${this.baseUrl}/api/ml/training-runs/${id}/charts`);
+  }
+
+  getServedModels(): Observable<MlServedModel[]> {
+    return this.http.get<MlServedModel[]>(`${this.baseUrl}/api/ml/served-models`);
+  }
+
   createTraining(payload: CreateTrainingRequest): Observable<MlTrainStartedResponse> {
     return this.http.post<MlTrainStartedResponse>(`${this.baseUrl}/api/ml/train`, payload);
+  }
+
+  retrainAll(payload: MlRetrainAllRequest): Observable<MlRetrainAllResult[]> {
+    return this.http.post<MlRetrainAllResult[]>(`${this.baseUrl}/api/ml/retrain-all`, payload);
   }
 
   deleteTraining(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/api/ml/training-runs/${id}`);
   }
 
+  streamMlTraining(trainingRunId: number, delay = false): Observable<MlTrainingStreamEvent> {
+    const url = `${environment.traderAlgoApi.wsUrl}/ws/ml/training?trainingRunId=${trainingRunId}&delay=${delay}`;
+    return connectWebSocket<MlTrainingStreamEvent>(url, {
+      reconnect: false,
+      parse: raw => {
+        if (typeof raw !== 'object' || raw === null) return [];
+        const frame = raw as { type?: unknown; data?: unknown };
+        if (frame.type === 'candle') {
+          const candle = this.toStreamCandle(frame.data);
+          return candle === null ? [] : [{ type: 'candle', data: candle }];
+        }
+        if (frame.type === 'mlDecision' && typeof frame.data === 'object' && frame.data !== null) {
+          return [frame as MlTrainingStreamEvent];
+        }
+        return [];
+      },
+    });
+  }
+
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {
     const params = new HttpParams().set('symbol', symbol).set('interval', interval);
     return this.http.get<CandleResponse[]>(`${this.baseUrl}/api/kronos/${path}`, { params });
+  }
+
+  private toStreamCandle(data: unknown): CandleWithIndicators | null {
+    if (typeof data !== 'object' || data === null) return null;
+    const row = data as Record<string, unknown>;
+    const time = this.numberField(row, 'time');
+    const open = this.numberField(row, 'open');
+    const high = this.numberField(row, 'high');
+    const low = this.numberField(row, 'low');
+    const close = this.numberField(row, 'close');
+    const volume = this.numberField(row, 'volume');
+    if (time === null || open === null || high === null || low === null || close === null || volume === null) return null;
+
+    return toCandleWithIndicators({
+      time,
+      open,
+      high,
+      low,
+      close,
+      volume,
+      taker_buy_base_asset_volume:
+        this.numberField(row, 'taker_buy_base_asset_volume') ?? this.numberField(row, 'takerBuyVolume') ?? 0,
+      taker_sell_base_asset_volume:
+        this.numberField(row, 'taker_sell_base_asset_volume') ?? this.numberField(row, 'takerSellVolume') ?? 0,
+      sma_20: this.numberField(row, 'sma_20') ?? this.numberField(row, 'sma20'),
+      sma_100: this.numberField(row, 'sma_100') ?? this.numberField(row, 'sma100'),
+      rsi: this.numberField(row, 'rsi'),
+      rsi_smooth: this.numberField(row, 'rsi_smooth') ?? this.numberField(row, 'rsiSmooth'),
+      rsi_divergence: this.numberField(row, 'rsi_divergence') ?? this.numberField(row, 'rsiDivergence'),
+      macd_line: this.numberField(row, 'macd_line') ?? this.numberField(row, 'macdLine'),
+      macd_signal_line: this.numberField(row, 'macd_signal_line') ?? this.numberField(row, 'macdSignalLine'),
+      macd_histogram: this.numberField(row, 'macd_histogram') ?? this.numberField(row, 'macdHistogram'),
+    });
+  }
+
+  private numberField(row: Record<string, unknown>, key: string): number | null {
+    const value = row[key];
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
   }
 
   /** Builds `HttpParams` from a plain object, skipping `null`/`undefined` values. */

@@ -1,0 +1,69 @@
+<div class="ml-page">
+  <div class="ml-subnav">
+    <a routerLink="/ml/policies" routerLinkActive="active">Policies</a>
+    <a routerLink="/ml/training-runs" routerLinkActive="active">Training Runs</a>
+    <a routerLink="/ml/served-models" routerLinkActive="active">Served Models</a>
+    <a routerLink="/ml/retrain-all" routerLinkActive="active">Retrain All</a>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Retrain All</h1>
+      <div class="page-kicker">Bulk retraining for schema migrations and broad retesting.</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="section-title">Date Range</div>
+    <div class="form-row">
+      <label class="field"><span>From</span><input class="ctrl" type="date" [(ngModel)]="fromDate" [disabled]="submitting" /></label>
+      <label class="field"><span>To</span><input class="ctrl" type="date" [(ngModel)]="toDate" [disabled]="submitting" /></label>
+      <button class="btn-primary" [disabled]="submitting" (click)="submit()">{{ submitting ? 'Starting...' : 'Retrain All' }}</button>
+    </div>
+    <div class="field-hint">Policies with runs already in flight are skipped. Started runs appear below and can be opened from the table.</div>
+    @if (errorMessage) {
+      <div class="error-card">{{ errorMessage }}</div>
+    }
+  </section>
+
+  @if (results.length > 0) {
+    <section class="panel">
+      <div class="section-title">Results</div>
+      <div class="table-wrap">
+        <table class="bt-table">
+          <thead>
+            <tr>
+              <th>Policy</th>
+              <th>Training Run</th>
+              <th>Status</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (result of results; track trackByIndex($index)) {
+              <tr>
+                <td>
+                  @if (policyId(result) !== null) {
+                    <a class="table-link" [routerLink]="['/ml/policies', policyId(result)]">#{{ policyId(result) }}</a>
+                  } @else {
+                    <span class="td-dim">-</span>
+                  }
+                </td>
+                <td>
+                  @if (result.trainingRunId) {
+                    <a class="table-link" [routerLink]="['/ml/training-runs', result.trainingRunId]">#{{ result.trainingRunId }}</a>
+                  } @else {
+                    <span class="td-dim">-</span>
+                  }
+                </td>
+                <td><span [class]="'status-badge ' + statusClass(result.status)">{{ result.status }}</span></td>
+                <td class="td-dim">{{ result.message ?? '-' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <a class="table-link" routerLink="/ml/training-runs">Open Training Runs</a>
+    </section>
+  }
+</div>

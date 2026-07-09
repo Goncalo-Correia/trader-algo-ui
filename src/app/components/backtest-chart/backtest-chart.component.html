@@ -6,6 +6,12 @@
       <button class="toolbar-btn" [class.active]="showRsi"    (click)="toggleRsi()">RSI</button>
       <button class="toolbar-btn" [class.active]="showMacd"   (click)="toggleMacd()">MACD</button>
       <button class="toolbar-btn" [class.active]="showTrades" (click)="toggleTrades()">Trades</button>
+      <button class="toolbar-btn" [class.active]="showDecisions" (click)="toggleDecisions()">Decisions</button>
+      <button class="toolbar-btn" [class.active]="showHoldMarkers" (click)="toggleHoldMarkers()">Holds</button>
+      <label class="toolbar-slider">
+        <span>Conf</span>
+        <input type="range" min="0" max="1" step="0.05" [value]="confidenceThreshold" (input)="setConfidenceThreshold($event)" />
+      </label>
     </div>
   </div>
 

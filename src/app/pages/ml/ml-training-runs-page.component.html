@@ -1,0 +1,179 @@
+<div class="ml-page">
+  <div class="ml-subnav">
+    <a routerLink="/ml/policies" routerLinkActive="active">Policies</a>
+    <a routerLink="/ml/training-runs" routerLinkActive="active">Training Runs</a>
+    <a routerLink="/ml/served-models" routerLinkActive="active">Served Models</a>
+    <a routerLink="/ml/retrain-all" routerLinkActive="active">Retrain All</a>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Training Runs</h1>
+      <div class="page-kicker">Triage completed runs, in-flight jobs, out-of-sample telemetry, and promoted state.</div>
+    </div>
+    <button class="btn-primary" type="button" (click)="showNewRun = !showNewRun">{{ showNewRun ? 'Close' : 'New Training Run' }}</button>
+  </div>
+
+  @if (showNewRun) {
+    <div class="panel">
+      <div class="section-title">Start Training</div>
+      <div class="filters-bar embedded">
+        <label class="field">
+          <span>Policy</span>
+          <select class="ctrl" [(ngModel)]="selectedPolicyId" [disabled]="submitting">
+            @for (policy of policies; track trackByPolicyId($index, policy)) {
+              <option [ngValue]="policy.id">#{{ policy.id }} {{ policy.symbolCode }} {{ policy.intervalCode }}</option>
+            }
+          </select>
+        </label>
+        <label class="field"><span>From</span><input class="ctrl" type="date" [(ngModel)]="runFrom" [disabled]="submitting" /></label>
+        <label class="field"><span>To</span><input class="ctrl" type="date" [(ngModel)]="runTo" [disabled]="submitting" /></label>
+        <button class="btn-primary" [disabled]="submitting || !selectedPolicyId" (click)="startTraining()">
+          {{ submitting ? 'Starting...' : 'Start' }}
+        </button>
+      </div>
+      <div class="field-hint">The API normalizes from to 00:00 UTC and to to 23:59 UTC. The POST is not retried automatically.</div>
+      @if (runError) {
+        <div class="error-card">{{ runError }}</div>
+      }
+    </div>
+  }
+
+  <div class="filters-bar">
+    <label class="field">
+      <span>Policy</span>
+      <select class="ctrl" [(ngModel)]="policyFilter" (change)="load()">
+        <option value="">All</option>
+        @for (policy of policies; track trackByPolicyId($index, policy)) {
+          <option [value]="policy.id">#{{ policy.id }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span>Symbol</span>
+      <select class="ctrl" [(ngModel)]="symbolFilter">
+        <option value="">All</option>
+        @for (symbol of symbols; track symbol) {
+          <option [value]="symbol">{{ symbol }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span>Interval</span>
+      <select class="ctrl" [(ngModel)]="intervalFilter">
+        <option value="">All</option>
+        @for (interval of intervals; track interval) {
+          <option [value]="interval">{{ interval }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span>Status</span>
+      <select class="ctrl" [(ngModel)]="statusFilter">
+        <option value="">All</option>
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ status }}</option>
+        }
+      </select>
+    </label>
+    <label class="field"><span>From</span><input class="ctrl" type="date" [(ngModel)]="fromFilter" /></label>
+    <label class="field"><span>To</span><input class="ctrl" type="date" [(ngModel)]="toFilter" /></label>
+    <label class="field">
+      <span>Promoted</span>
+      <select class="ctrl" [(ngModel)]="servedFilter">
+        <option value="all">All</option>
+        <option value="served">Served</option>
+        <option value="not-served">Not served</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>OOS Metrics</span>
+      <select class="ctrl" [(ngModel)]="hasOosFilter">
+        <option value="all">All</option>
+        <option value="yes">Available</option>
+        <option value="no">Unavailable</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Decision Log</span>
+      <select class="ctrl" [(ngModel)]="hasDecisionFilter">
+        <option value="all">All</option>
+        <option value="yes">Likely available</option>
+        <option value="no">Unavailable</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Tracking</span>
+      <select class="ctrl" [(ngModel)]="hasTrackingFilter">
+        <option value="all">All</option>
+        <option value="yes">Available</option>
+        <option value="no">Unavailable</option>
+      </select>
+    </label>
+    <button class="btn-ghost" type="button" (click)="load()">Refresh</button>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">Loading training runs...</div>
+  }
+
+  @if (!isLoading && loadError) {
+    <div class="error-state">{{ loadError }}</div>
+  }
+
+  @if (!isLoading && !loadError) {
+    <div class="table-wrap">
+      <table class="bt-table">
+        <thead>
+          <tr>
+            <th>Run</th>
+            <th>Policy</th>
+            <th>Market</th>
+            <th>Date Range</th>
+            <th><button type="button" (click)="setSort('startedAt')">Started</button></th>
+            <th>Completed</th>
+            <th><button type="button" (click)="setSort('duration')">Duration</button></th>
+            <th>Status</th>
+            <th>Timesteps</th>
+            <th>IS Balance</th>
+            <th>IS PnL</th>
+            <th>OOS Balance</th>
+            <th><button type="button" (click)="setSort('oosPnl')">OOS PnL</button></th>
+            <th><button type="button" (click)="setSort('tradeCount')">Trades</button></th>
+            <th>Tracking</th>
+            <th>Promoted</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (run of filteredRuns; track trackById($index, run)) {
+            <tr [routerLink]="['/ml/training-runs', run.id]" class="clickable-row">
+              <td class="td-id">#{{ run.id }}</td>
+              <td><a class="table-link" [routerLink]="['/ml/policies', run.mlPolicyId]" (click)="$event.stopPropagation()">#{{ run.mlPolicyId }}</a></td>
+              <td><span class="td-bold">{{ run.symbolCode }}</span> <span class="td-dim">{{ run.intervalCode }}</span></td>
+              <td class="td-dim">{{ formatDate(run.from) }} - {{ formatDate(run.to) }}</td>
+              <td class="td-dim">{{ formatTs(run.startedAt) }}</td>
+              <td class="td-dim">{{ formatTs(run.completedAt) }}</td>
+              <td class="td-dim">{{ formatDuration(duration(run)) }}</td>
+              <td><span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span></td>
+              <td class="td-dim">{{ run.totalTimesteps ?? '-' }}</td>
+              <td class="td-dim">{{ inSampleBalance(run) !== null ? '$' + (inSampleBalance(run) | number: '1.2-2') : '-' }}</td>
+              <td><span [class]="pnlClass(inSamplePnl(run))">{{ inSamplePnl(run) !== null ? (inSamplePnl(run) | number: '1.2-2') + '%' : '-' }}</span></td>
+              <td class="td-dim">{{ oosBalance(run) !== null ? '$' + (oosBalance(run) | number: '1.2-2') : '-' }}</td>
+              <td><span [class]="pnlClass(oosPnl(run))">{{ oosPnl(run) !== null ? (oosPnl(run) | number: '1.2-2') + '%' : 'Unavailable' }}</span></td>
+              <td class="td-dim">{{ runTrades(run) ?? '-' }}</td>
+              <td><span [class]="run.tracking?.trackingAvailable ? 'badge badge-good' : 'badge badge-muted'">{{ run.tracking?.trackingAvailable ? 'Yes' : 'No' }}</span></td>
+              <td><span [class]="isServed(run) ? 'badge badge-good' : 'badge badge-muted'">{{ isServed(run) ? 'Served' : 'Candidate' }}</span></td>
+              <td>
+                <div class="row-actions">
+                  <a class="table-link" [routerLink]="['/ml/training-runs', run.id]" (click)="$event.stopPropagation()">View</a>
+                  <button class="link-button danger" type="button" (click)="deleteRun(run, $event)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

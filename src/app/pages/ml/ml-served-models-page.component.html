@@ -1,0 +1,85 @@
+<div class="ml-page">
+  <div class="ml-subnav">
+    <a routerLink="/ml/policies" routerLinkActive="active">Policies</a>
+    <a routerLink="/ml/training-runs" routerLinkActive="active">Training Runs</a>
+    <a routerLink="/ml/served-models" routerLinkActive="active">Served Models</a>
+    <a routerLink="/ml/retrain-all" routerLinkActive="active">Retrain All</a>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Served Models</h1>
+      <div class="page-kicker">Live deployment state, one row per ML policy.</div>
+    </div>
+    <button class="btn-ghost" type="button" (click)="load()">Refresh</button>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">Loading served models...</div>
+  }
+
+  @if (!isLoading && loadError) {
+    <div class="error-state">{{ loadError }}</div>
+  }
+
+  @if (!isLoading && !loadError) {
+    <div class="table-wrap">
+      <table class="bt-table">
+        <thead>
+          <tr>
+            <th>Policy</th>
+            <th>Market</th>
+            <th>Served</th>
+            <th>Served Run</th>
+            <th>Model ID</th>
+            <th>OOS PnL</th>
+            <th>OOS Balance</th>
+            <th>IS PnL</th>
+            <th>IS Balance</th>
+            <th>Trades</th>
+            <th>Calibrated</th>
+            <th>Obs Dim</th>
+            <th>Schema</th>
+            <th>MLflow Run</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track trackByPolicyId($index, row)) {
+            <tr [class.row-warning]="!isServed(row.model) || isSchemaStale(row.model)">
+              <td><a class="table-link" [routerLink]="['/ml/policies', row.policy.id]">#{{ row.policy.id }}</a></td>
+              <td><span class="td-bold">{{ row.policy.symbolCode }}</span> <span class="td-dim">{{ row.policy.intervalCode }}</span></td>
+              <td><span [class]="isServed(row.model) ? 'badge badge-good' : 'badge badge-muted'">{{ isServed(row.model) ? 'Yes' : 'No' }}</span></td>
+              <td>
+                @if (runId(row.model) !== null) {
+                  <a class="table-link" [routerLink]="['/ml/training-runs', runId(row.model)]">#{{ runId(row.model) }}</a>
+                } @else {
+                  <span class="td-dim">-</span>
+                }
+              </td>
+              <td class="td-code">{{ row.model?.modelId ?? '-' }}</td>
+              <td><span [class]="pnlClass(oosPnl(row.model))">{{ oosPnl(row.model) !== null ? (oosPnl(row.model) | number: '1.2-2') + '%' : 'Unavailable' }}</span></td>
+              <td class="td-dim">{{ oosBalance(row.model) !== null ? '$' + (oosBalance(row.model) | number: '1.2-2') : '-' }}</td>
+              <td><span [class]="pnlClass(inSamplePnl(row.model))">{{ inSamplePnl(row.model) !== null ? (inSamplePnl(row.model) | number: '1.2-2') + '%' : '-' }}</span></td>
+              <td class="td-dim">{{ inSampleBalance(row.model) !== null ? '$' + (inSampleBalance(row.model) | number: '1.2-2') : '-' }}</td>
+              <td class="td-dim">{{ tradeCount(row.model) ?? '-' }}</td>
+              <td><span [class]="row.model?.calibrated || row.model?.calibratedConfidence ? 'badge badge-good' : 'badge badge-muted'">{{ row.model?.calibrated || row.model?.calibratedConfidence ? 'Yes' : 'No' }}</span></td>
+              <td class="td-dim">{{ row.model?.observationDim ?? '-' }}</td>
+              <td><span [class]="isSchemaStale(row.model) ? 'badge badge-warn' : 'badge badge-muted'">{{ row.model?.schemaVersion ?? '-' }}</span></td>
+              <td class="td-code">{{ row.model?.mlflowRunId ?? '-' }}</td>
+              <td>
+                <div class="row-actions">
+                  <a class="table-link" [routerLink]="['/ml/policies', row.policy.id]">Policy</a>
+                  @if (runId(row.model) !== null) {
+                    <a class="table-link" [routerLink]="['/ml/training-runs', runId(row.model)]">Run</a>
+                  }
+                  <a class="table-link" [routerLink]="['/ml/policies', row.policy.id]">Train</a>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

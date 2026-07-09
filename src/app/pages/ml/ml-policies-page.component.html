@@ -1,45 +1,158 @@
 <div class="ml-page">
+  <div class="ml-subnav">
+    <a routerLink="/ml/policies" routerLinkActive="active">Policies</a>
+    <a routerLink="/ml/training-runs" routerLinkActive="active">Training Runs</a>
+    <a routerLink="/ml/served-models" routerLinkActive="active">Served Models</a>
+    <a routerLink="/ml/retrain-all" routerLinkActive="active">Retrain All</a>
+  </div>
+
   <div class="page-header">
-    <h1 class="page-title">ML Policies</h1>
-    <a class="btn-primary" routerLink="/ml/policies/new">+ New Policy</a>
+    <div>
+      <h1 class="page-title">Machine Learning Policies</h1>
+      <div class="page-kicker">Operational policy registry with served-model state and OOS-first signals.</div>
+    </div>
+    <a class="btn-primary" routerLink="/ml/policies/new">New Policy</a>
+  </div>
+
+  <div class="filters-bar">
+    <label class="field">
+      <span>Symbol</span>
+      <select class="ctrl" [(ngModel)]="symbolFilter">
+        <option value="">All</option>
+        @for (symbol of symbols; track symbol) {
+          <option [value]="symbol">{{ symbol }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span>Interval</span>
+      <select class="ctrl" [(ngModel)]="intervalFilter">
+        <option value="">All</option>
+        @for (interval of intervals; track interval) {
+          <option [value]="interval">{{ interval }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span>Served State</span>
+      <select class="ctrl" [(ngModel)]="servedFilter">
+        <option value="all">All</option>
+        <option value="served">Served</option>
+        <option value="not-served">Not served</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Has Runs</span>
+      <select class="ctrl" [(ngModel)]="hasRunsFilter">
+        <option value="all">All</option>
+        <option value="yes">Has runs</option>
+        <option value="no">No runs</option>
+      </select>
+    </label>
+    <button class="btn-ghost" type="button" (click)="load()">Refresh</button>
   </div>
 
   @if (isLoading) {
-    <div class="loading-state">Loading policies…</div>
+    <div class="loading-state">Loading policies...</div>
   }
 
-  @if (!isLoading && policies.length === 0) {
-    <div class="empty-state">No policies yet. <a routerLink="/ml/policies/new">Create one →</a></div>
+  @if (!isLoading && loadError) {
+    <div class="error-state">{{ loadError }}</div>
   }
 
-  @if (!isLoading && policies.length > 0) {
+  @if (!isLoading && !loadError && policies.length === 0) {
+    <div class="empty-state">No policies yet. <a routerLink="/ml/policies/new">Create one</a>.</div>
+  }
+
+  @if (!isLoading && !loadError && policies.length > 0) {
     <div class="table-wrap">
       <table class="bt-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Symbol</th>
-            <th>Interval</th>
-            <th>Timesteps</th>
-            <th>Initial Balance</th>
-            <th>Quantity</th>
-            <th>Runs</th>
-            <th>Created</th>
+            <th>Policy</th>
+            <th>Market</th>
+            <th><button type="button" (click)="setSort('served')">Served</button></th>
+            <th>Served Run</th>
+            <th><button type="button" (click)="setSort('oosPnl')">OOS PnL</button></th>
+            <th>OOS Balance</th>
+            <th>Schema</th>
+            <th>Calibrated</th>
+            <th><button type="button" (click)="setSort('trainingRunCount')">Runs</button></th>
+            <th><button type="button" (click)="setSort('riskPerTrade')">Risk</button></th>
+            <th>Fee</th>
+            <th>Slippage ATR</th>
+            <th>Daily Target</th>
+            <th>Daily DD</th>
+            <th>Max Candles</th>
+            <th><button type="button" (click)="setSort('createdAt')">Created</button></th>
+            <th>Warnings</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          @for (p of policies; track trackById($index, p)) {
-            <tr [routerLink]="['/ml/policies', p.id]" class="clickable-row">
-              <td class="td-id">{{ p.id }}</td>
-              <td class="td-bold">{{ p.symbolCode }}</td>
-              <td class="td-dim">{{ p.intervalCode }}</td>
-              <td class="td-dim">{{ p.totalTimesteps }}</td>
-              <td class="td-dim">${{ p.initialBalance | number: '1.2-2' }}</td>
-              <td class="td-dim">{{ p.quantity | number: '1.0-8' }}</td>
+          @for (p of filteredPolicies; track trackById($index, p)) {
+            @let served = servedFor(p);
+            @let servedRun = servedRunId(served);
+            <tr [class.row-warning]="rowWarnings(p).length > 0" [routerLink]="['/ml/policies', p.id]" class="clickable-row">
+              <td class="td-id">#{{ p.id }}</td>
               <td>
-                <span class="run-count">{{ p.trainingRunCount }}</span>
+                <span class="td-bold">{{ p.symbolCode }}</span>
+                <span class="market-interval">{{ p.intervalCode }}</span>
               </td>
+              <td>
+                <span [class]="served ? 'badge badge-good' : 'badge badge-muted'">{{ served ? 'Served' : 'Not served' }}</span>
+              </td>
+              <td>
+                @if (servedRun !== null) {
+                  <a class="table-link" [routerLink]="['/ml/training-runs', servedRun]" (click)="$event.stopPropagation()"
+                    >#{{ servedRun }}</a
+                  >
+                } @else {
+                  <span class="td-dim">-</span>
+                }
+              </td>
+              <td>
+                @if (oosPnl(served) !== null) {
+                  <span [class]="(oosPnl(served) ?? 0) >= 0 ? 'positive' : 'negative'"
+                    >{{ (oosPnl(served) ?? 0) >= 0 ? '+' : '' }}{{ oosPnl(served) | number: '1.2-2' }}%</span
+                  >
+                } @else {
+                  <span class="td-dim">Unavailable</span>
+                }
+              </td>
+              <td class="td-dim">{{ served?.oosFinalBalance !== null && served?.oosFinalBalance !== undefined ? '$' + (served?.oosFinalBalance | number: '1.2-2') : '-' }}</td>
+              <td>
+                <span [class]="isSchemaStale(served) ? 'badge badge-warn' : 'badge badge-muted'">{{ served?.schemaVersion ?? '-' }}</span>
+              </td>
+              <td>
+                <span [class]="served?.calibrated || served?.calibratedConfidence ? 'badge badge-good' : 'badge badge-muted'">
+                  {{ served?.calibrated || served?.calibratedConfidence ? 'Yes' : 'No' }}
+                </span>
+              </td>
+              <td><span class="run-count">{{ p.trainingRunCount }}</span></td>
+              <td [class.negative]="isRiskMissing(p)">
+                {{ p.riskPerTrade !== null && p.riskPerTrade !== undefined ? '$' + (p.riskPerTrade | number: '1.2-2') : '-' }}
+              </td>
+              <td class="td-dim">{{ p.fee !== null && p.fee !== undefined ? '$' + (p.fee | number: '1.2-2') : '-' }}</td>
+              <td class="td-dim">{{ p.slippage ?? '-' }}</td>
+              <td class="td-dim">{{ p.dailyProfit !== null && p.dailyProfit !== undefined ? '$' + (p.dailyProfit | number: '1.2-2') : '-' }}</td>
+              <td class="td-dim">{{ p.dailyDrawdownLimit !== null && p.dailyDrawdownLimit !== undefined ? '$' + (p.dailyDrawdownLimit | number: '1.2-2') : '-' }}</td>
+              <td class="td-dim">{{ p.maxCandlesPerTrade ?? '-' }}</td>
               <td class="td-dim">{{ formatTs(p.createdAt) }}</td>
+              <td>
+                <div class="warning-stack">
+                  @for (warning of rowWarnings(p); track warning) {
+                    <span class="warning-chip">{{ warning }}</span>
+                  }
+                </div>
+              </td>
+              <td>
+                <div class="row-actions">
+                  <a class="table-link" [routerLink]="['/ml/policies', p.id]" (click)="$event.stopPropagation()">View</a>
+                  <a class="table-link" [routerLink]="['/ml/policies', p.id, 'edit']" (click)="$event.stopPropagation()">Edit</a>
+                  <button class="link-button" type="button" (click)="openRuns(p, $event)">Runs</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

@@ -40,6 +40,11 @@ export const routes: Routes = [
   },
   {
     path: 'ml',
+    pathMatch: 'full',
+    redirectTo: 'ml/policies',
+  },
+  {
+    path: 'ml/policies',
     loadComponent: () => import('./pages/ml/ml-policies-page.component').then(m => m.MlPoliciesPageComponent),
   },
   {
@@ -47,12 +52,32 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/ml/ml-policy-form.component').then(m => m.MlPolicyFormComponent),
   },
   {
+    path: 'ml/policies/:id/edit',
+    loadComponent: () => import('./pages/ml/ml-policy-form.component').then(m => m.MlPolicyFormComponent),
+  },
+  {
     path: 'ml/policies/:id',
     loadComponent: () => import('./pages/ml/ml-policy-detail.component').then(m => m.MlPolicyDetailComponent),
   },
   {
+    path: 'ml/training-runs',
+    loadComponent: () => import('./pages/ml/ml-training-runs-page.component').then(m => m.MlTrainingRunsPageComponent),
+  },
+  {
+    path: 'ml/training-runs/:id',
+    loadComponent: () => import('./pages/ml/ml-training-detail.component').then(m => m.MlTrainingDetailComponent),
+  },
+  {
     path: 'ml/runs/:id',
     loadComponent: () => import('./pages/ml/ml-training-detail.component').then(m => m.MlTrainingDetailComponent),
+  },
+  {
+    path: 'ml/served-models',
+    loadComponent: () => import('./pages/ml/ml-served-models-page.component').then(m => m.MlServedModelsPageComponent),
+  },
+  {
+    path: 'ml/retrain-all',
+    loadComponent: () => import('./pages/ml/ml-retrain-all-page.component').then(m => m.MlRetrainAllPageComponent),
   },
   { path: '', redirectTo: '/charts', pathMatch: 'full' },
 ];

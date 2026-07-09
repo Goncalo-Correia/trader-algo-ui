@@ -103,7 +103,10 @@ the API key is appended as an `apiKey` query param.
 
 `LiveChartDataService` builds on this for live candles, candles-with-indicators, backtest replay, and ML training
 streams. Backtest/training streams are **event-enveloped** (`{ type, data }`) carrying `candle`, `candleBatch`,
-`tradeOpened`, `tradeClosed`, `tradeBracketUpdate`, and `mlDecision` events.
+`tradeOpened`, `tradeClosed`, `tradeBracketUpdate`, and `mlDecision` events. The ML training-run detail page
+consumes the `/ws/ml/training?trainingRunId=&delay=` replay via `TraderAlgoApiService.streamMlTraining` (finite,
+`reconnect: false`), which emits only `candle` (mapped through `toCandleWithIndicators`) and `mlDecision` frames —
+a second, page-specific consumer of the same endpoint that `LiveChartDataService` also exposes.
 
 `TradeBotEventsService` (`/ws/tradebots/events`) is a **separate** live stream carrying the backend `TradeEventDto`
 shape — `{ type, tradingAccountId, tradeId?, symbolCode?, message?, createdAt?, trade? }`. Emitted `type`s are

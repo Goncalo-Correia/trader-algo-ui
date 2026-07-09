@@ -28,6 +28,7 @@ import {
 import { CandleWithIndicators } from '../../structures/candle';
 import { ActiveCandlePlugin } from '../../chart-plugins/active-candle.plugin';
 import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
+import { MlDecision } from '../../structures/ml-training';
 import { Trade } from '../../structures/trade';
 
 @Component({
@@ -61,19 +62,28 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this._trades = trades;
     if (this.chart)
       this.ngZone.runOutsideAngular(() => {
-        this.applyTradeMarkers();
+        this.applyMarkers();
         this.applyBracketLines();
       });
+  }
+
+  @Input() set mlDecisions(decisions: MlDecision[]) {
+    this._mlDecisions = decisions;
+    if (this.chart) this.ngZone.runOutsideAngular(() => this.applyMarkers());
   }
 
   showVolume = true;
   showRsi = true;
   showMacd = true;
   showTrades = true;
+  showDecisions = true;
+  showHoldMarkers = false;
+  confidenceThreshold = 0;
 
   private _candles: CandleWithIndicators[] = [];
   private _playbackTime: number | null = null;
   private _trades: Trade[] = [];
+  private _mlDecisions: MlDecision[] = [];
   private _isNySessionOnly = false;
 
   private chart?: IChartApi;
@@ -201,7 +211,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     }
     if (this._trades.length) {
       this.ngZone.runOutsideAngular(() => {
-        this.applyTradeMarkers();
+        this.applyMarkers();
         this.applyBracketLines();
       });
     }
@@ -237,42 +247,74 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
   toggleTrades(): void {
     this.showTrades = !this.showTrades;
-    this.ngZone.runOutsideAngular(() => this.applyTradeMarkers());
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
   }
 
-  private applyTradeMarkers(): void {
+  toggleDecisions(): void {
+    this.showDecisions = !this.showDecisions;
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
+  toggleHoldMarkers(): void {
+    this.showHoldMarkers = !this.showHoldMarkers;
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
+  setConfidenceThreshold(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.confidenceThreshold = Number(input.value);
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
+  private applyMarkers(): void {
     if (!this.candleSeries) return;
     if (!this.tradeMarkersPlugin) {
       this.tradeMarkersPlugin = createSeriesMarkers(this.candleSeries, []);
     }
-    if (!this.showTrades) {
-      this.tradeMarkersPlugin.setMarkers([]);
-      return;
-    }
     const markers: SeriesMarker<Time>[] = [];
-    for (const t of this._trades) {
-      if (t.openedAt !== null && t.entryPrice !== null) {
-        const isBuy = t.side === 'Buy';
+    if (this.showDecisions) {
+      for (const d of this._mlDecisions) {
+        if (d.open_time === null || d.confidence < this.confidenceThreshold) continue;
+        const action = (d.action_name ?? '').toLowerCase();
+        const isHold = action.includes('hold') || d.action === 0;
+        if (isHold && !this.showHoldMarkers) continue;
+        const isLong = action.includes('long') || action.includes('buy');
+        const isShort = action.includes('short') || action.includes('sell');
         markers.push({
-          time: this.toTime(t.openedAt) as Time,
-          position: isBuy ? 'belowBar' : 'aboveBar',
-          color: isBuy ? '#26a69a' : '#ef5350',
-          shape: isBuy ? 'arrowUp' : 'arrowDown',
-          text: t.side,
-          size: 1,
+          time: this.toTime(d.open_time) as Time,
+          position: isLong ? 'belowBar' : 'aboveBar',
+          color: isHold ? '#787b86' : isLong ? '#26a69a' : isShort ? '#ef5350' : '#f59e0b',
+          shape: isHold ? 'circle' : isLong ? 'arrowUp' : 'arrowDown',
+          text: isHold ? '' : `${d.action_name} ${(d.confidence * 100).toFixed(0)}%`,
+          size: Math.max(0.7, Math.min(2, d.confidence * 2)),
         });
       }
-      if (t.closedAt !== null && t.closedPrice !== null) {
-        const isBuy = t.side === 'Buy';
-        const pnlText = t.pnl !== null ? ` ${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}` : '';
-        markers.push({
-          time: this.toTime(t.closedAt) as Time,
-          position: isBuy ? 'aboveBar' : 'belowBar',
-          color: '#f59e0b',
-          shape: 'circle',
-          text: `✕${pnlText}`,
-          size: 1,
-        });
+    }
+    if (this.showTrades) {
+      for (const t of this._trades) {
+        if (t.openedAt !== null && t.entryPrice !== null) {
+          const isBuy = t.side === 'Buy';
+          markers.push({
+            time: this.toTime(t.openedAt) as Time,
+            position: isBuy ? 'belowBar' : 'aboveBar',
+            color: isBuy ? '#26a69a' : '#ef5350',
+            shape: isBuy ? 'arrowUp' : 'arrowDown',
+            text: t.side,
+            size: 1,
+          });
+        }
+        if (t.closedAt !== null && t.closedPrice !== null) {
+          const isBuy = t.side === 'Buy';
+          const pnlText = t.pnl !== null ? ` ${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}` : '';
+          markers.push({
+            time: this.toTime(t.closedAt) as Time,
+            position: isBuy ? 'aboveBar' : 'belowBar',
+            color: '#f59e0b',
+            shape: 'circle',
+            text: `X${pnlText}`,
+            size: 1,
+          });
+        }
       }
     }
     markers.sort((a, b) => (a.time as number) - (b.time as number));
@@ -430,7 +472,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       })),
     );
     this.applySessionMarkers();
-    this.applyTradeMarkers();
+    this.applyMarkers();
     this.applyBracketLines();
 
     this.sma20Series?.setData(

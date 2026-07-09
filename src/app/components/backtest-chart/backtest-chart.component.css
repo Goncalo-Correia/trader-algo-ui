@@ -45,6 +45,21 @@
 .toolbar-btn:hover  { color: #90c4f4; background: #162840; }
 .toolbar-btn.active { color: #ffffff; background: #2962ff; }
 
+.toolbar-slider {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  color: #787b86;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.toolbar-slider input {
+  width: 90px;
+}
+
 .chart-wrapper {
   position: relative;
   flex: 1;

@@ -1,257 +1,301 @@
 <div class="detail-page">
-  <a class="back-link" [routerLink]="run ? ['/ml/policies', run.mlPolicyId] : ['/ml']">
-    ← {{ run ? 'Back to policy' : 'ML Policies' }}
-  </a>
+  <div class="ml-subnav">
+    <a routerLink="/ml/policies" routerLinkActive="active">Policies</a>
+    <a routerLink="/ml/training-runs" routerLinkActive="active">Training Runs</a>
+    <a routerLink="/ml/served-models" routerLinkActive="active">Served Models</a>
+    <a routerLink="/ml/retrain-all" routerLinkActive="active">Retrain All</a>
+  </div>
+
+  <a class="back-link" routerLink="/ml/training-runs">Back to training runs</a>
 
   @if (isLoading) {
-    <div class="loading-state">Loading training run…</div>
+    <div class="loading-state">Loading training run...</div>
   }
 
-  @if (!isLoading && run) {
+  @if (!isLoading && run; as r) {
     <div class="detail-header">
       <div class="header-left">
-        <h1 class="detail-title">Training Run #{{ run.id }}</h1>
-        <span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span>
+        <h1 class="detail-title">Training Run #{{ r.id }}</h1>
+        <span [class]="'status-badge ' + statusClass(r.status)">{{ r.status }}</span>
+        <span [class]="isServed ? 'status-badge status-completed' : 'status-badge status-muted'">{{ isServed ? 'Served' : 'Candidate' }}</span>
       </div>
       <div class="header-actions">
-        <a class="btn-primary" [routerLink]="['/ml/policies', run.mlPolicyId]">Policy</a>
-        <button class="btn-delete" [disabled]="deleting" (click)="deleteRun()">
-          {{ deleting ? '…' : 'Delete' }}
-        </button>
+        <button class="btn-ghost" type="button" (click)="refresh()">Refresh</button>
+        <a class="btn-ghost" [routerLink]="['/ml/policies', r.mlPolicyId]">Open Policy</a>
+        @if (policyServedRunId !== null && policyServedRunId !== r.id) {
+          <a class="btn-ghost" [routerLink]="['/ml/training-runs', policyServedRunId]">Open Served Run</a>
+        }
+        <button class="btn-delete" [disabled]="deleting" (click)="deleteRun()">Delete</button>
       </div>
     </div>
-    <div class="stats-bar">
-      <div class="stats-row">
-        <div class="stat-item">
-          <span class="stat-label">Symbol</span><span class="stat-value">{{ run.symbolCode }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Interval</span><span class="stat-value">{{ run.intervalCode }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">From</span><span class="stat-value">{{ formatDate(run.from) }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">To</span><span class="stat-value">{{ formatDate(run.to) }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Timesteps</span><span class="stat-value">{{ run.totalTimesteps ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Started</span><span class="stat-value">{{ formatTs(run.startedAt) }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Completed</span><span class="stat-value">{{ formatTs(run.completedAt) }}</span>
-        </div>
+
+    <section class="panel">
+      <div class="stats-grid">
+        <div class="stat-item"><span class="stat-label">Policy</span><span class="stat-value">#{{ r.mlPolicyId }}</span></div>
+        <div class="stat-item"><span class="stat-label">Market</span><span class="stat-value">{{ r.symbolCode }} {{ r.intervalCode }}</span></div>
+        <div class="stat-item"><span class="stat-label">Range</span><span class="stat-value">{{ formatDate(r.from) }} - {{ formatDate(r.to) }}</span></div>
+        <div class="stat-item"><span class="stat-label">Started</span><span class="stat-value">{{ formatTs(r.startedAt) }}</span></div>
+        <div class="stat-item"><span class="stat-label">Completed</span><span class="stat-value">{{ formatTs(r.completedAt) }}</span></div>
+        <div class="stat-item"><span class="stat-label">Duration</span><span class="stat-value">{{ formatDuration(r) }}</span></div>
+        <div class="stat-item"><span class="stat-label">MLflow</span><span class="stat-value stat-value-code">{{ mlflowRunUuid ?? '-' }}</span></div>
+        <div class="stat-item"><span class="stat-label">Schema</span><span class="stat-value">{{ servedModel?.schemaVersion ?? r.schemaVersion ?? '-' }}</span></div>
+        <div class="stat-item"><span class="stat-label">Obs Dim</span><span class="stat-value">{{ servedModel?.observationDim ?? r.observationDim ?? '-' }}</span></div>
+        <div class="stat-item"><span class="stat-label">Calibrated</span><span class="stat-value">{{ servedModel?.calibrated || servedModel?.calibratedConfidence ? 'Yes' : '-' }}</span></div>
+        <div class="stat-item"><span class="stat-label">Last Refresh</span><span class="stat-value">{{ lastRefresh ? formatTs(lastRefresh.toISOString()) : '-' }}</span></div>
       </div>
-      <div class="stats-row stats-row-financial">
-        <div class="stat-item">
-          <span class="stat-label">Final Balance</span
-          ><span class="stat-value">{{
-            performanceFinalBalance !== null ? '$' + (performanceFinalBalance | number: '1.2-2') : '—'
-          }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">PnL %</span>
-          <span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">
-            {{
-              performancePnlPct !== null ? (pnlPositive ? '+' : '') + (performancePnlPct | number: '1.2-2') + '%' : '—'
-            }}
-          </span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Trades</span><span class="stat-value">{{ performanceTrades ?? '—' }}</span>
-        </div>
-        @if (mlflowRunUuid) {
-          <div class="stat-item">
-            <span class="stat-label">MLflow Run</span
-            ><span class="stat-value stat-value-code">{{ mlflowRunUuid }}</span>
-          </div>
-        }
-      </div>
-    </div>
-    <div class="tracking-section">
-      <div class="section-title">Training Performance</div>
-      @if (trackingError) {
-        <div class="error-state">{{ trackingError }}</div>
-      }
-      @if (!trackingAvailable && !trackingError) {
-        <div class="empty-state">
-          {{ trackingSummary?.message || 'Tracking data not available yet.' }}
-        </div>
-      }
-      @if (trackingAvailable && trackingSummary; as trackingInfo) {
-        <div class="performance-grid">
-          <div class="stat-item">
-            <span class="stat-label">PnL %</span
-            ><span class="stat-value" [class.positive]="pnlPositive" [class.negative]="!pnlPositive">{{
-              performancePnlPct !== null ? (pnlPositive ? '+' : '') + (performancePnlPct | number: '1.2-2') + '%' : '—'
-            }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Final Balance</span
-            ><span class="stat-value">{{
-              performanceFinalBalance !== null ? '$' + (performanceFinalBalance | number: '1.2-2') : '—'
-            }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Trades</span><span class="stat-value">{{ performanceTrades ?? '—' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Symbol</span
-            ><span class="stat-value">{{ trackingParams['symbol'] || run.symbolCode }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Interval</span
-            ><span class="stat-value">{{ trackingParams['interval'] || run.intervalCode }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Timesteps</span><span class="stat-value">{{ trackedTotalTimesteps ?? '—' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Continued From</span><span class="stat-value">{{ continuedFromRun ?? '—' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">MLflow Status</span
-            ><span class="stat-value">{{ trackingInfo.status ?? '—' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">MLflow Start</span
-            ><span class="stat-value">{{ formatIso(trackingInfo.startTime) }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">MLflow End</span
-            ><span class="stat-value">{{ formatIso(trackingInfo.endTime) }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Run Name</span
-            ><span class="stat-value stat-value-code">{{ trackingInfo.runName ?? '—' }}</span>
-          </div>
-          @if (artifactUri) {
-            <div class="stat-item">
-              <span class="stat-label">Artifact URI</span
-              ><span class="stat-value stat-value-code">{{ artifactUri }}</span>
-            </div>
-          }
-        </div>
-        @if (rewardMetricSections.length > 0) {
-          <div class="reward-metric-groups">
-            @for (section of rewardMetricSections; track $index) {
-              <section class="reward-metric-group">
-                <div class="metric-group-title">{{ section.title }}</div>
-                <div class="metric-list">
-                  @for (metric of section.metrics; track $index) {
-                    <div class="metric-row">
-                      <div class="metric-copy">
-                        <span class="metric-label">{{ metric.label }}</span>
-                        @if (metric.description) {
-                          <span class="metric-description">{{ metric.description }}</span>
-                        }
-                      </div>
-                      <span class="metric-value">{{ formatMetricValue(metric) }}</span>
-                    </div>
-                  }
-                </div>
-                @if (section.hasChart) {
-                  <div class="chart-wrap performance-chart-wrap">
-                    <app-highcharts-chart [options]="section.chartOptions"></app-highcharts-chart>
-                  </div>
-                }
-              </section>
-            }
-          </div>
-        }
-        @if (metricHistoryAvailable && !hasRewardMetrics) {
-          <div class="chart-wrap performance-chart-wrap">
-            <app-highcharts-chart [options]="metricHistoryChartOptions"></app-highcharts-chart>
-          </div>
-        }
-      }
-    </div>
+    </section>
+
     @if (isInFlight) {
       <div class="in-flight-banner">
-        <span class="status-dot blink"></span>
-        Training is {{ run.status | lowercase }}… this page updates automatically.
+        <span class="status-dot"></span>
+        Training is {{ r.status | lowercase }}. Run, tracking, and performance telemetry refresh automatically.
       </div>
     }
-    @if (run.status === 'Failed') {
-      <div class="error-state">Training failed. No decision log was produced.</div>
-    }
-    @if (run.status === 'Completed') {
-      <div class="chart-section">
-        <div class="section-title">Price Chart</div>
-        @if (candlesError) {
-          <div class="error-state">{{ candlesError }}</div>
-        }
-        @if (candlesReady) {
-          <div class="chart-wrap chart-wrap-price">
-            <app-backtest-chart [candles]="candles" [trades]="chartTrades"></app-backtest-chart>
-          </div>
-        }
-        @if (!candlesReady && !candlesError) {
-          <div class="loading-state">Loading candles…</div>
-        }
-      </div>
-      @if (decisions && decisions.decisions.length) {
-        <div class="chart-section">
-          <div class="section-title">Balance Progression</div>
-          <div class="chart-wrap">
-            <app-highcharts-chart [options]="balanceChartOptions"></app-highcharts-chart>
-          </div>
-        </div>
+
+    <section class="summary-tiles">
+      <div class="metric-tile"><span>Out-of-sample PnL</span><strong [class]="pnlClass(oosPnlPct)">{{ formatMetricValue(oosPnlPct, '%') }}</strong></div>
+      <div class="metric-tile"><span>Out-of-sample Balance</span><strong>{{ oosFinalBalance !== null ? '$' + (oosFinalBalance | number: '1.2-2') : 'Unavailable' }}</strong></div>
+      <div class="metric-tile"><span>In-sample PnL</span><strong [class]="pnlClass(inSamplePnlPct)">{{ formatMetricValue(inSamplePnlPct, '%') }}</strong></div>
+      <div class="metric-tile"><span>In-sample Balance</span><strong>{{ inSampleFinalBalance !== null ? '$' + (inSampleFinalBalance | number: '1.2-2') : 'Unavailable' }}</strong></div>
+      <div class="metric-tile"><span>OOS Sharpe</span><strong>{{ formatMetricValue(oosSharpe) }}</strong></div>
+      <div class="metric-tile"><span>OOS Profit Factor</span><strong>{{ formatMetricValue(oosProfitFactor) }}</strong></div>
+      <div class="metric-tile"><span>OOS Max Drawdown</span><strong class="negative">{{ formatMetricValue(oosMaxDrawdownPct, '%') }}</strong></div>
+      <div class="metric-tile"><span>Trades</span><strong>{{ tradeCount ?? 'Unavailable' }}</strong></div>
+      <div class="metric-tile"><span>Folds</span><strong>{{ foldCount || 'Unavailable' }}</strong></div>
+      <div class="metric-tile"><span>Gate Passed</span><strong>{{ promotionGatePassed === null ? 'Unavailable' : promotionGatePassed ? 'Yes' : 'No' }}</strong></div>
+    </section>
+
+    <div class="tabs">
+      @for (tab of tabs; track tab.key) {
+        <button type="button" [class.active]="activeTab === tab.key" (click)="activeTab = tab.key">{{ tab.label }}</button>
       }
-      <div class="trades-section">
-        <div class="section-title">Trades</div>
-        @if (decisionsError) {
-          <div class="error-state">{{ decisionsError }}</div>
+    </div>
+
+    @if (activeTab === 'replay') {
+      <section class="panel">
+        <div class="section-title">Replay And Candles</div>
+        <div class="replay-controls">
+          <button class="btn-ghost" type="button" (click)="togglePlayback()">{{ isPlaying ? 'Pause' : 'Play' }}</button>
+          <button class="btn-ghost" type="button" (click)="stepBack()">Step Back</button>
+          <button class="btn-ghost" type="button" (click)="stepForward()">Step Forward</button>
+          <button class="btn-ghost" type="button" (click)="restartReplay()">Restart</button>
+          <button class="btn-ghost" type="button" (click)="jumpNextTrade()">Next Trade</button>
+          <button class="btn-ghost" type="button" (click)="jumpNextDecision()">Next Decision</button>
+          <button class="btn-ghost" type="button" (click)="startStreamReplay()">{{ streamActive ? 'Streaming...' : 'WS Replay' }}</button>
+          <label class="speed-control">Speed
+            <select class="ctrl" [value]="replaySpeed" (change)="setReplaySpeed($any($event.target).value)">
+              <option value="0.5">0.5x</option>
+              <option value="1">1x</option>
+              <option value="2">2x</option>
+              <option value="4">4x</option>
+              <option value="8">8x</option>
+            </select>
+          </label>
+        </div>
+        @if (endpointErrors['stream']) {
+          <div class="error-card">{{ endpointErrors['stream'] }}</div>
         }
-        @if (decisions) {
-          @if (decisions.trades.length === 0) {
-            <div class="empty-state">No trades taken.</div>
+        @if (endpointErrors['candles']) {
+          <div class="error-card">{{ endpointErrors['candles'] }}</div>
+        }
+        @if (candles.length > 0) {
+          <div class="chart-wrap chart-wrap-price">
+            <app-backtest-chart [candles]="candles" [trades]="chartTrades" [mlDecisions]="chartDecisions" [playbackTime]="playbackTime"></app-backtest-chart>
+          </div>
+        } @else {
+          <div class="empty-state">Candles are not loaded yet.</div>
+        }
+        @if (chartDecisions.length > 0) {
+          <div class="chart-wrap small-chart">
+            <app-highcharts-chart [options]="summaryChartOptions"></app-highcharts-chart>
+          </div>
+        }
+      </section>
+    }
+
+    @if (activeTab === 'performance') {
+      <section class="panel">
+        <div class="section-title">Performance Telemetry</div>
+        @if (endpointErrors['performance']) {
+          <div class="empty-state">{{ endpointErrors['performance'] }}</div>
+        }
+        <div class="chart-grid">
+          @if (equity.length > 0) {
+            <div class="chart-card"><app-highcharts-chart [options]="equityChartOptions"></app-highcharts-chart></div>
+          } @else {
+            <div class="empty-state">Equity and drawdown telemetry is not available.</div>
           }
-          @if (decisions.trades.length > 0) {
-            <table class="trades-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Side</th>
-                  <th>Entry</th>
-                  <th>Exit</th>
-                  <th>Reason</th>
-                  <th>PnL</th>
-                  <th>Entry Time</th>
-                  <th>Exit Time</th>
-                </tr>
-              </thead>
+          @if (learningCurve.length > 0) {
+            <div class="chart-card"><app-highcharts-chart [options]="learningCurveOptions"></app-highcharts-chart></div>
+          }
+          @if (checkpointEvals.length > 0) {
+            <div class="chart-card"><app-highcharts-chart [options]="checkpointOptions"></app-highcharts-chart></div>
+          }
+          @if (folds.length > 0) {
+            <div class="chart-card"><app-highcharts-chart [options]="foldOptions"></app-highcharts-chart></div>
+          }
+          @if (allTrades.length > 0) {
+            <div class="chart-card"><app-highcharts-chart [options]="tradePnlOptions"></app-highcharts-chart></div>
+            <div class="chart-card"><app-highcharts-chart [options]="tradeExitOptions"></app-highcharts-chart></div>
+          }
+          @if (featureQuality.length > 0) {
+            <div class="chart-card"><app-highcharts-chart [options]="featureQualityOptions"></app-highcharts-chart></div>
+          }
+        </div>
+        @if (featureQuality.length > 0) {
+          <div class="table-wrap">
+            <table class="bt-table">
+              <thead><tr><th>Feature</th><th>Spearman R</th><th>Spearman P</th><th>Signal P05</th><th>Missing</th></tr></thead>
               <tbody>
-                @for (t of decisions.trades; track $index; let i = $index) {
+                @for (row of featureQuality; track trackByIndex($index)) {
                   <tr>
-                    <td class="td-id">{{ i + 1 }}</td>
-                    <td>
-                      <span
-                        class="side-badge"
-                        [class.side-buy]="t.side === 'long'"
-                        [class.side-sell]="t.side === 'short'"
-                        >{{ t.side }}</span
-                      >
-                    </td>
-                    <td>{{ t.entry_price | number: '1.2-5' }}</td>
-                    <td>{{ t.exit_price | number: '1.2-5' }}</td>
-                    <td class="td-dim">{{ t.reason }}</td>
-                    <td>
-                      <span [class.positive]="t.pnl >= 0" [class.negative]="t.pnl < 0"
-                        >{{ t.pnl >= 0 ? '+' : '' }}{{ t.pnl | number: '1.2-2' }}</span
-                      >
-                    </td>
-                    <td class="td-dim">{{ formatTs(t.entry_time) }}</td>
-                    <td class="td-dim">{{ formatTs(t.exit_time) }}</td>
+                    <td>{{ row.feature ?? row.name ?? '-' }}</td>
+                    <td>{{ row.spearmanR1Bar ?? '-' }}</td>
+                    <td>{{ row.spearmanP1Bar ?? '-' }}</td>
+                    <td><span [class]="row.signalP05 ? 'badge badge-good' : 'badge badge-muted'">{{ row.signalP05 ? 'Yes' : 'No' }}</span></td>
+                    <td>{{ row.missingPct ?? '-' }}</td>
                   </tr>
                 }
               </tbody>
             </table>
-          }
+          </div>
         }
-      </div>
+      </section>
+    }
+
+    @if (activeTab === 'decisions') {
+      <section class="panel">
+        <div class="section-title">Decisions</div>
+        @if (endpointErrors['decisions']) {
+          <div class="empty-state">{{ endpointErrors['decisions'] }}</div>
+        }
+        @if (chartDecisions.length) {
+          <div class="table-wrap">
+            <table class="bt-table">
+              <thead><tr><th>Candle</th><th>Open Time</th><th>Action</th><th>Confidence</th><th>Probabilities</th><th>Position</th><th>Balance</th></tr></thead>
+              <tbody>
+                @for (decision of chartDecisions; track trackByDecision($index, decision)) {
+                  <tr class="clickable-row" (click)="jumpToDecision(decision)">
+                    <td class="td-id">{{ decision.candle_index }}</td>
+                    <td class="td-dim">{{ formatTs(decision.open_time) }}</td>
+                    <td>{{ decision.action_name }}</td>
+                    <td>{{ decision.confidence | number: '1.2-4' }}</td>
+                    <td class="td-code">{{ decision.probs.join(', ') }}</td>
+                    <td>{{ decision.position }}</td>
+                    <td>{{ decision.balance | number: '1.2-2' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+
+    @if (activeTab === 'trades') {
+      <section class="panel">
+        <div class="section-title">Trades</div>
+        @if (allTrades.length === 0) {
+          <div class="empty-state">No simulated trades are available for this run.</div>
+        } @else {
+          <div class="table-wrap">
+            <table class="bt-table">
+              <thead><tr><th>#</th><th>Split</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th>R</th><th>Bars</th><th>SL ATR</th><th>TP R</th><th>Reason</th></tr></thead>
+              <tbody>
+                @for (trade of allTrades; track trackByIndex($index)) {
+                  <tr>
+                    <td class="td-id">{{ $index + 1 }}</td>
+                    <td class="td-dim">{{ trade.split ?? '-' }}</td>
+                    <td><span [class]="(trade.side === 'long' || trade.direction === 'long') ? 'badge badge-good' : 'badge badge-bad'">{{ tradeSide(trade) }}</span></td>
+                    <td>{{ trade.entry_price | number: '1.2-5' }} <span class="td-dim">{{ formatTs(trade.entry_time) }}</span></td>
+                    <td>{{ trade.exit_price | number: '1.2-5' }} <span class="td-dim">{{ formatTs(trade.exit_time) }}</span></td>
+                    <td><span [class]="pnlClass(trade.pnl)">{{ trade.pnl | number: '1.2-2' }}</span></td>
+                    <td>{{ trade.rMultiple ?? '-' }}</td>
+                    <td>{{ trade.barsInTrade ?? '-' }}</td>
+                    <td>{{ trade.slAtrMult ?? '-' }}</td>
+                    <td>{{ trade.tpRBracket ?? '-' }}</td>
+                    <td class="td-dim">{{ tradeReason(trade) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+
+    @if (activeTab === 'tracking') {
+      <section class="panel">
+        <div class="section-title">MLflow Tracking</div>
+        @if (!trackingAvailable) {
+          <div class="empty-state">{{ trackingSummary?.message || endpointErrors['tracking'] || 'Tracking data is not available yet.' }}</div>
+        }
+        @if (trackingSummary) {
+          <div class="stats-grid">
+            <div class="stat-item"><span class="stat-label">Run Name</span><span class="stat-value stat-value-code">{{ trackingSummary.runName ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">UUID</span><span class="stat-value stat-value-code">{{ trackingSummary.mlflowRunUuid ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">Status</span><span class="stat-value">{{ trackingSummary.status ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">Start</span><span class="stat-value">{{ formatTs(trackingSummary.startTime) }}</span></div>
+            <div class="stat-item"><span class="stat-label">End</span><span class="stat-value">{{ formatTs(trackingSummary.endTime) }}</span></div>
+          </div>
+        }
+        @if (tracking?.artifactUri) {
+          <div class="info-strip">Artifact URI: {{ tracking.artifactUri }}</div>
+        }
+        @if (tracking?.params) {
+          <div class="table-wrap">
+            <table class="bt-table"><thead><tr><th>Param</th><th>Value</th></tr></thead><tbody>
+              @for (entry of tracking.params | keyvalue; track entry.key) {
+                <tr><td>{{ entry.key }}</td><td class="td-code">{{ entry.value }}</td></tr>
+              }
+            </tbody></table>
+          </div>
+        }
+        @if (tracking?.latestMetrics) {
+          <div class="table-wrap">
+            <table class="bt-table"><thead><tr><th>Metric</th><th>Latest</th></tr></thead><tbody>
+              @for (entry of tracking.latestMetrics | keyvalue; track entry.key) {
+                <tr><td>{{ entry.key }}</td><td>{{ entry.value ?? '-' }}</td></tr>
+              }
+            </tbody></table>
+          </div>
+        }
+        @if (tracking?.metricHistory && (metricHistoryOptions.series?.length ?? 0) > 0) {
+          <div class="chart-wrap small-chart"><app-highcharts-chart [options]="metricHistoryOptions"></app-highcharts-chart></div>
+        }
+        @for (section of rewardMetricSections; track section.key) {
+          <div class="reward-section">
+            <div class="section-title">{{ section.title }}</div>
+            <div class="metric-list">
+              @for (metric of section.metrics; track metric.id) {
+                <div class="metric-row"><span>{{ metric.label }}</span><strong>{{ metricValue(metric) }}</strong><small>{{ metric.description }}</small></div>
+              }
+            </div>
+            @if ((section.chartOptions.series?.length ?? 0) > 0) {
+              <div class="chart-wrap small-chart"><app-highcharts-chart [options]="section.chartOptions"></app-highcharts-chart></div>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (activeTab === 'raw') {
+      <section class="panel">
+        <div class="section-title">Raw Data</div>
+        <details open><summary>Training run</summary><pre>{{ run | json }}</pre></details>
+        <details><summary>Performance</summary><pre>{{ performance | json }}</pre></details>
+        <details><summary>Tracking</summary><pre>{{ tracking | json }}</pre></details>
+        <details><summary>Decisions</summary><pre>{{ decisions | json }}</pre></details>
+        <details><summary>Learning curve</summary><pre>{{ learningCurve | json }}</pre></details>
+        <details><summary>Checkpoint evals</summary><pre>{{ checkpointEvals | json }}</pre></details>
+        <details><summary>Folds</summary><pre>{{ folds | json }}</pre></details>
+        <details><summary>Metrics</summary><pre>{{ metrics | json }}</pre></details>
+        <details><summary>Equity points</summary><pre>{{ equity | json }}</pre></details>
+        <details><summary>Trades</summary><pre>{{ allTrades | json }}</pre></details>
+        <details><summary>Feature quality</summary><pre>{{ featureQuality | json }}</pre></details>
+        <details><summary>Chart artifacts</summary><pre>{{ chartArtifacts | json }}</pre></details>
+        <details><summary>Endpoint errors</summary><pre>{{ endpointErrors | json }}</pre></details>
+      </section>
     }
   }
 

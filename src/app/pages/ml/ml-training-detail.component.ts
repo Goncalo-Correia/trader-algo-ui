@@ -1,29 +1,62 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { DecimalPipe, JsonPipe, KeyValuePipe, LowerCasePipe } from '@angular/common';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, switchMap, takeUntil, timer } from 'rxjs';
+import { Subject, Subscription, switchMap, takeUntil, timer } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
+import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
+import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { CandleWithIndicators } from '../../structures/candle';
 import {
+  MlChartArtifact,
+  MlCheckpointEval,
+  MlDecision,
   MlDecisionLog,
+  MlEquityPoint,
+  MlFeatureQualityRow,
+  MlFoldMetric,
+  MlLearningCurvePoint,
+  MlMetricRow,
+  MlPaginatedResponse,
+  MlRunPerformance,
+  MlServedModel,
+  MlStreamDecision,
+  MlTrainingRun,
+  MlTrainingTrade,
   MlflowMetricPoint,
   MlflowRewardMetric,
   MlflowTrackingResponse,
   MlflowTrackingSummary,
-  MlTrainingRun,
 } from '../../structures/ml-training';
 import { Trade } from '../../structures/trade';
-import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
-import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
-import { LowerCasePipe, DecimalPipe } from '@angular/common';
 
-function darkThemeBase(): Highcharts.Options {
+type DetailTab = 'replay' | 'performance' | 'decisions' | 'trades' | 'tracking' | 'raw';
+
+interface RewardMetricView {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  latestValue: number | null;
+  history: MlflowMetricPoint[];
+}
+
+interface RewardMetricSection {
+  key: string;
+  title: string;
+  metrics: RewardMetricView[];
+  chartOptions: Highcharts.Options;
+}
+
+function chartBase(): Highcharts.Options {
   return {
     chart: { backgroundColor: '#141414', animation: false, style: { fontFamily: 'inherit' } },
     title: { text: '' },
     credits: { enabled: false },
-    legend: { enabled: false },
+    legend: { enabled: true, itemStyle: { color: '#d1d4dc', fontSize: '11px' }, itemHoverStyle: { color: '#fff' } },
     xAxis: {
       type: 'datetime',
       gridLineColor: '#1e2130',
@@ -34,28 +67,11 @@ function darkThemeBase(): Highcharts.Options {
     yAxis: {
       gridLineColor: '#1e2130',
       lineColor: '#2a2d3a',
-      labels: { style: { color: '#787b86', fontSize: '11px' }, align: 'left', x: 4 },
+      labels: { style: { color: '#787b86', fontSize: '11px' } },
       title: { text: '' },
     },
-    tooltip: { backgroundColor: '#1e2130', borderColor: '#2a2d3a', style: { color: '#d1d4dc', fontSize: '12px' } },
+    tooltip: { shared: true, backgroundColor: '#1e2130', borderColor: '#2a2d3a', style: { color: '#d1d4dc', fontSize: '12px' } },
   };
-}
-
-interface PerformanceMetricView {
-  id: string;
-  key: string;
-  label: string;
-  description: string;
-  latestValue: number | null;
-  history: MlflowMetricPoint[];
-}
-
-interface PerformanceMetricSection {
-  key: string;
-  title: string;
-  metrics: PerformanceMetricView[];
-  hasChart: boolean;
-  chartOptions: Highcharts.Options;
 }
 
 @Component({
@@ -63,9 +79,9 @@ interface PerformanceMetricSection {
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
   styleUrls: ['./ml-training-detail.component.css'],
-  imports: [RouterLink, HighchartsChartComponent, BacktestChartComponent, LowerCasePipe, DecimalPipe],
+  imports: [RouterLink, BacktestChartComponent, HighchartsChartComponent, LowerCasePipe, DecimalPipe, JsonPipe, KeyValuePipe],
 })
-export class MlTrainingDetailComponent implements OnInit {
+export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(TraderAlgoApiService);
@@ -73,32 +89,64 @@ export class MlTrainingDetailComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   run: MlTrainingRun | null = null;
-  decisions: MlDecisionLog | null = null;
-  isLoading = true;
-  deleting = false;
-  decisionsError: string | null = null;
-  candlesError: string | null = null;
-  trackingError: string | null = null;
-  candlesReady = false;
+  performance: MlRunPerformance | null = null;
   tracking: MlflowTrackingResponse | null = null;
+  decisions: MlDecisionLog | null = null;
+  learningCurve: MlLearningCurvePoint[] = [];
+  checkpointEvals: MlCheckpointEval[] = [];
+  folds: MlFoldMetric[] = [];
+  metrics: MlMetricRow[] | Record<string, unknown> | null = null;
+  equity: MlEquityPoint[] = [];
+  telemetryTrades: MlTrainingTrade[] = [];
+  featureQuality: MlFeatureQualityRow[] = [];
+  chartArtifacts: MlChartArtifact[] = [];
+  servedModels: MlServedModel[] = [];
 
-  // Price chart (lightweight-charts) inputs.
   candles: CandleWithIndicators[] = [];
   chartTrades: Trade[] = [];
 
-  balanceChartOptions: Highcharts.Options = {};
-  metricHistoryChartOptions: Highcharts.Options = {};
-  rewardMetricSections: PerformanceMetricSection[] = [];
+  isLoading = true;
+  deleting = false;
+  lastRefresh: Date | null = null;
+  activeTab: DetailTab = 'replay';
+  endpointErrors: Record<string, string | null> = {};
+
+  playbackTime: number | null = null;
+  replayIndex = 0;
+  replaySpeed = 1;
+  isPlaying = false;
+  streamActive = false;
+
+  summaryChartOptions: Highcharts.Options = {};
+  equityChartOptions: Highcharts.Options = {};
+  learningCurveOptions: Highcharts.Options = {};
+  checkpointOptions: Highcharts.Options = {};
+  foldOptions: Highcharts.Options = {};
+  tradePnlOptions: Highcharts.Options = {};
+  tradeExitOptions: Highcharts.Options = {};
+  featureQualityOptions: Highcharts.Options = {};
+  metricHistoryOptions: Highcharts.Options = {};
+  rewardMetricSections: RewardMetricSection[] = [];
+
+  readonly tabs: { key: DetailTab; label: string }[] = [
+    { key: 'replay', label: 'Replay' },
+    { key: 'performance', label: 'Performance' },
+    { key: 'decisions', label: 'Decisions' },
+    { key: 'trades', label: 'Trades' },
+    { key: 'tracking', label: 'Tracking' },
+    { key: 'raw', label: 'Raw Data' },
+  ];
+
+  readonly trackByIndex = (index: number): number => index;
+  readonly trackByDecision = (_: number, decision: MlDecision): number => decision.candle_index;
 
   private runId!: number;
-  // Stops the polling timer once the run settles (Completed/Failed) or errors.
   private readonly stopPolling$ = new Subject<void>();
+  private playbackTimer: number | null = null;
+  private streamSubscription?: Subscription;
 
   ngOnInit(): void {
     this.runId = Number(this.route.snapshot.paramMap.get('id'));
-    // Poll while the run is in flight; `switchMap` cancels any request still in
-    // flight when the next tick fires (no overlap), and `takeUntil(stopPolling$)`
-    // plus `takeUntilDestroyed` guarantee the loop tears down on settle/navigation.
     timer(0, 5000)
       .pipe(
         switchMap(() => this.api.getTrainingRun(this.runId)),
@@ -109,16 +157,9 @@ export class MlTrainingDetailComponent implements OnInit {
         next: run => {
           this.run = run;
           this.isLoading = false;
-          if (run.status === 'Completed') {
-            this.stopPolling();
-            this.loadTracking(run.id);
-            this.loadVisualization(run);
-          } else if (run.status === 'Failed') {
-            this.stopPolling();
-            this.loadTracking(run.id);
-          } else {
-            this.loadTracking(run.id, false);
-          }
+          this.lastRefresh = new Date();
+          this.loadTelemetry(run);
+          if (run.status === 'Completed' || run.status === 'Failed') this.stopPolling();
           this.cdr.markForCheck();
         },
         error: () => {
@@ -129,12 +170,28 @@ export class MlTrainingDetailComponent implements OnInit {
       });
   }
 
+  ngOnDestroy(): void {
+    this.stopPlayback();
+    this.streamSubscription?.unsubscribe();
+  }
+
   get isInFlight(): boolean {
     return this.run?.status === 'Pending' || this.run?.status === 'Running';
   }
 
-  get pnlPositive(): boolean {
-    return (this.performancePnlPct ?? 0) >= 0;
+  get servedModel(): MlServedModel | null {
+    if (!this.run) return null;
+    return this.servedModels.find(model => model.served !== false && (model.servedTrainingRunId ?? model.trainingRunId) === this.run?.id) ?? null;
+  }
+
+  get policyServedRunId(): number | null {
+    if (!this.run) return null;
+    const model = this.servedModels.find(row => row.served !== false && (row.mlPolicyId ?? row.policyId) === this.run?.mlPolicyId);
+    return model?.servedTrainingRunId ?? model?.trainingRunId ?? null;
+  }
+
+  get isServed(): boolean {
+    return this.servedModel !== null;
   }
 
   get trackingSummary(): MlflowTrackingResponse | MlflowTrackingSummary | null {
@@ -145,312 +202,488 @@ export class MlTrainingDetailComponent implements OnInit {
     return this.trackingSummary?.trackingAvailable ?? false;
   }
 
-  get performanceFinalBalance(): number | null {
-    return (
-      this.tracking?.latestMetrics['final_balance'] ??
-      this.run?.tracking?.finalBalance ??
-      this.run?.finalBalance ??
-      null
-    );
-  }
-
-  get performancePnlPct(): number | null {
-    return this.tracking?.latestMetrics['pnl_pct'] ?? this.run?.tracking?.pnlPct ?? this.run?.pnlPct ?? null;
-  }
-
-  get performanceTrades(): number | null {
-    return (
-      this.toIntegerMetric(this.tracking?.latestMetrics['n_trades']) ??
-      this.run?.tracking?.nTrades ??
-      this.run?.nTrades ??
-      null
-    );
-  }
-
-  get trackingParams(): Record<string, string> {
-    return this.tracking?.params ?? this.trackingSummary?.params ?? {};
-  }
-
   get mlflowRunUuid(): string | null {
     return this.trackingSummary?.mlflowRunUuid ?? this.run?.runId ?? null;
   }
 
-  get artifactUri(): string | null {
-    return this.tracking?.artifactUri ?? null;
+  get oosPnlPct(): number | null {
+    return this.run?.oosPnlPct ?? this.metric('oos_pnl_pct', 'oosPnlPct', 'oos_return_pct');
   }
 
-  get metricHistoryAvailable(): boolean {
-    return Object.values(this.tracking?.metricHistory ?? {}).some(points => points.length > 1);
+  get oosFinalBalance(): number | null {
+    return this.run?.oosFinalBalance ?? this.metric('oos_final_balance', 'oosFinalBalance');
   }
 
-  get hasRewardMetrics(): boolean {
-    return this.rewardMetricSections.length > 0;
+  get inSamplePnlPct(): number | null {
+    return this.run?.inSamplePnlPct ?? this.run?.pnlPct ?? this.metric('in_sample_pnl_pct', 'train_pnl_pct');
   }
 
-  get continuedFromRun(): string | null {
-    return this.paramValue('continued_from_training_run_id', 'continuedFromTrainingRunId', 'continued_from_run_id');
+  get inSampleFinalBalance(): number | null {
+    return this.run?.inSampleFinalBalance ?? this.run?.finalBalance ?? this.metric('in_sample_final_balance', 'train_final_balance');
   }
 
-  get trackedTotalTimesteps(): string | number | null {
-    return this.paramValue('total_timesteps', 'totalTimesteps') ?? this.run?.totalTimesteps ?? null;
+  get oosSharpe(): number | null {
+    return this.run?.oosSharpe ?? this.metric('oos_sharpe', 'oosSharpe');
+  }
+
+  get oosProfitFactor(): number | null {
+    return this.run?.oosProfitFactor ?? this.metric('oos_profit_factor', 'oosProfitFactor');
+  }
+
+  get oosMaxDrawdownPct(): number | null {
+    return this.run?.oosMaxDrawdownPct ?? this.metric('oos_max_drawdown_pct', 'oosMaxDrawdownPct');
+  }
+
+  get tradeCount(): number | null {
+    return this.run?.oosTradeCount ?? this.run?.tradeCount ?? this.run?.tracking?.nTrades ?? this.run?.nTrades ?? this.decisions?.n_trades ?? null;
+  }
+
+  get foldCount(): number {
+    return this.folds.length;
+  }
+
+  get promotionGatePassed(): boolean | null {
+    return this.performance?.promotionGatePassed ?? this.performance?.gatePassed ?? null;
+  }
+
+  get allTrades(): MlTrainingTrade[] {
+    return this.telemetryTrades.length ? this.telemetryTrades : this.decisions?.trades ?? [];
+  }
+
+  get chartDecisions(): MlDecision[] {
+    return this.decisions?.decisions ?? [];
+  }
+
+  loadTelemetry(run: MlTrainingRun): void {
+    this.loadServedModels();
+    this.loadOptional('performance', this.api.getTrainingPerformance(run.id), value => {
+      this.performance = value;
+      this.buildSummaryChart();
+    });
+    this.loadOptional('tracking', this.api.getTrainingTracking(run.id), value => {
+      this.tracking = value;
+      this.buildTrackingCharts();
+    });
+    this.loadOptional('decisions', this.api.getTrainingDecisions(run.id), value => {
+      this.decisions = value;
+      this.chartTrades = this.toChartTrades(value.trades, value.symbol, value.interval);
+      this.buildSummaryChart();
+      this.buildTradeCharts();
+    });
+    this.loadOptional('learningCurve', this.api.getTrainingLearningCurve(run.id), value => {
+      this.learningCurve = value;
+      this.buildLearningCurveChart();
+    });
+    this.loadOptional('checkpointEvals', this.api.getTrainingCheckpointEvals(run.id), value => {
+      this.checkpointEvals = value;
+      this.buildCheckpointChart();
+    });
+    this.loadOptional('folds', this.api.getTrainingFolds(run.id), value => {
+      this.folds = value;
+      this.buildFoldChart();
+    });
+    this.loadOptional('metrics', this.api.getTrainingMetrics(run.id), value => {
+      this.metrics = value;
+    });
+    this.loadOptional('equity', this.api.getTrainingEquity(run.id, { split: 'oos', stitched: true, limit: 5000, offset: 0 }), value => {
+      this.equity = this.pageItems(value);
+      this.buildEquityChart();
+    });
+    this.loadOptional('trades', this.api.getTrainingTrades(run.id, { limit: 5000, offset: 0 }), value => {
+      this.telemetryTrades = this.pageItems(value);
+      this.buildTradeCharts();
+    });
+    this.loadOptional('featureQuality', this.api.getTrainingFeatureQuality(run.id), value => {
+      this.featureQuality = value;
+      this.buildFeatureQualityChart();
+    });
+    this.loadOptional('charts', this.api.getTrainingCharts(run.id), value => {
+      this.chartArtifacts = value;
+    });
+    if (run.status === 'Completed' || run.status === 'Failed') this.loadCandles(run);
+  }
+
+  refresh(): void {
+    if (!this.run) return;
+    this.loadTelemetry(this.run);
   }
 
   deleteRun(): void {
-    if (this.deleting || !this.run || !confirm('Delete this training run and its decision log?')) return;
-    const policyId = this.run.mlPolicyId;
+    if (this.deleting || !this.run || !confirm('Delete this training run?')) return;
     this.deleting = true;
-    this.api
-      .deleteTraining(this.runId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => this.router.navigate(['/ml/policies', policyId]),
-        error: () => {
-          this.deleting = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  statusClass(status: string): string {
-    switch (status) {
-      case 'Completed':
-        return 'status-completed';
-      case 'Running':
-        return 'status-running';
-      case 'Pending':
-        return 'status-pending';
-      case 'Failed':
-        return 'status-failed';
-      default:
-        return '';
-    }
-  }
-
-  formatDate(unixSeconds: number): string {
-    return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
+    this.api.deleteTraining(this.runId).subscribe({
+      next: () => this.router.navigate(['/ml/training-runs']),
+      error: () => {
+        this.deleting = false;
+        this.cdr.markForCheck();
+      },
     });
   }
 
-  formatTs(ms: number | null): string {
-    if (ms === null) return '—';
-    const d = new Date(ms > 9_999_999_999 ? ms : ms * 1000);
-    return (
-      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
-      ' ' +
-      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
-    );
+  startStreamReplay(): void {
+    this.streamSubscription?.unsubscribe();
+    this.candles = [];
+    this.streamActive = true;
+    this.streamSubscription = this.api.streamMlTraining(this.runId, false).subscribe({
+      next: event => {
+        if (event.type === 'candle') this.candles = [...this.candles, event.data];
+        if (event.type === 'mlDecision') this.appendStreamDecision(event.data);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.streamActive = false;
+        this.endpointErrors['stream'] = 'Training replay stream is not available.';
+        this.cdr.markForCheck();
+      },
+      complete: () => {
+        this.streamActive = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
-  formatIso(value: string | null | undefined): string {
-    if (!value) return '—';
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return '—';
-    return (
-      d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) +
-      ' ' +
-      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
-    );
-  }
-
-  formatMetricValue(metric: PerformanceMetricView): string {
-    if (metric.latestValue === null || metric.latestValue === undefined) return '-';
-    const key = metric.key.toLowerCase();
-    const label = metric.label.toLowerCase();
-    const value = metric.latestValue;
-
-    if (key.includes('rate') || key.includes('pct') || label.includes('%') || label.includes('rate')) {
-      const pctValue = Math.abs(value) <= 1 ? value * 100 : value;
-      return `${pctValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+  togglePlayback(): void {
+    if (this.isPlaying) {
+      this.stopPlayback();
+    } else {
+      this.isPlaying = true;
+      this.playbackTimer = window.setInterval(() => this.stepForward(), Math.max(80, 700 / this.replaySpeed));
     }
+  }
 
+  restartReplay(): void {
+    this.replayIndex = 0;
+    this.playbackTime = this.candles[0]?.time ?? null;
+    this.cdr.markForCheck();
+  }
+
+  stepForward(): void {
+    if (this.candles.length === 0) return;
+    this.replayIndex = Math.min(this.candles.length - 1, this.replayIndex + 1);
+    this.playbackTime = this.candles[this.replayIndex]?.time ?? null;
+    if (this.replayIndex >= this.candles.length - 1) this.stopPlayback();
+    this.cdr.markForCheck();
+  }
+
+  stepBack(): void {
+    if (this.candles.length === 0) return;
+    this.replayIndex = Math.max(0, this.replayIndex - 1);
+    this.playbackTime = this.candles[this.replayIndex]?.time ?? null;
+  }
+
+  jumpNextTrade(): void {
+    const current = this.playbackTime ?? 0;
+    const next = this.allTrades
+      .map(trade => trade.entry_time)
+      .filter((time): time is number => time !== null && time !== undefined && time > current)
+      .sort((a, b) => a - b)[0];
+    if (next !== undefined) this.jumpToTime(next);
+  }
+
+  jumpNextDecision(): void {
+    const current = this.playbackTime ?? 0;
+    const next = (this.decisions?.decisions ?? [])
+      .filter(decision => decision.open_time !== null && decision.open_time > current && !decision.action_name.toLowerCase().includes('hold'))
+      .map(decision => decision.open_time as number)
+      .sort((a, b) => a - b)[0];
+    if (next !== undefined) this.jumpToTime(next);
+  }
+
+  jumpToDecision(decision: MlDecision): void {
+    if (decision.open_time !== null) this.jumpToTime(decision.open_time);
+  }
+
+  setReplaySpeed(value: string): void {
+    this.replaySpeed = Number(value);
+    if (this.isPlaying) {
+      this.stopPlayback();
+      this.togglePlayback();
+    }
+  }
+
+  statusClass(status: string): string {
+    return `status-${status.toLowerCase()}`;
+  }
+
+  pnlClass(value: number | null): string {
+    if (value === null) return 'td-dim';
+    return value >= 0 ? 'positive' : 'negative';
+  }
+
+  formatDate(unixSeconds: number): string {
+    return new Date(unixSeconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+  }
+
+  formatTs(value: number | string | null | undefined): string {
+    if (value === null || value === undefined) return '-';
+    const raw = typeof value === 'string' ? new Date(value).getTime() : value > 9_999_999_999 ? value : value * 1000;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return '-';
+    return `${d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+  }
+
+  formatDuration(run: MlTrainingRun): string {
+    if (run.completedAt === null) return '-';
+    const seconds = Math.max(0, run.completedAt - run.startedAt);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+  }
+
+  formatMetricValue(value: number | null | undefined, suffix = ''): string {
+    if (value === null || value === undefined) return 'Unavailable';
+    return `${value.toLocaleString(undefined, { maximumFractionDigits: 3 })}${suffix}`;
+  }
+
+  metricValue(metric: RewardMetricView): string {
+    if (metric.latestValue === null || metric.latestValue === undefined) return '-';
+    const value = metric.key.toLowerCase().includes('pct') ? metric.latestValue : metric.latestValue;
     return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+
+  tradeSide(trade: MlTrainingTrade): string {
+    return trade.side || trade.direction || '-';
+  }
+
+  tradeReason(trade: MlTrainingTrade): string {
+    return trade.exitReason || trade.reason || '-';
+  }
+
+  private loadServedModels(): void {
+    this.api
+      .getServedModels()
+      .pipe(catchError(() => of([] as MlServedModel[])), takeUntilDestroyed(this.destroyRef))
+      .subscribe(models => {
+        this.servedModels = models;
+        this.cdr.markForCheck();
+      });
+  }
+
+  private loadOptional<T>(key: string, source: import('rxjs').Observable<T>, apply: (value: T) => void): void {
+    this.endpointErrors[key] = null;
+    source.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: value => {
+        apply(value);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.endpointErrors[key] = this.emptyMessage(key);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadCandles(run: MlTrainingRun): void {
+    this.api
+      .getCandlesWithIndicatorsByDateInterval({
+        symbol: run.symbolCode,
+        interval: run.intervalCode,
+        from: new Date(run.from * 1000).toISOString(),
+        to: new Date(run.to * 1000).toISOString(),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: candles => {
+          this.candles = candles;
+          this.restartReplay();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.endpointErrors['candles'] = 'Candles with indicators are not available for this run.';
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   private stopPolling(): void {
     this.stopPolling$.next();
   }
 
-  private loadVisualization(run: MlTrainingRun): void {
-    const range = {
-      symbol: run.symbolCode,
-      interval: run.intervalCode,
-      from: new Date(run.from * 1000).toISOString(),
-      to: new Date(run.to * 1000).toISOString(),
-    };
-    // The price chart renders from the candles alone; the decision log only
-    // adds trade markers and the trades table, so the two load independently.
-    // The lightweight-charts component reacts to its [candles]/[trades] inputs,
-    // so order doesn't matter.
-    this.api
-      .getCandlesWithIndicatorsByDateInterval(range)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: candles => {
-          this.candles = candles;
-          this.candlesReady = true;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.candlesError = 'Could not load candles for this run.';
-          this.cdr.markForCheck();
-        },
-      });
-
-    this.api
-      .getTrainingDecisions(run.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: log => {
-          this.decisions = log;
-          this.chartTrades = this.toChartTrades(log);
-          this.buildBalanceChart(log);
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.decisionsError = 'Decision log is not available for this run.';
-          this.cdr.markForCheck();
-        },
-      });
+  private stopPlayback(): void {
+    this.isPlaying = false;
+    if (this.playbackTimer !== null) {
+      window.clearInterval(this.playbackTimer);
+      this.playbackTimer = null;
+    }
   }
 
-  private loadTracking(runId: number, showError = true): void {
-    if (showError) this.trackingError = null;
-    this.api
-      .getTrainingTracking(runId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: tracking => {
-          this.tracking = tracking;
-          this.rewardMetricSections = this.buildRewardMetricSections(tracking);
-          this.buildMetricHistoryChart(tracking);
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          if (showError) {
-            this.trackingError = 'Tracking data is not available for this run.';
-            this.cdr.markForCheck();
-          }
-        },
-      });
+  private jumpToTime(time: number): void {
+    this.playbackTime = time;
+    const index = this.candles.findIndex(candle => this.toSeconds(candle.time) >= time);
+    if (index >= 0) this.replayIndex = index;
+    this.cdr.markForCheck();
   }
 
-  /**
-   * Maps the decision log's trades onto the `Trade` shape the shared
-   * lightweight-charts component renders as entry/exit markers. ML trades are
-   * always historical, so status is `Closed` (no live bracket lines are drawn).
-   */
-  private toChartTrades(log: MlDecisionLog): Trade[] {
-    return log.trades.map((t, i) => ({
-      id: i + 1,
-      symbolCode: log.symbol,
-      intervalCode: log.interval,
-      side: t.side === 'long' ? 'Buy' : 'Sell',
-      orderType: 'Market',
-      quantity: 1,
-      requestedPrice: null,
-      entryPrice: Number(t.entry_price),
-      stopLoss: null,
-      takeProfit: null,
-      status: 'Closed',
-      createdAt: t.entry_time ?? 0,
-      openedAt: t.entry_time,
-      closedAt: t.exit_time,
-      closedPrice: Number(t.exit_price),
-      closeReason: null,
-      fee: null,
-      pnl: Number(t.pnl),
-      accountPnl: null,
-      unrealizedPnl: null,
-      tradingAccountId: null,
-      backtestId: null,
-    }));
+  private metric(...keys: string[]): number | null {
+    const latest = this.tracking?.latestMetrics ?? {};
+    const perfMetrics = this.performance?.metrics ?? {};
+    for (const key of keys) {
+      const latestValue = latest[key];
+      if (typeof latestValue === 'number') return latestValue;
+      const perfValue = perfMetrics[key];
+      if (typeof perfValue === 'number') return perfValue;
+    }
+    return null;
   }
 
-  private buildBalanceChart(log: MlDecisionLog): void {
-    this.balanceChartOptions = {
-      ...darkThemeBase(),
+  private buildSummaryChart(): void {
+    const decisions = this.decisions?.decisions ?? [];
+    this.summaryChartOptions = {
+      ...chartBase(),
       series: [
         {
-          type: 'area',
+          type: 'line',
           name: 'Balance',
-          data: log.decisions.filter(d => d.open_time !== null).map(d => [d.open_time! * 1000, Number(d.balance)]),
-          color: '#2962ff',
-          fillColor: {
-            linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-            stops: [
-              [0, 'rgba(41,98,255,0.25)'],
-              [1, 'rgba(41,98,255,0)'],
-            ],
-          },
-          lineWidth: 2,
+          data: decisions.filter(d => d.open_time !== null).map(d => [d.open_time! * 1000, d.balance]),
+          color: '#5b9bd5',
           marker: { enabled: false },
-        } as Highcharts.SeriesAreaOptions,
+        },
+        {
+          type: 'line',
+          name: 'Position',
+          data: decisions.filter(d => d.open_time !== null).map(d => [d.open_time! * 1000, d.position]),
+          color: '#f59e0b',
+          marker: { enabled: false },
+        },
       ],
     };
   }
 
-  private buildMetricHistoryChart(tracking: MlflowTrackingResponse): void {
-    const preferred = ['pnl_pct', 'final_balance', 'n_trades'];
-    const metricHistory = tracking.metricHistory ?? {};
-    const keys = [
-      ...preferred.filter(key => (metricHistory[key]?.length ?? 0) > 1),
-      ...Object.keys(metricHistory).filter(key => !preferred.includes(key) && metricHistory[key].length > 1),
-    ];
-
-    this.metricHistoryChartOptions = {
-      ...darkThemeBase(),
-      xAxis: {
-        type: 'linear',
-        gridLineColor: '#1e2130',
-        lineColor: '#2a2d3a',
-        tickColor: '#2a2d3a',
-        labels: { style: { color: '#787b86', fontSize: '11px' } },
-        title: { text: 'Step', style: { color: '#787b86' } },
-      },
-      series: keys.map(
-        (key, index) =>
-          ({
-            type: 'line',
-            name: key,
-            data: metricHistory[key]
-              .filter(point => point.value !== null)
-              .map(point => [point.step, point.value as number]),
-            color: ['#2962ff', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350'][index % 5],
-            lineWidth: 2,
-            marker: { enabled: false },
-          }) as Highcharts.SeriesLineOptions,
-      ),
+  private buildEquityChart(): void {
+    const equityData = this.equity.map(point => [this.pointTime(point), point.equity ?? point.balance ?? null]);
+    const drawdownData = this.equity.map(point => [this.pointTime(point), point.drawdownPct ?? point.drawdown ?? null]);
+    this.equityChartOptions = {
+      ...chartBase(),
+      yAxis: [
+        { title: { text: '' }, labels: { style: { color: '#787b86' } }, gridLineColor: '#1e2130' },
+        { title: { text: '' }, labels: { style: { color: '#787b86' } }, opposite: true, gridLineColor: 'transparent' },
+      ],
+      series: [
+        { type: 'line', name: 'Equity', data: equityData, color: '#26a69a', marker: { enabled: false } },
+        { type: 'area', name: 'Drawdown', data: drawdownData, color: '#ef5350', yAxis: 1, marker: { enabled: false } },
+      ],
     };
   }
 
-  private buildRewardMetricSections(tracking: MlflowTrackingResponse): PerformanceMetricSection[] {
-    const groups = tracking.rewardMetrics ?? {};
+  private buildLearningCurveChart(): void {
+    this.learningCurveOptions = {
+      ...chartBase(),
+      xAxis: { ...chartBase().xAxis, type: 'linear' },
+      series: [
+        {
+          type: 'line',
+          name: 'Mean Reward',
+          data: this.learningCurve.map(point => [point.step ?? point.timestep ?? 0, point.meanEpisodeReward ?? point.rewardMean ?? null]),
+          color: '#5b9bd5',
+          marker: { enabled: false },
+        },
+        {
+          type: 'line',
+          name: 'Mean Length',
+          data: this.learningCurve.map(point => [point.step ?? point.timestep ?? 0, point.meanEpisodeLength ?? point.episodeLengthMean ?? null]),
+          color: '#f59e0b',
+          marker: { enabled: false },
+        },
+      ],
+    };
+  }
+
+  private buildCheckpointChart(): void {
+    this.checkpointOptions = {
+      ...chartBase(),
+      xAxis: { ...chartBase().xAxis, type: 'linear' },
+      series: [
+        { type: 'line', name: 'Train Reward', data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.trainReward ?? null]), color: '#5b9bd5', marker: { enabled: false } },
+        { type: 'line', name: 'Validation Reward', data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.validationReward ?? null]), color: '#26a69a', marker: { enabled: false } },
+        { type: 'line', name: 'Score', data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.score ?? null]), color: '#f59e0b', marker: { enabled: true } },
+      ],
+    };
+  }
+
+  private buildFoldChart(): void {
+    this.foldOptions = {
+      ...chartBase(),
+      xAxis: { categories: this.folds.map((fold, index) => String(fold.fold ?? index + 1)), labels: { style: { color: '#787b86' } } },
+      series: [
+        { type: 'column', name: 'Return %', data: this.folds.map(f => f.returnPct ?? null), color: '#26a69a' },
+        { type: 'column', name: 'Sharpe', data: this.folds.map(f => f.sharpe ?? null), color: '#5b9bd5' },
+        { type: 'column', name: 'Profit Factor', data: this.folds.map(f => f.profitFactor ?? null), color: '#f59e0b' },
+        { type: 'column', name: 'Max DD %', data: this.folds.map(f => f.maxDrawdownPct ?? null), color: '#ef5350' },
+      ],
+    };
+  }
+
+  private buildTradeCharts(): void {
+    const trades = this.allTrades;
+    this.tradePnlOptions = {
+      ...chartBase(),
+      xAxis: { categories: trades.map((_, index) => String(index + 1)), labels: { style: { color: '#787b86' } } },
+      series: [{ type: 'column', name: 'PnL', data: trades.map(trade => trade.pnl ?? null), color: '#5b9bd5' }],
+    };
+    const reasonCounts = new Map<string, number>();
+    for (const trade of trades) {
+      const reason = trade.exitReason ?? trade.reason ?? 'Unknown';
+      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+    }
+    this.tradeExitOptions = {
+      ...chartBase(),
+      series: [{ type: 'pie', name: 'Exit Reason', data: [...reasonCounts.entries()].map(([name, y]) => ({ name, y })) }],
+    };
+  }
+
+  private buildFeatureQualityChart(): void {
+    this.featureQualityOptions = {
+      ...chartBase(),
+      xAxis: { title: { text: 'Spearman R 1 Bar', style: { color: '#787b86' } }, labels: { style: { color: '#787b86' } } },
+      yAxis: { title: { text: 'Spearman P 1 Bar', style: { color: '#787b86' } }, labels: { style: { color: '#787b86' } }, gridLineColor: '#1e2130' },
+      series: [
+        {
+          type: 'scatter',
+          name: 'Features',
+          data: this.featureQuality.map(row => ({
+            x: row.spearmanR1Bar ?? null,
+            y: row.spearmanP1Bar ?? null,
+            name: row.feature ?? row.name ?? 'feature',
+            color: row.signalP05 ? '#26a69a' : '#787b86',
+          })),
+        } as Highcharts.SeriesScatterOptions,
+      ],
+    };
+  }
+
+  private buildTrackingCharts(): void {
+    const history = this.tracking?.metricHistory ?? {};
+    const keys = Object.keys(history).filter(key => history[key].length > 1);
+    this.metricHistoryOptions = {
+      ...chartBase(),
+      xAxis: { ...chartBase().xAxis, type: 'linear' },
+      series: keys.slice(0, 12).map((key, index) => ({
+        type: 'line',
+        name: key,
+        data: history[key].filter(point => point.value !== null).map(point => [point.step, point.value as number]),
+        color: ['#5b9bd5', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350'][index % 5],
+        marker: { enabled: false },
+      })),
+    };
+    this.rewardMetricSections = this.buildRewardMetricSections();
+  }
+
+  private buildRewardMetricSections(): RewardMetricSection[] {
+    const groups = this.tracking?.rewardMetrics ?? {};
     return Object.entries(groups)
       .map(([groupKey, metrics]) => {
-        const metricViews = Object.entries(metrics ?? {})
-          .map(([metricKey, metric]) => this.toMetricView(groupKey, metricKey, metric))
-          .filter((metric): metric is PerformanceMetricView => metric !== null);
-
+        const metricViews = Object.entries(metrics ?? {}).map(([metricKey, metric]) => this.toMetricView(groupKey, metricKey, metric));
         return {
           key: groupKey,
           title: this.toTitle(groupKey),
           metrics: metricViews,
-          hasChart: metricViews.some(metric => metric.history.length > 1),
-          chartOptions: this.buildRewardMetricChart(metricViews),
+          chartOptions: this.rewardChart(metricViews),
         };
       })
       .filter(section => section.metrics.length > 0);
   }
 
-  private toMetricView(
-    groupKey: string,
-    metricKey: string,
-    metric: MlflowRewardMetric | null | undefined,
-  ): PerformanceMetricView | null {
-    if (!metric) return null;
+  private toMetricView(groupKey: string, metricKey: string, metric: MlflowRewardMetric): RewardMetricView {
     const key = metric.key || metricKey;
     return {
       id: `${groupKey}-${metricKey}`,
@@ -462,56 +695,122 @@ export class MlTrainingDetailComponent implements OnInit {
     };
   }
 
-  private buildRewardMetricChart(metrics: PerformanceMetricView[]): Highcharts.Options {
-    const chartableMetrics = metrics.filter(metric => metric.history.length > 1);
-    const palette = ['#2962ff', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350', '#00acc1', '#ff7043', '#66bb6a'];
-    const base = darkThemeBase();
-
+  private rewardChart(metrics: RewardMetricView[]): Highcharts.Options {
     return {
-      ...base,
-      legend: {
-        enabled: true,
-        itemStyle: { color: '#d1d4dc', fontSize: '11px' },
-        itemHoverStyle: { color: '#fff' },
-      },
-      xAxis: {
-        type: 'linear',
-        gridLineColor: '#1e2130',
-        lineColor: '#2a2d3a',
-        tickColor: '#2a2d3a',
-        labels: { style: { color: '#787b86', fontSize: '11px' } },
-        title: { text: 'Step', style: { color: '#787b86' } },
-      },
-      tooltip: {
-        ...base.tooltip,
-        shared: true,
-      },
-      series: chartableMetrics.map(
-        (metric, index) =>
-          ({
-            type: 'line',
-            name: metric.label,
-            data: metric.history
-              .filter(point => point.value !== null && Number.isFinite(point.value))
-              .map(point => [point.step, point.value as number]),
-            color: palette[index % palette.length],
-            lineWidth: 2,
-            marker: { enabled: false },
-          }) as Highcharts.SeriesLineOptions,
-      ),
+      ...chartBase(),
+      xAxis: { ...chartBase().xAxis, type: 'linear' },
+      series: metrics
+        .filter(metric => metric.history.length > 1)
+        .map((metric, index) => ({
+          type: 'line',
+          name: metric.label,
+          data: metric.history.filter(point => point.value !== null).map(point => [point.step, point.value as number]),
+          color: ['#5b9bd5', '#26a69a', '#f59e0b', '#ab47bc', '#ef5350'][index % 5],
+          marker: { enabled: false },
+        })),
     };
   }
 
-  private paramValue(...keys: string[]): string | null {
-    for (const key of keys) {
-      const value = this.trackingParams[key];
-      if (value !== undefined && value !== '') return value;
-    }
-    return null;
+  private toChartTrades(trades: MlTrainingTrade[], symbol: string, interval: string): Trade[] {
+    return trades.map((trade, index) => ({
+      id: index + 1,
+      symbolCode: symbol,
+      intervalCode: interval,
+      side: trade.side === 'long' || trade.direction === 'long' ? 'Buy' : 'Sell',
+      orderType: 'Market',
+      quantity: trade.units ?? 1,
+      requestedPrice: null,
+      entryPrice: Number(trade.entry_price),
+      stopLoss: trade.sl ?? null,
+      takeProfit: trade.tp ?? null,
+      status: 'Closed',
+      createdAt: trade.entry_time ?? 0,
+      openedAt: trade.entry_time,
+      closedAt: trade.exit_time,
+      closedPrice: Number(trade.exit_price),
+      closeReason: null,
+      fee: null,
+      pnl: Number(trade.pnl),
+      accountPnl: null,
+      unrealizedPnl: null,
+      tradingAccountId: null,
+      backtestId: null,
+    }));
   }
 
-  private toIntegerMetric(value: number | null | undefined): number | null {
-    return value === null || value === undefined ? null : Math.round(value);
+  private appendStreamDecision(decision: MlStreamDecision): void {
+    const mapped = this.toLogDecision(decision);
+    const current =
+      this.decisions ??
+      ({
+        model_id: 'stream',
+        symbol: this.run?.symbolCode ?? '',
+        interval: this.run?.intervalCode ?? '',
+        from_date: this.run ? new Date(this.run.from * 1000).toISOString() : '',
+        to_date: this.run ? new Date(this.run.to * 1000).toISOString() : '',
+        initial_balance: this.run?.inSampleFinalBalance ?? this.run?.finalBalance ?? 0,
+        final_balance: decision.balance,
+        pnl_pct: 0,
+        n_trades: 0,
+        decisions: [],
+        trades: [],
+      } satisfies MlDecisionLog);
+    const existingIndex = current.decisions.findIndex(row => row.open_time === mapped.open_time && row.action === mapped.action);
+    const decisions =
+      existingIndex >= 0
+        ? current.decisions.map((row, index) => (index === existingIndex ? mapped : row))
+        : [...current.decisions, mapped];
+    this.decisions = {
+      ...current,
+      final_balance: decision.balance,
+      decisions,
+    };
+    this.buildSummaryChart();
+  }
+
+  private toLogDecision(decision: MlStreamDecision): MlDecision {
+    const openTime = this.toSeconds(decision.time);
+    const candleIndex = this.candles.findIndex(candle => this.toSeconds(candle.time) === openTime);
+    return {
+      candle_index: candleIndex >= 0 ? candleIndex : this.chartDecisions.length,
+      open_time: openTime,
+      action: decision.action,
+      action_name: decision.actionName,
+      confidence: decision.confidence,
+      probs: decision.probs,
+      position: decision.position,
+      balance: decision.balance,
+    };
+  }
+
+  private pageItems<T>(value: MlPaginatedResponse<T> | T[]): T[] {
+    if (Array.isArray(value)) return value;
+    return value.items ?? value.data ?? value.rows ?? [];
+  }
+
+  private pointTime(point: MlEquityPoint): number {
+    const value = point.time ?? point.timestamp ?? 0;
+    if (typeof value === 'string') return new Date(value).getTime();
+    return value > 9_999_999_999 ? value : value * 1000;
+  }
+
+  private toSeconds(value: number): number {
+    return value > 9_999_999_999 ? Math.floor(value / 1000) : value;
+  }
+
+  private emptyMessage(key: string): string {
+    switch (key) {
+      case 'decisions':
+        return 'Decision log is not available yet.';
+      case 'tracking':
+        return 'Tracking data is not available yet.';
+      case 'performance':
+        return 'Performance telemetry has not been written for this run.';
+      case 'charts':
+        return 'Chart artifacts are not available for this run.';
+      default:
+        return 'Telemetry is not available for this endpoint.';
+    }
   }
 
   private toTitle(value: string): string {

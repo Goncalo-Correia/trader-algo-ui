@@ -1,8 +1,15 @@
 <div class="detail-page">
-  <a class="back-link" routerLink="/ml">← ML Policies</a>
+  <div class="ml-subnav">
+    <a routerLink="/ml/policies" routerLinkActive="active">Policies</a>
+    <a routerLink="/ml/training-runs" routerLinkActive="active">Training Runs</a>
+    <a routerLink="/ml/served-models" routerLinkActive="active">Served Models</a>
+    <a routerLink="/ml/retrain-all" routerLinkActive="active">Retrain All</a>
+  </div>
+
+  <a class="back-link" routerLink="/ml/policies">Back to policies</a>
 
   @if (isLoading) {
-    <div class="loading-state">Loading policy…</div>
+    <div class="loading-state">Loading policy...</div>
   }
 
   @if (!isLoading && notFound) {
@@ -15,142 +22,181 @@
         <h1 class="detail-title">Policy #{{ p.id }}</h1>
         <span class="pill">{{ p.symbolCode }}</span>
         <span class="pill">{{ p.intervalCode }}</span>
+        <span [class]="isServed ? 'status-badge status-completed' : 'status-badge status-pending'">
+          {{ isServed ? 'Served' : 'Not served' }}
+        </span>
+        <span class="pill">{{ runs.length }} runs</span>
       </div>
       <div class="header-actions">
-        <button class="btn-primary" (click)="toggleRunForm()">
-          {{ showRunForm ? 'Cancel' : '+ New Training Run' }}
-        </button>
-        <button class="btn-delete" [disabled]="deleting" (click)="deletePolicy()">
-          {{ deleting ? '…' : 'Delete' }}
-        </button>
+        <button class="btn-primary" type="button" (click)="toggleRunForm()">{{ showRunForm ? 'Cancel' : 'Start Training' }}</button>
+        <a class="btn-ghost" [routerLink]="['/ml/policies', p.id, 'edit']">Edit</a>
+        @if (servedRunId !== null) {
+          <a class="btn-ghost" [routerLink]="['/ml/training-runs', servedRunId]">View Served Run</a>
+        }
+        <button class="btn-delete" [disabled]="deleting || runs.length > 0" (click)="deletePolicy()">Delete</button>
       </div>
     </div>
+
     @if (deleteError) {
       <div class="error-card">{{ deleteError }}</div>
     }
-    <div class="stats-bar">
-      <div class="stats-row">
-        <div class="stat-item">
-          <span class="stat-label">Symbol</span><span class="stat-value">{{ p.symbolCode }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Interval</span><span class="stat-value">{{ p.intervalCode }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Timesteps</span><span class="stat-value">{{ p.totalTimesteps }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Initial Balance</span
-          ><span class="stat-value">${{ p.initialBalance | number: '1.2-2' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Quantity</span><span class="stat-value">{{ p.quantity | number: '1.0-8' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Created</span><span class="stat-value">{{ formatTs(p.createdAt) }}</span>
-        </div>
-      </div>
-      <div class="stats-row stats-row-financial">
-        <div class="stat-item">
-          <span class="stat-label">Take Profit</span><span class="stat-value">{{ p.takeProfit ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Stop Loss</span><span class="stat-value">{{ p.stopLoss ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Breakeven</span><span class="stat-value">{{ p.breakeven ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Breakeven Stop</span><span class="stat-value">{{ p.breakevenStop ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Fee</span><span class="stat-value">{{ p.fee ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Slippage</span><span class="stat-value">{{ p.slippage ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Max Trailing DD</span
-          ><span class="stat-value">{{ p.maxTrailingDrawdown ?? '—' }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Max Candles/Trade</span
-          ><span class="stat-value">{{ p.maxCandlesPerTrade ?? '—' }}</span>
-        </div>
-      </div>
-    </div>
+
     @if (showRunForm) {
-      <div class="run-form">
-        <div class="section-title">New Training Run</div>
+      <div class="panel">
+        <div class="section-title">Start Training Run</div>
         <div class="run-form-row">
-          <div class="field">
-            <div class="field-label">From</div>
+          <label class="field">
+            <span class="field-label">From</span>
             <input class="ctrl" type="date" [(ngModel)]="fromDate" [disabled]="submitting" />
-          </div>
-          <div class="field">
-            <div class="field-label">To</div>
+          </label>
+          <label class="field">
+            <span class="field-label">To</span>
             <input class="ctrl" type="date" [(ngModel)]="toDate" [disabled]="submitting" />
-          </div>
-          <button class="btn-run" [disabled]="submitting" (click)="startTraining()">
-            {{ submitting ? 'Starting…' : 'Start Training' }}
+          </label>
+          <button class="btn-primary" [disabled]="submitting" (click)="startTraining()">
+            {{ submitting ? 'Starting...' : 'Start Training' }}
           </button>
         </div>
+        <div class="field-hint">The API normalizes from to 00:00 UTC and to to 23:59 UTC. Training start is not retried automatically.</div>
         @if (runError) {
           <div class="error-card">{{ runError }}</div>
         }
-        <div class="field-hint">Trains over the selected date range using this policy's hyperparameters.</div>
       </div>
     }
-    <div class="trades-section">
+
+    <div class="summary-grid">
+      <section class="panel">
+        <div class="section-title">Configuration</div>
+        <div class="stats-grid">
+          <div class="stat-item"><span class="stat-label">Symbol</span><span class="stat-value">{{ p.symbolCode }}</span></div>
+          <div class="stat-item"><span class="stat-label">Interval</span><span class="stat-value">{{ p.intervalCode }}</span></div>
+          <div class="stat-item"><span class="stat-label">Timesteps</span><span class="stat-value">{{ p.totalTimesteps }}</span></div>
+          <div class="stat-item"><span class="stat-label">Initial Balance</span><span class="stat-value">${{ p.initialBalance | number: '1.2-2' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Max Candles</span><span class="stat-value">{{ p.maxCandlesPerTrade ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Risk Per Trade</span><span class="stat-value" [class.negative]="!p.riskPerTrade || p.riskPerTrade <= 0">{{ p.riskPerTrade ? '$' + (p.riskPerTrade | number: '1.2-2') : '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Fee</span><span class="stat-value">{{ p.fee !== null && p.fee !== undefined ? '$' + (p.fee | number: '1.2-2') : '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Slippage ATR</span><span class="stat-value">{{ p.slippage ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Daily Target</span><span class="stat-value">{{ p.dailyProfit !== null && p.dailyProfit !== undefined ? '$' + (p.dailyProfit | number: '1.2-2') : '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Daily DD Limit</span><span class="stat-value">{{ p.dailyDrawdownLimit !== null && p.dailyDrawdownLimit !== undefined ? '$' + (p.dailyDrawdownLimit | number: '1.2-2') : '-' }}</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Served Model</div>
+        @if (servedModel) {
+          <div class="stats-grid">
+            <div class="stat-item"><span class="stat-label">Run</span><span class="stat-value">#{{ servedRunId }}</span></div>
+            <div class="stat-item"><span class="stat-label">Model</span><span class="stat-value stat-value-code">{{ servedModel.modelId ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">OOS PnL</span><span class="stat-value" [class]="pnlClass(servedModel.oosPnlPct ?? servedModel.oosPnl)">{{ servedModel.oosPnlPct ?? servedModel.oosPnl ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">OOS Balance</span><span class="stat-value">{{ servedModel.oosFinalBalance !== null && servedModel.oosFinalBalance !== undefined ? '$' + (servedModel.oosFinalBalance | number: '1.2-2') : '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">Schema</span><span class="stat-value">{{ servedModel.schemaVersion ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">Calibrated</span><span class="stat-value">{{ servedModel.calibrated || servedModel.calibratedConfidence ? 'Yes' : 'No' }}</span></div>
+            <div class="stat-item"><span class="stat-label">Obs Dim</span><span class="stat-value">{{ servedModel.observationDim ?? '-' }}</span></div>
+            <div class="stat-item"><span class="stat-label">MLflow</span><span class="stat-value stat-value-code">{{ servedModel.mlflowRunId ?? '-' }}</span></div>
+          </div>
+        } @else {
+          <div class="empty-state compact">No served model for this policy.</div>
+        }
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="section-title">Promoted Performance</div>
+      @if (performance) {
+        <div class="stats-grid">
+          <div class="stat-item"><span class="stat-label">Gate Passed</span><span class="stat-value">{{ performance.promotionGatePassed ?? performance.gatePassed ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">OOS PnL</span><span class="stat-value">{{ metric('oos_pnl_pct') ?? metric('oosPnlPct') ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">OOS Drawdown</span><span class="stat-value">{{ metric('oos_max_drawdown_pct') ?? metric('oosMaxDrawdownPct') ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">OOS Sharpe</span><span class="stat-value">{{ metric('oos_sharpe') ?? metric('oosSharpe') ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Profit Factor</span><span class="stat-value">{{ metric('oos_profit_factor') ?? metric('oosProfitFactor') ?? '-' }}</span></div>
+        </div>
+      } @else {
+        <div class="empty-state compact">Promoted performance telemetry has not been written for this policy.</div>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="section-title">Run-Over-Run Trend</div>
+      @if (runTrend.length === 0) {
+        <div class="empty-state compact">No run trend data yet.</div>
+      } @else {
+        <div class="chart-grid">
+          <div class="chart-card"><app-highcharts-chart [options]="pnlTrendOptions"></app-highcharts-chart></div>
+          <div class="chart-card"><app-highcharts-chart [options]="drawdownTrendOptions"></app-highcharts-chart></div>
+          <div class="chart-card"><app-highcharts-chart [options]="qualityTrendOptions"></app-highcharts-chart></div>
+          <div class="chart-card"><app-highcharts-chart [options]="overfitTrendOptions"></app-highcharts-chart></div>
+        </div>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="section-title">Latest-Candle Decision Probe</div>
+      <div class="run-form-row">
+        <label class="field">
+          <span class="field-label">Symbol</span>
+          <input class="ctrl" [(ngModel)]="probeSymbol" [disabled]="probing" />
+        </label>
+        <label class="field">
+          <span class="field-label">Interval</span>
+          <input class="ctrl" [(ngModel)]="probeInterval" [disabled]="probing" />
+        </label>
+        <button class="btn-ghost" [disabled]="probing" (click)="probeDecision()">{{ probing ? 'Probing...' : 'Probe' }}</button>
+      </div>
+      <div class="field-hint">This probes the latest stored candle only. It is not a backtest or training result.</div>
+      @if (probeError) {
+        <div class="error-card">{{ probeError }}</div>
+      }
+      @if (probeResult; as probe) {
+        <div class="stats-grid">
+          <div class="stat-item"><span class="stat-label">Action</span><span class="stat-value">{{ actionName(probe) }}</span></div>
+          <div class="stat-item"><span class="stat-label">Confidence</span><span class="stat-value">{{ probe.confidence !== null && probe.confidence !== undefined ? (probe.confidence | number: '1.2-4') : '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Model</span><span class="stat-value stat-value-code">{{ modelId(probe) }}</span></div>
+          <div class="stat-item"><span class="stat-label">SL Bracket</span><span class="stat-value">{{ slBracket(probe) }}</span></div>
+          <div class="stat-item"><span class="stat-label">TP Bracket</span><span class="stat-value">{{ tpBracket(probe) }}</span></div>
+          <div class="stat-item"><span class="stat-label">SL ATR Mult</span><span class="stat-value">{{ slAtrMult(probe) ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">TP R Multiple</span><span class="stat-value">{{ tpRMultiple(probe) ?? '-' }}</span></div>
+        </div>
+      }
+    </section>
+
+    <section class="panel">
       <div class="section-title">Training Runs</div>
       @if (runs.length === 0) {
-        <div class="empty-state">No training runs yet for this policy.</div>
-      }
-      @if (runs.length > 0) {
-        <table class="bt-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Status</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Trades</th>
-              <th>PnL %</th>
-              <th>Final Balance</th>
-              <th>Started</th>
-              <th>Completed</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (run of runs; track trackById($index, run)) {
-              <tr [routerLink]="['/ml/runs', run.id]" class="clickable-row">
-                <td class="td-id">{{ run.id }}</td>
-                <td>
-                  <span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span>
-                </td>
-                <td class="td-dim">{{ formatDate(run.from) }}</td>
-                <td class="td-dim">{{ formatDate(run.to) }}</td>
-                <td class="td-dim">{{ runTrades(run) ?? '—' }}</td>
-                <td>
-                  @if (runPnlPct(run) !== null) {
-                    <span [class]="pnlClass(runPnlPct(run))">
-                      {{ runPnlPct(run)! >= 0 ? '+' : '' }}{{ runPnlPct(run) | number: '1.2-2' }}%
-                    </span>
-                  }
-                  @if (runPnlPct(run) === null) {
-                    <span class="td-dim">—</span>
-                  }
-                </td>
-                <td class="td-dim">
-                  {{ runFinalBalance(run) !== null ? '$' + (runFinalBalance(run) | number: '1.2-2') : '—' }}
-                </td>
-                <td class="td-dim">{{ formatTs(run.startedAt) }}</td>
-                <td class="td-dim">{{ formatTs(run.completedAt) }}</td>
+        <div class="empty-state compact">No training runs yet for this policy.</div>
+      } @else {
+        <div class="table-wrap">
+          <table class="bt-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Status</th>
+                <th>Date Range</th>
+                <th>OOS PnL</th>
+                <th>OOS Balance</th>
+                <th>In-Sample PnL</th>
+                <th>Trades</th>
+                <th>Started</th>
+                <th>Completed</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (run of runs; track trackById($index, run)) {
+                <tr [routerLink]="['/ml/training-runs', run.id]" class="clickable-row">
+                  <td class="td-id">#{{ run.id }}</td>
+                  <td><span [class]="'status-badge ' + statusClass(run.status)">{{ run.status }}</span></td>
+                  <td class="td-dim">{{ formatDate(run.from) }} - {{ formatDate(run.to) }}</td>
+                  <td><span [class]="pnlClass(runOosPnl(run))">{{ runOosPnl(run) !== null ? (runOosPnl(run) | number: '1.2-2') + '%' : 'Unavailable' }}</span></td>
+                  <td class="td-dim">{{ runOosBalance(run) !== null ? '$' + (runOosBalance(run) | number: '1.2-2') : '-' }}</td>
+                  <td><span [class]="pnlClass(runInSamplePnl(run))">{{ runInSamplePnl(run) !== null ? (runInSamplePnl(run) | number: '1.2-2') + '%' : '-' }}</span></td>
+                  <td class="td-dim">{{ runTrades(run) ?? '-' }}</td>
+                  <td class="td-dim">{{ formatTs(run.startedAt) }}</td>
+                  <td class="td-dim">{{ formatTs(run.completedAt) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
-    </div>
+    </section>
   }
 </div>

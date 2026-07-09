@@ -1,8 +1,8 @@
 import { CandleWithIndicators } from './candle';
 
 export type MlTrainingStatus = 'Pending' | 'Running' | 'Completed' | 'Failed';
+export type MlSplit = 'train' | 'val' | 'test' | 'oos' | string;
 
-/** GET /api/ml/training-runs and /{id} — camelCase. Model/symbol/interval are resolved through the run's policy. */
 export interface MlTrainingRun {
   id: number;
   mlPolicyId: number;
@@ -19,6 +19,18 @@ export interface MlTrainingRun {
   nTrades: number | null;
   runId: string | null;
   tracking?: MlflowTrackingSummary | null;
+
+  inSampleFinalBalance?: number | null;
+  inSamplePnlPct?: number | null;
+  oosFinalBalance?: number | null;
+  oosPnlPct?: number | null;
+  oosSharpe?: number | null;
+  oosProfitFactor?: number | null;
+  oosMaxDrawdownPct?: number | null;
+  oosTradeCount?: number | null;
+  tradeCount?: number | null;
+  schemaVersion?: string | number | null;
+  observationDim?: number | null;
 }
 
 export interface MlflowMetricPoint {
@@ -52,6 +64,14 @@ export interface MlflowTrackingSummary {
   message?: string | null;
 }
 
+export interface MlflowRegistryModelVersion {
+  version?: string | number | null;
+  stage?: string | null;
+  source?: string | null;
+  storageLocation?: string | null;
+  description?: string | null;
+}
+
 export interface MlflowTrackingResponse {
   trainingRunId: number;
   trackingAvailable: boolean;
@@ -66,27 +86,69 @@ export interface MlflowTrackingResponse {
   latestMetrics: Record<string, number | null>;
   metricHistory: Record<string, MlflowMetricPoint[]>;
   message?: string | null;
+  registry?: {
+    modelName?: string | null;
+    currentVersion?: string | number | null;
+    allVersions?: MlflowRegistryModelVersion[];
+    stage?: string | null;
+    source?: string | null;
+    storageLocation?: string | null;
+    description?: string | null;
+  } | null;
+  experiment?: Record<string, unknown> | null;
+  tags?: Record<string, string> | null;
+  evalMetrics?: Record<string, number | null> | null;
 }
 
-/**
- * POST /api/ml/train body — starts a run for an existing policy.
- * The hyperparameters now live on the policy; a run only picks the date range.
- * `from`/`to` are date-only (yyyy-MM-dd); the server normalises from→00:00 and to→23:59.
- */
 export interface CreateTrainingRequest {
   mlPolicyId: number;
   from: string;
   to: string;
 }
 
-/** POST /api/ml/train response — camelCase. */
 export interface MlTrainStartedResponse {
   trainingRunId: number;
   status: MlTrainingStatus;
   message: string;
 }
 
-/** GET /api/ml/training-runs/{id}/decisions — snake_case (Python passthrough). */
+export interface MlRetrainAllRequest {
+  from: string;
+  to: string;
+}
+
+export interface MlRetrainAllResult {
+  mlPolicyId?: number | null;
+  policyId?: number | null;
+  trainingRunId?: number | null;
+  status: 'Started' | 'Skipped' | 'Failed' | string;
+  message?: string | null;
+}
+
+export interface MlServedModel {
+  mlPolicyId: number;
+  policyId?: number | null;
+  symbolCode?: string | null;
+  intervalCode?: string | null;
+  served?: boolean | null;
+  servedTrainingRunId?: number | null;
+  trainingRunId?: number | null;
+  modelId?: string | null;
+  oosPnl?: number | null;
+  oosPnlPct?: number | null;
+  oosFinalBalance?: number | null;
+  inSamplePnl?: number | null;
+  inSamplePnlPct?: number | null;
+  inSampleFinalBalance?: number | null;
+  tradeCount?: number | null;
+  nTrades?: number | null;
+  calibrated?: boolean | null;
+  calibratedConfidence?: boolean | null;
+  observationDim?: number | null;
+  schemaVersion?: string | number | null;
+  mlflowRunId?: string | null;
+}
+
 export interface MlDecisionLog {
   model_id: string;
   symbol: string;
@@ -122,9 +184,105 @@ export interface MlTrainingTrade {
   exit_price: number;
   reason: string;
   pnl: number;
+  split?: MlSplit | null;
+  direction?: string | null;
+  sl?: number | null;
+  tp?: number | null;
+  slAtrMult?: number | null;
+  tpRBracket?: number | null;
+  units?: number | null;
+  rMultiple?: number | null;
+  barsInTrade?: number | null;
+  exitReason?: string | null;
 }
 
-/** WS /ws/ml/training — the mlDecision payload is camelCase. */
+export interface MlRunPerformance {
+  promotionGatePassed?: boolean | null;
+  gatePassed?: boolean | null;
+  metrics?: Record<string, number | null> | null;
+  splitMetrics?: Record<string, Record<string, number | null>> | null;
+  [key: string]: unknown;
+}
+
+export interface MlLearningCurvePoint {
+  step?: number | null;
+  timestep?: number | null;
+  meanEpisodeReward?: number | null;
+  rewardMean?: number | null;
+  rewardStd?: number | null;
+  meanEpisodeLength?: number | null;
+  episodeLengthMean?: number | null;
+}
+
+export interface MlCheckpointEval {
+  step?: number | null;
+  timestep?: number | null;
+  trainReward?: number | null;
+  validationReward?: number | null;
+  trainDrawdown?: number | null;
+  validationDrawdown?: number | null;
+  score?: number | null;
+  eligible?: boolean | null;
+  isBest?: boolean | null;
+}
+
+export interface MlFoldMetric {
+  fold?: number | null;
+  returnPct?: number | null;
+  sharpe?: number | null;
+  profitFactor?: number | null;
+  winRatePct?: number | null;
+  maxDrawdownPct?: number | null;
+  tradeCount?: number | null;
+  [key: string]: unknown;
+}
+
+export interface MlMetricRow {
+  split?: string | null;
+  key?: string | null;
+  value?: number | null;
+  [key: string]: unknown;
+}
+
+export interface MlEquityPoint {
+  time?: number | string | null;
+  timestamp?: number | string | null;
+  equity?: number | null;
+  balance?: number | null;
+  drawdown?: number | null;
+  drawdownPct?: number | null;
+  split?: string | null;
+  [key: string]: unknown;
+}
+
+export interface MlPaginatedResponse<T> {
+  items?: T[];
+  data?: T[];
+  rows?: T[];
+  total?: number | null;
+  limit?: number | null;
+  offset?: number | null;
+}
+
+export interface MlFeatureQualityRow {
+  feature?: string | null;
+  name?: string | null;
+  spearmanR1Bar?: number | null;
+  spearmanP1Bar?: number | null;
+  signalP05?: boolean | null;
+  missingPct?: number | null;
+  [key: string]: unknown;
+}
+
+export interface MlChartArtifact {
+  name?: string | null;
+  title?: string | null;
+  url?: string | null;
+  path?: string | null;
+  type?: string | null;
+  [key: string]: unknown;
+}
+
 export interface MlStreamDecision {
   time: number;
   action: number;

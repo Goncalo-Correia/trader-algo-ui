@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
-import { SymbolResponse } from '../../structures/symbol';
-import { IntervalResponse } from '../../structures/interval';
-import { CreatePolicyRequest } from '../../structures/ml-policy';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
+import { IntervalResponse } from '../../structures/interval';
+import { CreatePolicyRequest, MlPolicy } from '../../structures/ml-policy';
+import { SymbolResponse } from '../../structures/symbol';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -15,86 +16,152 @@ import { FormsModule } from '@angular/forms';
 })
 export class MlPolicyFormComponent implements OnInit {
   private readonly api = inject(TraderAlgoApiService);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
+  policy: MlPolicy | null = null;
+  policyId: number | null = null;
+
+  selectedSymbol = '';
+  selectedInterval = '';
+  totalTimesteps = 100_000;
+  initialBalance = 1000;
+  maxCandlesPerTrade: number | null = 10;
+  riskPerTrade: number | null = 25;
+  fee: number | null = 0;
+  slippage: number | null = 0;
+  dailyProfit: number | null = null;
+  dailyDrawdownLimit: number | null = null;
+
+  isLoading = true;
+  submitting = false;
+  errorMessage: string | null = null;
+  validationErrors: string[] = [];
 
   readonly trackBySymbolId = (_: number, symbol: SymbolResponse): number => symbol.id;
   readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
 
-  selectedSymbol = '';
-  selectedInterval = '';
-
-  totalTimesteps = 100_000;
-  // Defaults mirror the backtest trade panel.
-  initialBalance = 1000;
-  quantity = 1;
-  stopLoss: number | null = 100;
-  takeProfit: number | null = 100;
-  breakeven: number | null = null;
-  breakevenStop: number | null = null;
-  maxCandlesPerTrade: number | null = null;
-  dailyProfit: number | null = null;
-  dailyDrawdownLimit: number | null = null;
-  // Absolute amounts (not fractions): fee/slippage in cash, drawdown threshold in cash.
-  fee: number | null = null;
-  slippage: number | null = 0;
-  maxTrailingDrawdown: number | null = 2500;
-
-  submitting = false;
-  errorMessage: string | null = null;
-
   ngOnInit(): void {
-    this.api.getSymbols().subscribe(s => {
-      this.symbols = s;
-      this.selectedSymbol = (s.find(x => x.isDefault) ?? s[0])?.code ?? '';
-      this.cdr.markForCheck();
-    });
-    this.api.getIntervals().subscribe(i => {
-      this.intervals = i;
-      this.selectedInterval = i.find(x => x.isDefault)?.code ?? i[0]?.code ?? '';
-      this.cdr.markForCheck();
+    const rawId = this.route.snapshot.paramMap.get('id');
+    this.policyId = rawId === null ? null : Number(rawId);
+
+    const sources = {
+      symbols: this.api.getSymbols(),
+      intervals: this.api.getIntervals(),
+      policy: this.policyId === null ? this.api.getPolicies() : this.api.getPolicy(this.policyId),
+    };
+
+    forkJoin(sources).subscribe({
+      next: ({ symbols, intervals, policy }) => {
+        this.symbols = symbols;
+        this.intervals = intervals;
+        if (this.policyId !== null && !Array.isArray(policy)) {
+          this.policy = policy;
+          this.applyPolicy(policy);
+        } else {
+          this.selectedSymbol = (symbols.find(x => x.isDefault) ?? symbols[0])?.code ?? '';
+          this.selectedInterval = intervals.find(x => x.isDefault)?.code ?? intervals[0]?.code ?? '';
+        }
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.isLoading = false;
+        this.errorMessage = this.extractError(err, 'Could not load policy form data.');
+        this.cdr.markForCheck();
+      },
     });
   }
 
-  createPolicy(): void {
+  get isEdit(): boolean {
+    return this.policyId !== null;
+  }
+
+  get riskWarning(): string | null {
+    return this.riskPerTrade === null || Number(this.riskPerTrade) <= 0
+      ? 'Risk per trade is empty or zero. ML inference will size trades to zero unless a served model overrides it.'
+      : null;
+  }
+
+  savePolicy(): void {
     if (this.submitting) return;
-    if (!this.selectedSymbol || !this.selectedInterval) return;
+    this.validationErrors = this.validate();
+    if (this.validationErrors.length > 0) {
+      this.cdr.markForCheck();
+      return;
+    }
 
     this.submitting = true;
     this.errorMessage = null;
 
-    // The backend MlPolicyRequest declares breakeven/breakevenStop/fee/slippage/dailyProfit/
-    // dailyDrawdownLimit/maxCandlesPerTrade as non-nullable — posting an explicit null 400s.
-    // A blank field means "disabled/none", which the backend represents as 0.
-    const payload: CreatePolicyRequest = {
-      symbol: this.selectedSymbol,
-      interval: this.selectedInterval,
-      totalTimesteps: this.totalTimesteps,
-      initialBalance: this.initialBalance,
-      quantity: this.quantity,
-      takeProfit: this.takeProfit,
-      stopLoss: this.stopLoss,
-      breakeven: this.breakeven ?? 0,
-      breakevenStop: this.breakevenStop ?? 0,
-      fee: this.fee ?? 0,
-      slippage: this.slippage ?? 0,
-      dailyProfit: this.dailyProfit ?? 0,
-      dailyDrawdownLimit: this.dailyDrawdownLimit ?? 0,
-      maxCandlesPerTrade: this.maxCandlesPerTrade ?? 0,
-      maxTrailingDrawdown: this.maxTrailingDrawdown,
-    };
+    const payload = this.toPayload();
+    const request =
+      this.policyId === null ? this.api.createPolicy(payload) : this.api.updatePolicy(this.policyId, payload);
 
-    this.api.createPolicy(payload).subscribe({
+    request.subscribe({
       next: policy => this.router.navigate(['/ml/policies', policy.id]),
       error: err => {
         this.submitting = false;
-        this.errorMessage = this.extractError(err, 'Failed to create policy.');
+        this.errorMessage = this.extractError(err, `Failed to ${this.isEdit ? 'update' : 'create'} policy.`);
         this.cdr.markForCheck();
       },
     });
+  }
+
+  private applyPolicy(policy: MlPolicy): void {
+    this.selectedSymbol = policy.symbolCode;
+    this.selectedInterval = policy.intervalCode;
+    this.totalTimesteps = policy.totalTimesteps;
+    this.initialBalance = policy.initialBalance;
+    this.riskPerTrade = policy.riskPerTrade ?? null;
+    this.fee = policy.fee ?? null;
+    this.slippage = policy.slippage ?? null;
+    this.dailyProfit = policy.dailyProfit ?? null;
+    this.dailyDrawdownLimit = policy.dailyDrawdownLimit ?? null;
+    this.maxCandlesPerTrade = policy.maxCandlesPerTrade ?? 1;
+  }
+
+  private validate(): string[] {
+    const errors: string[] = [];
+    if (!this.selectedSymbol) errors.push('Symbol is required.');
+    if (!this.selectedInterval) errors.push('Interval is required.');
+    if (!Number.isFinite(this.totalTimesteps) || this.totalTimesteps <= 0) errors.push('Total timesteps must be positive.');
+    if (!Number.isFinite(this.initialBalance) || this.initialBalance <= 0) errors.push('Initial balance must be positive.');
+    if (!Number.isFinite(this.maxCandlesPerTrade) || Number(this.maxCandlesPerTrade) <= 0) {
+      errors.push('Max candles per trade must be positive.');
+    }
+    for (const [label, value] of [
+      ['Risk per trade', this.riskPerTrade],
+      ['Fee', this.fee],
+      ['Slippage', this.slippage],
+      ['Daily profit target', this.dailyProfit],
+      ['Daily drawdown limit', this.dailyDrawdownLimit],
+    ] as const) {
+      if (value !== null && value !== undefined && Number(value) < 0) errors.push(`${label} cannot be negative.`);
+    }
+    return errors;
+  }
+
+  private toPayload(): CreatePolicyRequest {
+    return {
+      symbol: this.selectedSymbol,
+      interval: this.selectedInterval,
+      totalTimesteps: Number(this.totalTimesteps),
+      initialBalance: Number(this.initialBalance),
+      maxCandlesPerTrade: Number(this.maxCandlesPerTrade),
+      riskPerTrade: this.nullableNumber(this.riskPerTrade),
+      fee: this.nullableNumber(this.fee),
+      slippage: this.nullableNumber(this.slippage),
+      dailyProfit: this.nullableNumber(this.dailyProfit),
+      dailyDrawdownLimit: this.nullableNumber(this.dailyDrawdownLimit),
+    };
+  }
+
+  private nullableNumber(value: number | null): number | null {
+    return value === null || value === undefined || value === ('' as unknown as number) ? null : Number(value);
   }
 
   private extractError(err: unknown, fallback: string): string {

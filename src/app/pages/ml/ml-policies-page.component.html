@@ -84,6 +84,7 @@
             <th>Daily Target</th>
             <th>Daily DD</th>
             <th>Max Candles</th>
+            <th>Validation</th>
             <th><button type="button" (click)="setSort('createdAt')">Created</button></th>
             <th>Warnings</th>
             <th>Actions</th>
@@ -138,6 +139,7 @@
               <td class="td-dim">{{ p.dailyProfit !== null && p.dailyProfit !== undefined ? '$' + (p.dailyProfit | number: '1.2-2') : '-' }}</td>
               <td class="td-dim">{{ p.dailyDrawdownLimit !== null && p.dailyDrawdownLimit !== undefined ? '$' + (p.dailyDrawdownLimit | number: '1.2-2') : '-' }}</td>
               <td class="td-dim">{{ p.maxCandlesPerTrade ?? '-' }}</td>
+              <td class="td-dim">{{ validationSchemeLabel(p.validationScheme) }}</td>
               <td class="td-dim">{{ formatTs(p.createdAt) }}</td>
               <td>
                 <div class="warning-stack">

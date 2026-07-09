@@ -60,6 +60,18 @@
             <span class="field-label">Max Candles Per Trade</span>
             <input class="ctrl" type="number" [(ngModel)]="maxCandlesPerTrade" min="1" step="1" [disabled]="submitting" />
           </label>
+          <label class="field">
+            <span class="field-label">Validation Scheme</span>
+            <select class="ctrl" [(ngModel)]="validationScheme" [disabled]="submitting">
+              @for (scheme of validationSchemes; track scheme) {
+                <option [value]="scheme">{{ validationSchemeLabels[scheme] }}</option>
+              }
+            </select>
+            <span class="field-hint">
+              How each training run is validated before promotion. Single is fastest; sliding is most realistic for
+              serious promotion runs.
+            </span>
+          </label>
         </div>
       </section>
 

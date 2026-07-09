@@ -40,7 +40,7 @@ from an environment variable, falling back to the origin that serves them — se
 | `/backtests`, `/backtests/:id` | Backtest history and detail (price chart, equity curve, trades) |
 | `/tradebots`, `/tradebots/:id` | Trade-bot list and detail (config, history, live events) |
 | `/accounts`, `/accounts/:id` | Trading accounts and per-account PNL |
-| `/ml/policies`, `/ml/policies/new`, `/ml/policies/:id`, `/ml/policies/:id/edit` | ML policies: list, create, detail (training-run trend, performance, manual "decide latest candle"), and edit. Risk params are per-trade fractions with legacy absolute fields still tolerated. |
+| `/ml/policies`, `/ml/policies/new`, `/ml/policies/:id`, `/ml/policies/:id/edit` | ML policies: list, create, detail (training-run trend, performance, manual "decide latest candle"), and edit. Risk params are per-trade fractions with legacy absolute fields still tolerated. Each policy also has a validation scheme (single split, block or sliding walk-forward) shown on the list/detail views and set on the form. |
 | `/ml/training-runs`, `/ml/training-runs/:id` (alias `/ml/runs/:id`) | Training runs: list (optionally filtered by policy) and detail (live training stream, learning curve, checkpoint evals, cross-validation folds, per-split metrics/equity/trades, feature quality, chart artifacts). |
 | `/ml/served-models`, `/ml/retrain-all` | Registry of served models, and a bulk "retrain all policies over a date range" runner. `/ml` redirects to `/ml/policies`. |
 

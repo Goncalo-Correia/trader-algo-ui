@@ -73,6 +73,7 @@
           <div class="stat-item"><span class="stat-label">Timesteps</span><span class="stat-value">{{ p.totalTimesteps }}</span></div>
           <div class="stat-item"><span class="stat-label">Initial Balance</span><span class="stat-value">${{ p.initialBalance | number: '1.2-2' }}</span></div>
           <div class="stat-item"><span class="stat-label">Max Candles</span><span class="stat-value">{{ p.maxCandlesPerTrade ?? '-' }}</span></div>
+          <div class="stat-item"><span class="stat-label">Validation</span><span class="stat-value">{{ validationSchemeLabel(p.validationScheme) }}</span></div>
           <div class="stat-item"><span class="stat-label">Risk Per Trade</span><span class="stat-value" [class.negative]="!p.riskPerTrade || p.riskPerTrade <= 0">{{ p.riskPerTrade ? '$' + (p.riskPerTrade | number: '1.2-2') : '-' }}</span></div>
           <div class="stat-item"><span class="stat-label">Fee</span><span class="stat-value">{{ p.fee !== null && p.fee !== undefined ? '$' + (p.fee | number: '1.2-2') : '-' }}</span></div>
           <div class="stat-item"><span class="stat-label">Slippage ATR</span><span class="stat-value">{{ p.slippage ?? '-' }}</span></div>

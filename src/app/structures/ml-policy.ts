@@ -1,3 +1,24 @@
+/**
+ * High-level choice of how a training run is validated before a model can be promoted.
+ * Fold counts, window sizes, embargo bars, and promotion thresholds are engine-owned
+ * defaults in the Python sidecar and are intentionally not exposed here.
+ */
+export type ValidationScheme = 'single' | 'block' | 'sliding';
+
+export const VALIDATION_SCHEMES: readonly ValidationScheme[] = ['single', 'block', 'sliding'];
+
+export const VALIDATION_SCHEME_LABELS: Record<ValidationScheme, string> = {
+  single: 'Single split',
+  block: 'Block walk-forward',
+  sliding: 'Sliding walk-forward',
+};
+
+/** Map a (possibly unknown/legacy) wire value to a friendly label, defaulting to Single split. */
+export function validationSchemeLabel(value: string | null | undefined): string {
+  const scheme = (value ?? 'single').trim().toLowerCase() as ValidationScheme;
+  return VALIDATION_SCHEME_LABELS[scheme] ?? VALIDATION_SCHEME_LABELS.single;
+}
+
 export interface MlPolicy {
   id: number;
   symbolCode: string;
@@ -10,6 +31,7 @@ export interface MlPolicy {
   dailyProfit: number | null;
   dailyDrawdownLimit: number | null;
   maxCandlesPerTrade: number | null;
+  validationScheme: ValidationScheme;
   createdAt: number;
   trainingRunCount: number;
 
@@ -33,6 +55,7 @@ export interface CreatePolicyRequest {
   dailyProfit?: number | null;
   dailyDrawdownLimit?: number | null;
   maxCandlesPerTrade: number;
+  validationScheme?: ValidationScheme;
 }
 
 export type UpdatePolicyRequest = CreatePolicyRequest;

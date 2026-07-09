@@ -7,7 +7,7 @@ import { catchError } from 'rxjs/operators';
 import type * as Highcharts from 'highcharts/highstock';
 import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
-import { MlManualDecisionResponse, MlPolicy, MlPolicyRunTrend } from '../../structures/ml-policy';
+import { MlManualDecisionResponse, MlPolicy, MlPolicyRunTrend, validationSchemeLabel } from '../../structures/ml-policy';
 import { MlRunPerformance, MlServedModel, MlTrainingRun } from '../../structures/ml-training';
 
 function chartBase(): Highcharts.Options {
@@ -76,6 +76,7 @@ export class MlPolicyDetailComponent implements OnInit {
   overfitTrendOptions: Highcharts.Options = {};
 
   readonly trackById = (_: number, run: MlTrainingRun): number => run.id;
+  readonly validationSchemeLabel = validationSchemeLabel;
 
   private policyId!: number;
 

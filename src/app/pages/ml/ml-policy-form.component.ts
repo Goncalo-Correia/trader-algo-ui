@@ -4,7 +4,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
-import { CreatePolicyRequest, MlPolicy } from '../../structures/ml-policy';
+import {
+  CreatePolicyRequest,
+  MlPolicy,
+  VALIDATION_SCHEMES,
+  VALIDATION_SCHEME_LABELS,
+  ValidationScheme,
+} from '../../structures/ml-policy';
 import { SymbolResponse } from '../../structures/symbol';
 
 @Component({
@@ -35,6 +41,10 @@ export class MlPolicyFormComponent implements OnInit {
   slippage: number | null = 0;
   dailyProfit: number | null = null;
   dailyDrawdownLimit: number | null = null;
+  validationScheme: ValidationScheme = 'single';
+
+  readonly validationSchemes = VALIDATION_SCHEMES;
+  readonly validationSchemeLabels = VALIDATION_SCHEME_LABELS;
 
   isLoading = true;
   submitting = false;
@@ -122,6 +132,7 @@ export class MlPolicyFormComponent implements OnInit {
     this.dailyProfit = policy.dailyProfit ?? null;
     this.dailyDrawdownLimit = policy.dailyDrawdownLimit ?? null;
     this.maxCandlesPerTrade = policy.maxCandlesPerTrade ?? 1;
+    this.validationScheme = policy.validationScheme ?? 'single';
   }
 
   private validate(): string[] {
@@ -152,6 +163,7 @@ export class MlPolicyFormComponent implements OnInit {
       totalTimesteps: Number(this.totalTimesteps),
       initialBalance: Number(this.initialBalance),
       maxCandlesPerTrade: Number(this.maxCandlesPerTrade),
+      validationScheme: this.validationScheme,
       riskPerTrade: this.nullableNumber(this.riskPerTrade),
       fee: this.nullableNumber(this.fee),
       slippage: this.nullableNumber(this.slippage),

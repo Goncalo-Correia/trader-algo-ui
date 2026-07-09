@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
-import { MlPolicy } from '../../structures/ml-policy';
+import { MlPolicy, validationSchemeLabel } from '../../structures/ml-policy';
 import { MlServedModel } from '../../structures/ml-training';
 
 type PolicySortKey = 'createdAt' | 'oosPnl' | 'trainingRunCount' | 'riskPerTrade' | 'served';
@@ -35,6 +35,7 @@ export class MlPoliciesPageComponent implements OnInit {
   sortDir: 'asc' | 'desc' = 'desc';
 
   readonly trackById = (_: number, policy: MlPolicy): number => policy.id;
+  readonly validationSchemeLabel = validationSchemeLabel;
 
   ngOnInit(): void {
     this.load();

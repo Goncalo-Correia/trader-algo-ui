@@ -37,7 +37,6 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
 import { VolumeProfilePlugin } from '../../chart-plugins/volume-profile.plugin';
 import { CHART_COLORS } from '../../shared/chart-theme';
-import { computeAtrValues } from '../../shared/atr';
 import { CandleResponse, CandleWithIndicators } from '../../structures/candle';
 import { IntervalResponse } from '../../structures/interval';
 import { SessionOhlcvResponse, VolumeProfileLevel } from '../../structures/session';
@@ -70,7 +69,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     const newAlpaca = value === 1;
     if (newAlpaca !== this._isAlpaca) {
       this._isAlpaca = newAlpaca;
-      if (this.chart) this.ngZone.runOutsideAngular(() => this.applyDeltaPaneVisibility());
+      if (this.chart) this.ngZone.runOutsideAngular(() => this.applyTradeVolumePaneVisibility());
     }
   }
 
@@ -145,7 +144,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
   private sma20Series?: ISeriesApi<'Line'>;
   private sma100Series?: ISeriesApi<'Line'>;
   private volumeSeries?: ISeriesApi<'Histogram'>;
-  private deltaSeries?: ISeriesApi<'Histogram'>;
+  private buyVolumeSeries?: ISeriesApi<'Histogram'>;
+  private sellVolumeSeries?: ISeriesApi<'Histogram'>;
   private rsiSeries?: ISeriesApi<'Line'>;
   private rsiMaSeries?: ISeriesApi<'Line'>;
   private rsiOverbought?: ISeriesApi<'Line'>;
@@ -169,15 +169,6 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
   private loadedCandles: CandleWithIndicators[] = [];
   private loadedVolumeProfile: VolumeProfileLevel[] = [];
-
-  // Incremental ATR state for the live stream. The full Wilder series is only
-  // computed on load / history expansion (see `seedAtrState`); each live candle
-  // then rolls ATR forward in O(1) instead of re-scanning the whole array.
-  private readonly atrPeriod = 14;
-  private atrPrevValue: number | null = null; // ATR of the last *closed* candle
-  private atrPrevClose: number | null = null; // close of the last *closed* candle
-  private atrCurrentValue: number | null = null; // ATR last emitted for the forming candle
-  private atrLastTime: UTCTimestamp | null = null; // chart time of the forming candle
 
   private candlesSubscription?: Subscription;
   private loadMoreSubscription?: Subscription;
@@ -267,7 +258,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.sma20Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma20 });
       this.sma100Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: CHART_COLORS.sma100 });
 
-      // Pane 1 — volume + delta
+      // Pane 1 — volume + buyer/seller volume
       this.volumeSeries = this.chart.addSeries(
         HistogramSeries,
         { priceScaleId: 'volume', priceFormat: { type: 'volume' } },
@@ -275,15 +266,28 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       );
       this.volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.7, bottom: 0 } });
 
-      this.deltaSeries = this.chart.addSeries(
+      const tradeVolumeFormat = {
+        type: 'custom',
+        formatter: (p: number) => Math.abs(p).toFixed(0),
+        minMove: 1,
+      } as const;
+      this.buyVolumeSeries = this.chart.addSeries(
         HistogramSeries,
         {
-          priceScaleId: 'delta',
-          priceFormat: { type: 'custom', formatter: (p: number) => p.toFixed(1) + '%', minMove: 0.1 },
+          priceScaleId: 'trade-volume',
+          priceFormat: tradeVolumeFormat,
         },
         1,
       );
-      this.deltaSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
+      this.sellVolumeSeries = this.chart.addSeries(
+        HistogramSeries,
+        {
+          priceScaleId: 'trade-volume',
+          priceFormat: tradeVolumeFormat,
+        },
+        1,
+      );
+      this.buyVolumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
 
       // Pane 2 — RSI
       const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
@@ -605,7 +609,8 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.sma20Series?.setData([]);
       this.sma100Series?.setData([]);
       this.volumeSeries?.setData([]);
-      this.deltaSeries?.setData([]);
+      this.buyVolumeSeries?.setData([]);
+      this.sellVolumeSeries?.setData([]);
       this.rsiSeries?.setData([]);
       this.rsiMaSeries?.setData([]);
       this.rsiOverbought?.setData([]);
@@ -695,8 +700,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       candles.filter(c => c.sma100 !== null).map(c => ({ time: this.toChartTime(c.time), value: c.sma100! })),
     );
     this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
-    this.deltaSeries?.setData(this._isAlpaca ? [] : candles.map(c => this.toDeltaBar(c)));
-    this.applyDeltaPaneVisibility();
+    this.buyVolumeSeries?.setData(this._isAlpaca ? [] : candles.map(c => this.toBuyVolumeBar(c)));
+    this.sellVolumeSeries?.setData(this._isAlpaca ? [] : candles.map(c => this.toSellVolumeBar(c)));
+    this.applyTradeVolumePaneVisibility();
     this.rsiSeries?.setData(
       candles.filter(c => c.rsi !== null).map(c => ({ time: this.toChartTime(c.time), value: c.rsi! })),
     );
@@ -734,7 +740,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       ]);
     }
 
-    this.seedAtrState(candles);
+    this.applyAtrSeries(candles);
 
     if (fitContent) this.chart?.timeScale().fitContent();
   }
@@ -756,7 +762,10 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
             if (candle.sma20 !== null) this.sma20Series?.update({ time: t, value: candle.sma20 });
             if (candle.sma100 !== null) this.sma100Series?.update({ time: t, value: candle.sma100 });
             this.volumeSeries?.update(this.toVolumeBar(candle));
-            if (!this._isAlpaca) this.deltaSeries?.update(this.toDeltaBar(candle));
+            if (!this._isAlpaca) {
+              this.buyVolumeSeries?.update(this.toBuyVolumeBar(candle));
+              this.sellVolumeSeries?.update(this.toSellVolumeBar(candle));
+            }
             if (candle.rsi !== null) {
               this.rsiSeries?.update({ time: t, value: candle.rsi });
               this.rsiOverbought?.update({ time: t, value: 70 });
@@ -781,7 +790,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
               this.macdHistSeries?.update({ time: t, value: h, color });
               this.macdZeroSeries?.update({ time: t, value: 0 });
             }
-            this.updateLiveAtr(candle);
+            if (candle.atr !== null) this.atrSeries?.update({ time: t, value: candle.atr });
           });
         },
         error: err => {
@@ -874,20 +883,26 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     };
   }
 
-  private toDeltaBar(c: CandleWithIndicators): HistogramData<Time> {
-    const buy = c.takerBuyVolume;
-    const sell = c.takerSellVolume;
-    const total = buy + sell;
-    const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
+  private toBuyVolumeBar(c: CandleWithIndicators): HistogramData<Time> {
     return {
       time: this.toChartTime(c.time),
-      value: delta,
-      color: delta >= 0 ? CHART_COLORS.bullish : CHART_COLORS.bearish,
+      value: c.takerBuyVolume,
+      color: CHART_COLORS.bullish,
     };
   }
 
-  private applyDeltaPaneVisibility(): void {
-    this.deltaSeries?.priceScale().applyOptions({ visible: !this._isAlpaca });
+  private toSellVolumeBar(c: CandleWithIndicators): HistogramData<Time> {
+    return {
+      time: this.toChartTime(c.time),
+      value: -c.takerSellVolume,
+      color: CHART_COLORS.bearish,
+    };
+  }
+
+  private applyTradeVolumePaneVisibility(): void {
+    const visible = !this._isAlpaca;
+    this.buyVolumeSeries?.priceScale().applyOptions({ visible });
+    this.sellVolumeSeries?.priceScale().applyOptions({ visible });
   }
 
   private toMacdHistogram(candles: CandleWithIndicators[]): HistogramData<Time>[] {
@@ -910,79 +925,10 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     return result;
   }
 
-  /**
-   * Average True Range via Wilder's smoothing. Derived purely from OHLC (the
-   * backend does not ship an ATR field), so it stays a chart-local computation.
-   * Returns points aligned to each candle from index `period` onward.
-   */
-  private computeAtr(
-    candles: CandleWithIndicators[],
-    period = this.atrPeriod,
-  ): { time: UTCTimestamp; value: number }[] {
-    return computeAtrValues(candles, period).map(({ index, value }) => ({
-      time: this.toChartTime(candles[index].time),
-      value,
-    }));
-  }
-
-  /**
-   * Draws the full ATR series and primes the incremental state used by
-   * {@link updateLiveAtr}. Called on initial load, interval/symbol changes and
-   * history expansion — anywhere the whole candle array is (re)applied.
-   */
-  private seedAtrState(candles: CandleWithIndicators[]): void {
-    const series = this.computeAtr(candles, this.atrPeriod);
-    this.atrSeries?.setData(series);
-
-    // The last loaded candle is the one the next live frame will update or
-    // replace, so treat it as the "forming" bar and confirm from index len-2.
-    this.atrCurrentValue = series.at(-1)?.value ?? null;
-    this.atrLastTime = candles.length > 0 ? this.toChartTime(candles[candles.length - 1].time) : null;
-    this.atrPrevValue = null;
-    this.atrPrevClose = null;
-
-    const closedIndex = candles.length - 2;
-    if (closedIndex >= this.atrPeriod) {
-      // computeAtr aligns result[k] to candles[atrPeriod + k].
-      this.atrPrevValue = series[closedIndex - this.atrPeriod]?.value ?? null;
-      this.atrPrevClose = candles[closedIndex].close;
-    }
-  }
-
-  /**
-   * Rolls ATR forward for a single live candle in O(1). `loadedCandles` already
-   * includes `candle` (via {@link upsertLiveCandle}). Falls back to a one-off
-   * full recompute only during cold start, before enough confirmed history exists.
-   */
-  private updateLiveAtr(candle: CandleWithIndicators): void {
-    const candles = this.loadedCandles;
-    const current = candles.at(-1);
-    if (!current) return;
-    const t = this.toChartTime(candle.time);
-    const prev = candles.at(-2);
-
-    // A new bar means the previously-forming bar just closed: promote the value
-    // we last emitted for it, and its now-final close, into the confirmed state.
-    if (this.atrLastTime !== null && t !== this.atrLastTime && this.atrCurrentValue !== null && prev) {
-      this.atrPrevValue = this.atrCurrentValue;
-      this.atrPrevClose = prev.close;
-    }
-
-    let value: number | null;
-    if (this.atrPrevValue !== null && this.atrPrevClose !== null) {
-      const tr = Math.max(
-        current.high - current.low,
-        Math.abs(current.high - this.atrPrevClose),
-        Math.abs(current.low - this.atrPrevClose),
-      );
-      value = (this.atrPrevValue * (this.atrPeriod - 1) + tr) / this.atrPeriod;
-    } else {
-      value = this.computeAtr(candles, this.atrPeriod).at(-1)?.value ?? null;
-    }
-
-    this.atrCurrentValue = value;
-    this.atrLastTime = t;
-    if (value !== null) this.atrSeries?.update({ time: t, value });
+  private applyAtrSeries(candles: CandleWithIndicators[]): void {
+    this.atrSeries?.setData(
+      candles.filter(c => c.atr !== null).map(c => ({ time: this.toChartTime(c.time), value: c.atr! })),
+    );
   }
 
   private upsertLiveCandle(candle: CandleWithIndicators): void {

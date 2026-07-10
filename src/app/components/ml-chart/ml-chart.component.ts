@@ -29,7 +29,6 @@ import { CandleWithIndicators } from '../../structures/candle';
 import { ActiveCandlePlugin } from '../../chart-plugins/active-candle.plugin';
 import { MlDecision } from '../../structures/ml-training';
 import { Trade } from '../../structures/trade';
-import { computeAtrValues } from '../../shared/atr';
 import { CHART_COLORS } from '../../shared/chart-theme';
 
 @Component({
@@ -87,7 +86,8 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
   private sma20Series?: ISeriesApi<'Line'>;
   private sma100Series?: ISeriesApi<'Line'>;
   private volumeSeries?: ISeriesApi<'Histogram'>;
-  private deltaSeries?: ISeriesApi<'Histogram'>;
+  private buyVolumeSeries?: ISeriesApi<'Histogram'>;
+  private sellVolumeSeries?: ISeriesApi<'Histogram'>;
   private rsiSeries?: ISeriesApi<'Line'>;
   private rsiMaSeries?: ISeriesApi<'Line'>;
   private rsiOverbought?: ISeriesApi<'Line'>;
@@ -97,7 +97,6 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
   private macdHistSeries?: ISeriesApi<'Histogram'>;
   private macdZeroSeries?: ISeriesApi<'Line'>;
   private atrSeries?: ISeriesApi<'Line'>;
-  private readonly atrPeriod = 14;
 
   private activeCandlePlugin?: ActiveCandlePlugin;
   private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
@@ -148,7 +147,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       this.sma20Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#f59e0b' });
       this.sma100Series = this.chart.addSeries(LineSeries, { ...smaOpts, color: '#818cf8' });
 
-      // Pane 1 — volume + delta
+      // Pane 1 — volume + buyer/seller volume
       this.volumeSeries = this.chart.addSeries(
         HistogramSeries,
         { priceScaleId: 'volume', priceFormat: { type: 'volume' } },
@@ -156,15 +155,28 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       );
       this.volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.7, bottom: 0 } });
 
-      this.deltaSeries = this.chart.addSeries(
+      const tradeVolumeFormat = {
+        type: 'custom',
+        formatter: (p: number) => Math.abs(p).toFixed(0),
+        minMove: 1,
+      } as const;
+      this.buyVolumeSeries = this.chart.addSeries(
         HistogramSeries,
         {
-          priceScaleId: 'delta',
-          priceFormat: { type: 'custom', formatter: (p: number) => p.toFixed(1) + '%', minMove: 0.1 },
+          priceScaleId: 'trade-volume',
+          priceFormat: tradeVolumeFormat,
         },
         1,
       );
-      this.deltaSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
+      this.sellVolumeSeries = this.chart.addSeries(
+        HistogramSeries,
+        {
+          priceScaleId: 'trade-volume',
+          priceFormat: tradeVolumeFormat,
+        },
+        1,
+      );
+      this.buyVolumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
 
       // Pane 2 — RSI
       const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
@@ -199,7 +211,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: '#4a4d5a' }, 3);
       this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
-      // Pane 4 — ATR (Average True Range, computed client-side from OHLC; the backend ships no ATR field)
+      // Pane 4 — ATR
       this.atrSeries = this.chart.addSeries(
         LineSeries,
         {
@@ -413,7 +425,8 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       const time = this.toTime(c.time);
       this.candleSeries?.update({ time, open: c.open, high: c.high, low: c.low, close: c.close });
       this.volumeSeries?.update(this.toVolumeBar(c));
-      this.deltaSeries?.update(this.toDeltaBar(c));
+      this.buyVolumeSeries?.update(this.toBuyVolumeBar(c));
+      this.sellVolumeSeries?.update(this.toSellVolumeBar(c));
       if (c.sma20 !== null) this.sma20Series?.update({ time, value: c.sma20 });
       if (c.sma100 !== null) this.sma100Series?.update({ time, value: c.sma100 });
       if (c.rsi !== null) this.rsiSeries?.update({ time, value: c.rsi });
@@ -423,20 +436,12 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       if (c.macdHistogram !== null) {
         this.macdHistSeries?.update(this.toMacdHistogramBar(c.macdHistogram, time));
       }
+      if (c.atr !== null) this.atrSeries?.update({ time, value: c.atr });
     }
 
     this.renderedCount = this._candles.length;
     this.candleTimes = this._candles.map(c => this.toTime(c.time));
-    this.renderAtr(this._candles);
     this.extendReferenceLines();
-  }
-
-  // ATR (Wilder) is derived from OHLC client-side since the backend ships no ATR field. The
-  // series is cheap to recompute over the full candle set, so both full redraws and streamed
-  // appends just re-seed it rather than maintaining incremental state.
-  private renderAtr(candles: CandleWithIndicators[]): void {
-    const points = computeAtrValues(candles, this.atrPeriod);
-    this.atrSeries?.setData(points.map(p => ({ time: this.toTime(candles[p.index].time), value: p.value })));
   }
 
   // Extends the horizontal RSI/MACD guide lines to the latest candle so they span the
@@ -474,7 +479,8 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
     );
 
     this.volumeSeries?.setData(candles.map(c => this.toVolumeBar(c)));
-    this.deltaSeries?.setData(candles.map(c => this.toDeltaBar(c)));
+    this.buyVolumeSeries?.setData(candles.map(c => this.toBuyVolumeBar(c)));
+    this.sellVolumeSeries?.setData(candles.map(c => this.toSellVolumeBar(c)));
 
     this.rsiSeries?.setData(
       candles.filter(c => c.rsi !== null).map(c => ({ time: this.toTime(c.time), value: c.rsi! })),
@@ -513,7 +519,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       ]);
     }
 
-    this.renderAtr(candles);
+    this.applyAtrSeries(candles);
 
     if (shouldFitInitialContent) {
       this.chart?.timeScale().setVisibleLogicalRange({ from: 0, to: 99 });
@@ -584,12 +590,18 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
     return { time: this.toTime(c.time), value: vol, color: c.close >= c.open ? '#26a69a' : '#ef5350' };
   }
 
-  private toDeltaBar(c: CandleWithIndicators): HistogramData<Time> {
-    const buy = c.takerBuyVolume;
-    const sell = c.takerSellVolume;
-    const total = buy + sell;
-    const delta = total > 0 ? ((buy - sell) / total) * 100 : 0;
-    return { time: this.toTime(c.time), value: delta, color: delta >= 0 ? '#26a69a' : '#ef5350' };
+  private toBuyVolumeBar(c: CandleWithIndicators): HistogramData<Time> {
+    return { time: this.toTime(c.time), value: c.takerBuyVolume, color: '#26a69a' };
+  }
+
+  private toSellVolumeBar(c: CandleWithIndicators): HistogramData<Time> {
+    return { time: this.toTime(c.time), value: -c.takerSellVolume, color: '#ef5350' };
+  }
+
+  private applyAtrSeries(candles: CandleWithIndicators[]): void {
+    this.atrSeries?.setData(
+      candles.filter(c => c.atr !== null).map(c => ({ time: this.toTime(c.time), value: c.atr! })),
+    );
   }
 
   private toMacdHistogram(candles: CandleWithIndicators[]): HistogramData<Time>[] {

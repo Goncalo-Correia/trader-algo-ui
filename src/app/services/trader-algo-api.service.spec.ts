@@ -57,13 +57,17 @@ describe('TraderAlgoApiService', () => {
       sma_100: null,
       rsi: 55,
       rsi_smooth: 54,
-      rsi_divergence: null,
+      rsi_divergence: true,
       macd_line: 0.2,
       macd_signal_line: 0.1,
       macd_histogram: 0.1,
+      atr_period: 14,
+      atr_true_range: 0.8,
+      atr: 1.4,
     };
 
-    let mapped: { takerBuyVolume?: number; sma20?: number | null; macdLine?: number | null }[] = [];
+    let mapped: { takerBuyVolume?: number; sma20?: number | null; macdLine?: number | null; atr?: number | null }[] =
+      [];
     service.getCandlesWithIndicators({ symbol: 'BTCUSDT' }).subscribe(r => (mapped = r));
 
     httpMock.expectOne(r => r.url === `${baseUrl}/api/charts/candles/indicators`).flush([dto]);
@@ -72,5 +76,6 @@ describe('TraderAlgoApiService', () => {
     expect(mapped[0].takerBuyVolume).toBe(6);
     expect(mapped[0].sma20).toBe(1.1);
     expect(mapped[0].macdLine).toBe(0.2);
+    expect(mapped[0].atr).toBe(1.4);
   });
 });

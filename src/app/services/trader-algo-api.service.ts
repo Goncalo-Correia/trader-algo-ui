@@ -578,11 +578,19 @@ export class TraderAlgoApiService {
       sma_100: this.numberField(row, 'sma_100') ?? this.numberField(row, 'sma100'),
       rsi: this.numberField(row, 'rsi'),
       rsi_smooth: this.numberField(row, 'rsi_smooth') ?? this.numberField(row, 'rsiSmooth'),
-      rsi_divergence: this.numberField(row, 'rsi_divergence') ?? this.numberField(row, 'rsiDivergence'),
+      rsi_divergence: this.booleanField(row, 'rsi_divergence') ?? this.booleanField(row, 'rsiDivergence'),
       macd_line: this.numberField(row, 'macd_line') ?? this.numberField(row, 'macdLine'),
       macd_signal_line: this.numberField(row, 'macd_signal_line') ?? this.numberField(row, 'macdSignalLine'),
       macd_histogram: this.numberField(row, 'macd_histogram') ?? this.numberField(row, 'macdHistogram'),
+      atr_period: this.numberField(row, 'atr_period') ?? this.numberField(row, 'atrPeriod'),
+      atr_true_range: this.numberField(row, 'atr_true_range') ?? this.numberField(row, 'atrTrueRange'),
+      atr: this.numberField(row, 'atr'),
     });
+  }
+
+  private booleanField(row: Record<string, unknown>, key: string): boolean | null {
+    const value = row[key];
+    return typeof value === 'boolean' ? value : null;
   }
 
   private numberField(row: Record<string, unknown>, key: string): number | null {

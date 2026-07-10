@@ -33,10 +33,13 @@ export interface CandleWithIndicatorsDto {
   sma_100: number | null;
   rsi: number | null;
   rsi_smooth: number | null;
-  rsi_divergence: number | null;
+  rsi_divergence: boolean | null;
   macd_line: number | null;
   macd_signal_line: number | null;
   macd_histogram: number | null;
+  atr_period: number | null;
+  atr_true_range: number | null;
+  atr: number | null;
 }
 
 /** Domain model consumed by the chart components (camelCase). */
@@ -54,10 +57,13 @@ export interface CandleWithIndicators {
   rsi: number | null;
   rsiSmooth: number | null;
   /** Reserved for future divergence visualisation — not yet rendered. */
-  rsiDivergence: number | null;
+  rsiDivergence: boolean | null;
   macdLine: number | null;
   macdSignalLine: number | null;
   macdHistogram: number | null;
+  atrPeriod: number | null;
+  atrTrueRange: number | null;
+  atr: number | null;
 }
 
 export function toCandleWithIndicators(dto: CandleWithIndicatorsDto): CandleWithIndicators {
@@ -78,5 +84,8 @@ export function toCandleWithIndicators(dto: CandleWithIndicatorsDto): CandleWith
     macdLine: dto.macd_line,
     macdSignalLine: dto.macd_signal_line,
     macdHistogram: dto.macd_histogram,
+    atrPeriod: dto.atr_period,
+    atrTrueRange: dto.atr_true_range,
+    atr: dto.atr,
   };
 }

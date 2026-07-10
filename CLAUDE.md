@@ -64,9 +64,6 @@ view will not repaint.
 - **`src/app/chart-plugins/*`** — lightweight-charts custom plugins (volume profile, session markers, active candle).
 - **`src/app/shared/chart-theme.ts`** — single source of truth for chart colors (`CHART_COLORS`); do not
   reintroduce hardcoded hex values in chart components.
-- **`src/app/shared/atr.ts`** — pure Wilder ATR core (`computeAtrValues`), extracted so it is unit-testable
-  independently of the chart. `ChartComponent` seeds the full series from it once, then rolls ATR forward
-  incrementally per live candle rather than recomputing the whole array each frame.
 
 ### DTO ↔ domain boundary
 

@@ -51,7 +51,7 @@ src/app/
 ├── core/          # Cross-cutting infra: HTTP interceptors, logger,
 │                  # global error handler, reconnecting WebSocket helper
 ├── shared/        # Shared helpers (e.g. chart colour palette)
-├── components/    # Reusable UI: chart, trade-panel, backtest-chart, …
+├── components/    # Reusable UI: charts, per-use-case trade panels, …
 ├── pages/         # Routed views (one folder per route above)
 ├── services/      # API + WebSocket data access
 ├── chart-plugins/ # lightweight-charts primitives (volume profile, sessions)

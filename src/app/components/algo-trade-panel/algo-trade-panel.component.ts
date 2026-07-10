@@ -18,7 +18,7 @@ import { IntervalResponse } from '../../structures/interval';
 import { isAlpacaSymbol, SymbolResponse } from '../../structures/symbol';
 import { StrategyResponse } from '../../structures/strategy';
 import { CreateTradeBotRequest, TradeBot, TradeBotEvent, UpdateTradeBotRequest } from '../../structures/trade-bot';
-import { CreateTradeRequest, Trade, TradeOrderType, TradeSide, UpdateTradeRequest } from '../../structures/trade';
+import { Trade, UpdateTradeRequest } from '../../structures/trade';
 import { TradingAccount } from '../../structures/trading-account';
 import { FormsModule } from '@angular/forms';
 import { NgClass, DecimalPipe } from '@angular/common';
@@ -39,14 +39,19 @@ interface TradeBotDraft {
   fee: number | null;
 }
 
+/**
+ * The algo-trader trade panel — dedicated sibling of the chart/backtest panels.
+ * Owns symbol/account selection, the live trade-bot configuration, and the
+ * active-trade card. No manual order entry (bots place the trades here).
+ */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  selector: 'app-trade-panel',
-  templateUrl: './trade-panel.component.html',
-  styleUrls: ['./trade-panel.component.css'],
+  selector: 'app-algo-trade-panel',
+  templateUrl: './algo-trade-panel.component.html',
+  styleUrls: ['./algo-trade-panel.component.css'],
   imports: [FormsModule, NgClass, DecimalPipe],
 })
-export class TradePanelComponent implements OnInit, OnDestroy {
+export class AlgoTradePanelComponent implements OnInit, OnDestroy {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);
   private readonly tradeBotEvents = inject(TradeBotEventsService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -57,7 +62,6 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   @Input() symbols: SymbolResponse[] = [];
   @Input() intervals: IntervalResponse[] = [];
   @Input() defaultInterval = '';
-  @Input() showTradeBot = false;
 
   @Input() set initialSymbol(value: string) {
     if (!value || value === this.selectedSymbol) return;
@@ -109,24 +113,12 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   activeTrade: Trade | null = null;
 
-  // ── Manual trade entry ───────────────────────────────────────────────────────
-
-  tradeSide: TradeSide = 'Buy';
-  tradeOrderType: TradeOrderType = 'Market';
-  tradeQuantity: number | null = null;
-  tradeLimitPrice: number | null = null;
-  tradeStopLoss: number | null = null;
-  tradeTakeProfit: number | null = null;
-  isSubmittingTrade = false;
-  isClosingTrade = false;
-  tradeError = '';
-  tradeMessage = '';
-
   // ── SL/TP adjustment for active trade ───────────────────────────────────────
 
   adjustSlDraft: number | null = null;
   adjustTpDraft: number | null = null;
   isAdjusting = false;
+  isClosingTrade = false;
 
   private subscription?: Subscription;
   private botEventSubscription?: Subscription;
@@ -153,10 +145,8 @@ export class TradePanelComponent implements OnInit, OnDestroy {
           this.selectedAccountId = this.accounts[0].id;
           this.accountChange.emit(this.selectedAccountId);
           this.loadActiveTrade();
-          if (this.showTradeBot) {
-            this.loadTradeBot();
-            this.connectTradeBotEvents();
-          }
+          this.loadTradeBot();
+          this.connectTradeBotEvents();
         }
         this.cdr.markForCheck();
       },
@@ -191,17 +181,14 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     this.clearTradeState();
     this.clearBotState();
     this.loadActiveTrade();
-    if (this.showTradeBot) {
-      this.loadTradeBot();
-      this.connectTradeBotEvents();
-    }
+    this.loadTradeBot();
+    this.connectTradeBotEvents();
   }
 
   // ── Computed ─────────────────────────────────────────────────────────────────
 
   get tradeBotFormValid(): boolean {
     if (this.selectedAccountId === null) return false;
-    if (!this.showTradeBot) return false;
     if (!this.findSymbol(this.tradeBotDraft.symbolCode)) return false;
     if (!this.findInterval(this.tradeBotDraft.intervalCode)) return false;
     if (!this.tradeBotDraft.quantity || this.tradeBotDraft.quantity <= 0) return false;
@@ -227,13 +214,6 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     return this.activeTrade?.status === 'Pending' || this.activeTrade?.status === 'Active';
   }
 
-  get tradeFormValid(): boolean {
-    if (this.selectedAccountId === null) return false;
-    if (!this.tradeQuantity || this.tradeQuantity <= 0) return false;
-    if (this.tradeOrderType === 'Limit' && (!this.tradeLimitPrice || this.tradeLimitPrice <= 0)) return false;
-    return true;
-  }
-
   get absoluteSlPrice(): number | null {
     const t = this.activeTrade;
     if (!t || t.stopLoss === null || t.stopLoss === undefined) return null;
@@ -250,44 +230,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
     return t.side === 'Buy' ? Number(entry) + Number(t.takeProfit) : Number(entry) - Number(t.takeProfit);
   }
 
-  // ── Manual trade actions ─────────────────────────────────────────────────────
-
-  submitTrade(): void {
-    if (!this.tradeFormValid || this.isSubmittingTrade) return;
-    this.isSubmittingTrade = true;
-    this.tradeError = '';
-    this.tradeMessage = '';
-
-    const payload: CreateTradeRequest = {
-      symbolCode: this.selectedSymbol,
-      side: this.tradeSide,
-      orderType: this.tradeOrderType,
-      quantity: this.tradeQuantity!,
-      tradingAccountId: this.selectedAccountId ?? undefined,
-    };
-    if (this.tradeOrderType === 'Limit' && this.tradeLimitPrice) {
-      payload.limitPrice = this.tradeLimitPrice;
-    }
-    if (this.tradeStopLoss) payload.stopLoss = this.tradeStopLoss;
-    if (this.tradeTakeProfit) payload.takeProfit = this.tradeTakeProfit;
-
-    this.traderAlgoApi.createTrade(payload).subscribe({
-      next: trade => {
-        this.isSubmittingTrade = false;
-        this.activeTrade = trade;
-        this.tradeChange.emit(trade);
-        this.tradeMessage = `${trade.side} trade opened.`;
-        this.syncAdjustDraft(trade);
-        this.startPolling();
-        this.cdr.markForCheck();
-      },
-      error: err => {
-        this.isSubmittingTrade = false;
-        this.tradeError = this.extractError(err, 'Failed to submit trade.');
-        this.cdr.markForCheck();
-      },
-    });
-  }
+  // ── Active-trade actions ─────────────────────────────────────────────────────
 
   closeTrade(): void {
     if (!this.activeTrade || this.isClosingTrade) return;
@@ -408,7 +351,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   }
 
   private loadTradeBot(): void {
-    if (!this.showTradeBot || this.selectedAccountId === null) return;
+    if (this.selectedAccountId === null) return;
     const accountId = this.selectedAccountId;
     this.isLoadingBot = true;
     this.botError = '';
@@ -489,7 +432,7 @@ export class TradePanelComponent implements OnInit, OnDestroy {
 
   private connectTradeBotEvents(): void {
     this.botEventSubscription?.unsubscribe();
-    if (!this.showTradeBot || this.selectedAccountId === null) return;
+    if (this.selectedAccountId === null) return;
     const accountId = this.selectedAccountId;
     this.botEventSubscription = this.tradeBotEvents.connect(accountId).subscribe({
       next: event => {
@@ -564,8 +507,6 @@ export class TradePanelComponent implements OnInit, OnDestroy {
   private clearTradeState(): void {
     this.stopPolling();
     this.activeTrade = null;
-    this.tradeError = '';
-    this.tradeMessage = '';
   }
 
   private clearBotState(): void {

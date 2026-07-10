@@ -1,0 +1,348 @@
+:host {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #0e0e0e;
+  border-left: 1px solid #1e2130;
+  overflow-y: auto;
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #787b86;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Form controls ──────────────────────────────────────────────────────── */
+
+.ctrl-select,
+.ctrl-input {
+  height: 30px;
+  padding: 0 8px;
+  background: #1a1a1a;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  color: #d1d4dc;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  -moz-appearance: textfield;
+}
+
+.ctrl-input::-webkit-outer-spin-button,
+.ctrl-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.ctrl-select:focus,
+.ctrl-input:focus {
+  border-color: #2962ff;
+}
+.ctrl-input::placeholder {
+  color: #4a4d5a;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* ── Buy / Sell / order-type toggles ────────────────────────────────────── */
+
+.toggle-btn-row {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle-btn {
+  flex: 1;
+  height: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  background: transparent;
+  color: #787b86;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.toggle-btn:hover {
+  color: #d1d4dc;
+  border-color: #4a4d5a;
+}
+.toggle-btn.buy.active {
+  background: #1a3a2a;
+  color: #26a69a;
+  border-color: #26a69a;
+}
+.toggle-btn.sell.active {
+  background: #3a1a1a;
+  color: #ef5350;
+  border-color: #ef5350;
+}
+.toggle-btn.active:not(.buy):not(.sell) {
+  background: #252a3a;
+  color: #d1d4dc;
+  border-color: #2962ff;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.btn-run {
+  width: 100%;
+  height: 36px;
+  background: #2962ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+}
+
+.btn-run:hover:not(:disabled) {
+  background: #1a4fd6;
+}
+.btn-run:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-run.buy-btn {
+  background: #26a69a;
+}
+.btn-run.buy-btn:hover:not(:disabled) {
+  background: #229184;
+}
+.btn-run.sell-btn {
+  background: #ef5350;
+}
+.btn-run.sell-btn:hover:not(:disabled) {
+  background: #d84744;
+}
+
+.btn-ghost {
+  height: 30px;
+  padding: 0 12px;
+  background: transparent;
+  color: #787b86;
+  border: 1px solid #2a2d3a;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: #d1d4dc;
+  border-color: #4a4d5a;
+}
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-ghost.full-width {
+  width: 100%;
+}
+
+.btn-close {
+  width: 100%;
+  height: 32px;
+  background: #2a2d3a;
+  color: #ef5350;
+  border: 1px solid #ef5350;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-close:not(:disabled):hover {
+  background: #3a2020;
+}
+.btn-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Result / account card ──────────────────────────────────────────────── */
+
+.result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #1a1a1a;
+  border: 1px solid #2a2d3a;
+  border-radius: 6px;
+  margin-top: 2px;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+.result-label {
+  color: #787b86;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.result-value {
+  font-weight: 700;
+  font-size: 13px;
+  color: #d1d4dc;
+  font-variant-numeric: tabular-nums;
+}
+
+.positive {
+  color: #26a69a;
+}
+.negative {
+  color: #ef5350;
+}
+
+/* ── Messages ───────────────────────────────────────────────────────────── */
+
+.msg {
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
+.msg.success {
+  color: #26a69a;
+  background: #1a3a2a;
+}
+.msg.error {
+  color: #ef5350;
+  background: #3a1a1a;
+}
+
+/* ── Active-trade badges / details / levels ─────────────────────────────── */
+
+.badge-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.badge.active {
+  background: #1a3a2a;
+  color: #26a69a;
+}
+.badge.pending {
+  background: #2a2a1a;
+  color: #f59e0b;
+}
+.badge.closed,
+.badge.cancelled {
+  background: #2a2a2a;
+  color: #787b86;
+}
+.badge.buy {
+  background: #1a3a2a;
+  color: #26a69a;
+}
+.badge.sell {
+  background: #3a1a1a;
+  color: #ef5350;
+}
+.badge.neutral {
+  background: #252a3a;
+  color: #818cf8;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 12px;
+}
+.detail-label {
+  color: #787b86;
+}
+.detail-value {
+  color: #d1d4dc;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.detail-value.positive {
+  color: #26a69a;
+  font-weight: 600;
+}
+.detail-value.negative {
+  color: #ef5350;
+  font-weight: 600;
+}
+
+.level-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.level-label {
+  width: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.level-label.sl {
+  color: #ef5350;
+}
+.level-label.tp {
+  color: #26a69a;
+}
+.level-value {
+  flex: 1;
+  color: #d1d4dc;
+  font-variant-numeric: tabular-nums;
+}
+.offset {
+  font-size: 10px;
+  color: #787b86;
+  margin-left: 3px;
+}

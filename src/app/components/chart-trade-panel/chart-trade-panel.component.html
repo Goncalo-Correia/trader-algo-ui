@@ -1,0 +1,197 @@
+<!-- ── Symbol selector ─────────────────────────────────────────────────── -->
+<div class="panel-section">
+  <div class="section-label">Symbol</div>
+  <select class="ctrl-select full-width" (change)="onSymbolChange($event)">
+    @for (s of symbols; track trackBySymbolId($index, s)) {
+      <option [value]="s.code" [selected]="s.code === selectedSymbol">{{ s.code }}</option>
+    }
+  </select>
+</div>
+
+<!-- ── Account selector ───────────────────────────────────────────────── -->
+<div class="panel-section">
+  <div class="section-label">Account</div>
+  <select
+    class="ctrl-select full-width"
+    [ngModel]="selectedAccountId"
+    [ngModelOptions]="{ standalone: true }"
+    (ngModelChange)="onAccountChange($event)"
+  >
+    <option [ngValue]="null" disabled>— select account —</option>
+    @for (a of accounts; track trackByAccountId($index, a)) {
+      <option [ngValue]="a.id">{{ a.name }}</option>
+    }
+  </select>
+
+  @if (selectedAccount) {
+    <div class="result-card">
+      <div class="result-row">
+        <span class="result-label">Initial</span>
+        <span class="result-value">${{ selectedAccount.initialBalance | number: '1.2-2' }}</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Balance</span>
+        <span
+          class="result-value"
+          [class.positive]="selectedAccount.currentBalance >= selectedAccount.initialBalance"
+          [class.negative]="selectedAccount.currentBalance < selectedAccount.initialBalance"
+        >
+          ${{ selectedAccount.currentBalance | number: '1.2-2' }}
+        </span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">PNL</span>
+        <span
+          class="result-value"
+          [class.positive]="selectedAccount.currentBalance >= selectedAccount.initialBalance"
+          [class.negative]="selectedAccount.currentBalance < selectedAccount.initialBalance"
+        >
+          {{ selectedAccount.currentBalance - selectedAccount.initialBalance >= 0 ? '+' : '' }}${{
+            selectedAccount.currentBalance - selectedAccount.initialBalance | number: '1.2-2'
+          }}
+        </span>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- ── Manual trade entry ─────────────────────────────────────────────── -->
+@if (!hasActiveTrade && selectedAccountId !== null) {
+  <div class="section-label">New Trade</div>
+  <!-- Side -->
+  <div class="toggle-btn-row">
+    <button class="toggle-btn buy" [class.active]="tradeSide === 'Buy'" (click)="tradeSide = 'Buy'">Buy</button>
+    <button class="toggle-btn sell" [class.active]="tradeSide === 'Sell'" (click)="tradeSide = 'Sell'">Sell</button>
+  </div>
+  <!-- Order type -->
+  <div class="toggle-btn-row">
+    <button class="toggle-btn" [class.active]="tradeOrderType === 'Market'" (click)="tradeOrderType = 'Market'">
+      Market
+    </button>
+    <button class="toggle-btn" [class.active]="tradeOrderType === 'Limit'" (click)="tradeOrderType = 'Limit'">
+      Limit
+    </button>
+  </div>
+  <!-- Limit price -->
+  @if (tradeOrderType === 'Limit') {
+    <div class="panel-section">
+      <label class="section-label">Limit Price</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeLimitPrice"
+        placeholder="0.00"
+        min="0"
+        step="any"
+      />
+    </div>
+  }
+  <!-- Quantity -->
+  <div class="panel-section">
+    <label class="section-label">Quantity</label>
+    <input
+      class="ctrl-input full-width"
+      type="number"
+      [(ngModel)]="tradeQuantity"
+      placeholder="0.00000000"
+      min="0"
+      step="any"
+    />
+  </div>
+  <!-- TP / SL -->
+  <div class="panel-section">
+    <label class="section-label">Take Profit</label>
+    <input
+      class="ctrl-input full-width"
+      type="number"
+      [(ngModel)]="tradeTakeProfit"
+      placeholder="-"
+      min="0"
+      step="any"
+    />
+  </div>
+  <div class="panel-section">
+    <label class="section-label">Stop Loss</label>
+    <input class="ctrl-input full-width" type="number" [(ngModel)]="tradeStopLoss" placeholder="-" min="0" step="any" />
+  </div>
+  <!-- Submit -->
+  <button
+    class="btn-run"
+    [class.buy-btn]="tradeSide === 'Buy'"
+    [class.sell-btn]="tradeSide === 'Sell'"
+    [disabled]="!tradeFormValid || isSubmittingTrade"
+    (click)="submitTrade()"
+  >
+    {{ isSubmittingTrade ? 'Placing…' : tradeSide + ' ' + selectedSymbol }}
+  </button>
+  @if (tradeMessage) {
+    <div class="msg success">{{ tradeMessage }}</div>
+  }
+  @if (tradeError) {
+    <div class="msg error">{{ tradeError }}</div>
+  }
+}
+
+<!-- ── Active trade card ────────────────────────────────────────────────── -->
+@if (hasActiveTrade && activeTrade) {
+  <div class="section-label">Active Trade</div>
+  <div class="badge-row">
+    <span class="badge" [ngClass]="activeTrade.status.toLowerCase()">{{ activeTrade.status }}</span>
+    <span class="badge" [ngClass]="activeTrade.side.toLowerCase()">{{ activeTrade.side }}</span>
+    @if (activeTrade.orderType === 'Limit') {
+      <span class="badge neutral">Limit</span>
+    }
+  </div>
+  <div class="detail-grid">
+    <span class="detail-label">Entry</span>
+    <span class="detail-value">{{ activeTrade.entryPrice ?? activeTrade.requestedPrice | number: '1.2-8' }}</span>
+    <span class="detail-label">Qty</span>
+    <span class="detail-value">{{ activeTrade.quantity | number: '1.0-8' }}</span>
+    @if (activeTrade.unrealizedPnl !== null && activeTrade.unrealizedPnl !== undefined) {
+      <span class="detail-label">PNL</span>
+      <span class="detail-value" [ngClass]="activeTrade.unrealizedPnl >= 0 ? 'positive' : 'negative'">
+        {{ activeTrade.unrealizedPnl >= 0 ? '+' : '' }}{{ activeTrade.unrealizedPnl | number: '1.2-4' }}
+      </span>
+    }
+  </div>
+  <!-- TP -->
+  <div class="level-row">
+    <span class="level-label tp">TP</span>
+    <span class="level-value">
+      @if (absoluteTpPrice !== null) {
+        {{ absoluteTpPrice | number: '1.2-8' }}
+        <span class="offset">(+/-{{ activeTrade.takeProfit | number: '1.2-2' }})</span>
+      } @else {
+        -
+      }
+    </span>
+  </div>
+  <!-- SL -->
+  <div class="level-row">
+    <span class="level-label sl">SL</span>
+    <span class="level-value">
+      @if (absoluteSlPrice !== null) {
+        {{ absoluteSlPrice | number: '1.2-8' }}
+        <span class="offset">(+/-{{ activeTrade.stopLoss | number: '1.2-2' }})</span>
+      } @else {
+        -
+      }
+    </span>
+  </div>
+  <!-- Adjust SL / TP -->
+  <div class="panel-section">
+    <label class="section-label">Take Profit</label>
+    <input class="ctrl-input full-width" type="number" [(ngModel)]="adjustTpDraft" placeholder="-" min="0" step="any" />
+  </div>
+  <div class="panel-section">
+    <label class="section-label">Stop Loss</label>
+    <input class="ctrl-input full-width" type="number" [(ngModel)]="adjustSlDraft" placeholder="-" min="0" step="any" />
+  </div>
+  <button class="btn-ghost full-width" [disabled]="isAdjusting" (click)="saveAdjustment()">
+    {{ isAdjusting ? 'Saving…' : 'Update SL / TP' }}
+  </button>
+  <!-- Close trade -->
+  <button class="btn-close" [disabled]="isClosingTrade" (click)="closeTrade()">
+    {{ isClosingTrade ? 'Closing…' : 'Close Trade' }}
+  </button>
+}

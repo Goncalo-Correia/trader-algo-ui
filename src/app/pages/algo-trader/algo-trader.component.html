@@ -10,15 +10,14 @@
         [tradingAccountId]="tradingAccountId"
       ></app-chart>
     </div>
-    <app-trade-panel
+    <app-algo-trade-panel
       [symbols]="symbols"
       [intervals]="intervals"
       [initialSymbol]="selectedSymbol"
       [defaultInterval]="defaultInterval"
-      [showTradeBot]="true"
       (symbolChange)="onSymbolChange($event)"
       (tradeChange)="onTradeChange($event)"
       (accountChange)="onAccountChange($event)"
-    ></app-trade-panel>
+    ></app-algo-trade-panel>
   </div>
 }

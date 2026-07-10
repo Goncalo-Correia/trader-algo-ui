@@ -1,0 +1,314 @@
+<!-- ── Symbol selector ─────────────────────────────────────────────────── -->
+<div class="panel-section">
+  <div class="section-label">Symbol</div>
+  <select class="ctrl-select full-width" (change)="onSymbolChange($event)">
+    @for (s of symbols; track trackBySymbolId($index, s)) {
+      <option [value]="s.code" [selected]="s.code === selectedSymbol">{{ s.code }}</option>
+    }
+  </select>
+</div>
+
+<!-- ── Account selector ───────────────────────────────────────────────── -->
+<div class="panel-section">
+  <div class="section-label">Account</div>
+  <select
+    class="ctrl-select full-width"
+    [ngModel]="selectedAccountId"
+    [ngModelOptions]="{ standalone: true }"
+    (ngModelChange)="onAccountChange($event)"
+  >
+    <option [ngValue]="null" disabled>— select account —</option>
+    @for (a of accounts; track trackByAccountId($index, a)) {
+      <option [ngValue]="a.id">{{ a.name }}</option>
+    }
+  </select>
+
+  @if (selectedAccount) {
+    <div class="result-card">
+      <div class="result-row">
+        <span class="result-label">Initial</span>
+        <span class="result-value">${{ selectedAccount.initialBalance | number: '1.2-2' }}</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Balance</span>
+        <span
+          class="result-value"
+          [class.positive]="selectedAccount.currentBalance >= selectedAccount.initialBalance"
+          [class.negative]="selectedAccount.currentBalance < selectedAccount.initialBalance"
+        >
+          ${{ selectedAccount.currentBalance | number: '1.2-2' }}
+        </span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">PNL</span>
+        <span
+          class="result-value"
+          [class.positive]="selectedAccount.currentBalance >= selectedAccount.initialBalance"
+          [class.negative]="selectedAccount.currentBalance < selectedAccount.initialBalance"
+        >
+          {{ selectedAccount.currentBalance - selectedAccount.initialBalance >= 0 ? '+' : '' }}${{
+            selectedAccount.currentBalance - selectedAccount.initialBalance | number: '1.2-2'
+          }}
+        </span>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- ── Trade bot section ──────────────────────────────────────────────── -->
+@if (selectedAccountId !== null) {
+  <div class="bot-section">
+    <div class="bot-header">
+      <span class="section-label">Trade Bot</span>
+      <span class="bot-status" [class.enabled]="tradeBot?.isEnabled" [class.disabled]="tradeBot && !tradeBot.isEnabled">
+        {{ tradeBotStatusLabel }}
+      </span>
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Strategy</label>
+      <select
+        class="ctrl-select full-width"
+        [(ngModel)]="tradeBotDraft.tradingStrategyId"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      >
+        @for (s of strategies; track trackByStrategyId($index, s)) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Bot Symbol</label>
+      <select
+        class="ctrl-select full-width"
+        [(ngModel)]="tradeBotDraft.symbolCode"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      >
+        @for (s of symbols; track trackBySymbolId($index, s)) {
+          <option [ngValue]="s.code">{{ s.code }}</option>
+        }
+      </select>
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Bot Interval</label>
+      <select
+        class="ctrl-select full-width"
+        [(ngModel)]="tradeBotDraft.intervalCode"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      >
+        @for (i of intervals; track trackByIntervalId($index, i)) {
+          <option [ngValue]="i.code">{{ i.displayName || i.code }}</option>
+        }
+      </select>
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Bot Quantity</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.quantity"
+        placeholder="0.00000000"
+        min="0"
+        step="any"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="bot-risk-grid">
+      <div class="panel-section">
+        <label class="section-label">TP</label>
+        <input
+          class="ctrl-input full-width"
+          type="number"
+          [(ngModel)]="tradeBotDraft.takeProfit"
+          placeholder="-"
+          min="0"
+          step="any"
+          [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+        />
+      </div>
+      <div class="panel-section">
+        <label class="section-label">SL</label>
+        <input
+          class="ctrl-input full-width"
+          type="number"
+          [(ngModel)]="tradeBotDraft.stopLoss"
+          placeholder="-"
+          min="0"
+          step="any"
+          [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+        />
+      </div>
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Breakeven</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.breakeven"
+        placeholder="e.g. 50"
+        min="0"
+        step="any"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Breakeven Stop</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.breakevenStop"
+        placeholder="e.g. 25"
+        min="0"
+        step="any"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Fee ($)</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.fee"
+        placeholder="e.g. 0.65"
+        min="0"
+        step="any"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Daily Profit Goal ($)</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.dailyProfitGoal"
+        placeholder="e.g. 200"
+        min="0"
+        step="any"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Max Losses Per Day</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.maxLossesPerDay"
+        placeholder="e.g. 3"
+        min="1"
+        step="1"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="panel-section">
+      <label class="section-label">Max Candles Per Trade</label>
+      <input
+        class="ctrl-input full-width"
+        type="number"
+        [(ngModel)]="tradeBotDraft.maxCandlesPerTrade"
+        placeholder="e.g. 10"
+        min="1"
+        step="1"
+        [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+      />
+    </div>
+    <div class="panel-section">
+      <div class="toggle-row">
+        <span class="section-label">NY Session Only</span>
+        <label class="toggle-switch">
+          <input
+            type="checkbox"
+            [(ngModel)]="tradeBotDraft.isNySessionOnly"
+            [disabled]="isLoadingBot || isSavingBot || isTogglingBot"
+          />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+    </div>
+    <div class="bot-actions">
+      <button
+        class="btn-ghost"
+        [disabled]="!tradeBotFormValid || isSavingBot || isTogglingBot"
+        (click)="saveTradeBot()"
+      >
+        {{ isSavingBot ? 'Saving...' : 'Save' }}
+      </button>
+      <button
+        class="btn-run bot-toggle-btn"
+        [class.enabled]="tradeBot?.isEnabled"
+        [disabled]="!tradeBotFormValid || !canUseTradeBot || isSavingBot || isTogglingBot"
+        (click)="toggleTradeBot()"
+      >
+        {{ isTogglingBot ? 'Working...' : tradeBot?.isEnabled ? 'Disable Bot' : 'Enable Bot' }}
+      </button>
+    </div>
+    @if (botMessage) {
+      <div class="msg success">{{ botMessage }}</div>
+    }
+    @if (botError) {
+      <div class="msg error">{{ botError }}</div>
+    }
+  </div>
+}
+
+<!-- ── Active trade card ────────────────────────────────────────────────── -->
+@if (hasActiveTrade && activeTrade) {
+  <div class="section-label">Active Trade</div>
+  <div class="badge-row">
+    <span class="badge" [ngClass]="activeTrade.status.toLowerCase()">{{ activeTrade.status }}</span>
+    <span class="badge" [ngClass]="activeTrade.side.toLowerCase()">{{ activeTrade.side }}</span>
+    @if (activeTrade.orderType === 'Limit') {
+      <span class="badge neutral">Limit</span>
+    }
+  </div>
+  <div class="detail-grid">
+    <span class="detail-label">Entry</span>
+    <span class="detail-value">{{ activeTrade.entryPrice ?? activeTrade.requestedPrice | number: '1.2-8' }}</span>
+    <span class="detail-label">Qty</span>
+    <span class="detail-value">{{ activeTrade.quantity | number: '1.0-8' }}</span>
+    @if (activeTrade.unrealizedPnl !== null && activeTrade.unrealizedPnl !== undefined) {
+      <span class="detail-label">PNL</span>
+      <span class="detail-value" [ngClass]="activeTrade.unrealizedPnl >= 0 ? 'positive' : 'negative'">
+        {{ activeTrade.unrealizedPnl >= 0 ? '+' : '' }}{{ activeTrade.unrealizedPnl | number: '1.2-4' }}
+      </span>
+    }
+  </div>
+  <!-- TP -->
+  <div class="level-row">
+    <span class="level-label tp">TP</span>
+    <span class="level-value">
+      @if (absoluteTpPrice !== null) {
+        {{ absoluteTpPrice | number: '1.2-8' }}
+        <span class="offset">(+/-{{ activeTrade.takeProfit | number: '1.2-2' }})</span>
+      } @else {
+        -
+      }
+    </span>
+  </div>
+  <!-- SL -->
+  <div class="level-row">
+    <span class="level-label sl">SL</span>
+    <span class="level-value">
+      @if (absoluteSlPrice !== null) {
+        {{ absoluteSlPrice | number: '1.2-8' }}
+        <span class="offset">(+/-{{ activeTrade.stopLoss | number: '1.2-2' }})</span>
+      } @else {
+        -
+      }
+    </span>
+  </div>
+  <!-- Adjust SL / TP -->
+  <div class="panel-section">
+    <label class="section-label">Take Profit</label>
+    <input class="ctrl-input full-width" type="number" [(ngModel)]="adjustTpDraft" placeholder="-" min="0" step="any" />
+  </div>
+  <div class="panel-section">
+    <label class="section-label">Stop Loss</label>
+    <input class="ctrl-input full-width" type="number" [(ngModel)]="adjustSlDraft" placeholder="-" min="0" step="any" />
+  </div>
+  <button class="btn-ghost full-width" [disabled]="isAdjusting" (click)="saveAdjustment()">
+    {{ isAdjusting ? 'Saving…' : 'Update SL / TP' }}
+  </button>
+  <!-- Close trade -->
+  <button class="btn-close" [disabled]="isClosingTrade" (click)="closeTrade()">
+    {{ isClosingTrade ? 'Closing…' : 'Close Trade' }}
+  </button>
+}

@@ -5,14 +5,14 @@ import { IntervalResponse } from '../../structures/interval';
 import { SymbolResponse } from '../../structures/symbol';
 import { Trade } from '../../structures/trade';
 import { ChartComponent } from '../../components/chart/chart.component';
-import { TradePanelComponent } from '../../components/trade-panel/trade-panel.component';
+import { AlgoTradePanelComponent } from '../../components/algo-trade-panel/algo-trade-panel.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-algo-trader-page',
   templateUrl: './algo-trader.component.html',
   styleUrls: ['./algo-trader.component.css'],
-  imports: [ChartComponent, TradePanelComponent],
+  imports: [ChartComponent, AlgoTradePanelComponent],
 })
 export class AlgoTraderPageComponent implements OnInit {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);

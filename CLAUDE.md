@@ -55,7 +55,8 @@ view will not repaint.
 
 - **`src/app/pages/*`** — routed page components (algo-trader, charts, accounts, backtest(s), tradebots, ml).
 - **`src/app/components/*`** — reusable pieces, chiefly the charts (`chart`, `charts-chart`, `backtest-chart`,
-  `ml-chart`, `multi-chart`, `highcharts-chart`) and `trade-panel`.
+  `ml-chart`, `multi-chart`, `highcharts-chart`) and the three dedicated trade panels (`algo-trade-panel`,
+  `chart-trade-panel`, `backtest-trade-panel`).
 - **`src/app/services/`** — `TraderAlgoApiService` (all REST calls, `providedIn: 'root'`) and
   `LiveChartDataService` (all WebSocket streams). Components inject these; they do not build URLs themselves.
 - **`src/app/structures/*`** — domain interfaces + DTO types + mapping functions (see boundary rule below).
@@ -137,6 +138,23 @@ caused exactly that):
 `ChartComponent`/`ChartsChartComponent` are near-identical and `BacktestChartComponent`/`MlChartComponent`
 share a lineage; that duplication is deliberate (decoupling over DRY). When you touch one, decide whether the
 change is use-case-specific (most are) before considering porting it to its sibling.
+
+### Trade panels
+
+Same "one dedicated component per use case" rule as the charts — the shared `TradePanelComponent` was split so a
+change for one panel can't regress the others. All three share the **backtest panel's visual language** (260px,
+`#0e0e0e` panel, `#1a1a1a` inputs, blue `#2962ff` primary, `result-card` blocks):
+
+- **algo-trader** → `AlgoTradePanelComponent` (`app-algo-trade-panel`) — symbol/account selection, live
+  trade-bot configuration, and the active-trade card. **No** manual order entry (bots place the trades).
+- **charts** → `ChartTradePanelComponent` (`app-chart-trade-panel`) — symbol/account selection, manual order
+  entry (Buy/Sell · Market/Limit), and the active-trade card. **No** trade-bot config.
+- **backtest** → `BacktestTradePanelComponent` (`app-backtest-trade-panel`) — the backtest config form + run
+  status/result cards. Presentational: config fields are two-way `model()` bindings and the live run status is
+  parent-supplied `input()`s; the page keeps backtest creation + streaming and reacts to the `runBacktest` output.
+
+`AlgoTradePanelComponent`/`ChartTradePanelComponent` share account/active-trade lineage; as with the charts, that
+duplication is deliberate — decide whether a change is use-case-specific before porting it to a sibling.
 
 ## Conventions
 

@@ -9,16 +9,14 @@ import { CandleWithIndicators } from '../../structures/candle';
 import { BacktestSummary, CreateBacktestRequest } from '../../structures/backtest';
 import { Trade } from '../../structures/trade';
 import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { DecimalPipe } from '@angular/common';
+import { BacktestTradePanelComponent } from '../../components/backtest-trade-panel/backtest-trade-panel.component';
 
 @Component({
   selector: 'app-backtest-page',
   templateUrl: './backtest-page.component.html',
   styleUrls: ['./backtest-page.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BacktestChartComponent, FormsModule, RouterLink, DecimalPipe],
+  imports: [BacktestChartComponent, BacktestTradePanelComponent],
 })
 export class BacktestPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(TraderAlgoApiService);
@@ -28,10 +26,6 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   symbols: SymbolResponse[] = [];
   intervals: IntervalResponse[] = [];
   strategies: StrategyResponse[] = [];
-
-  readonly trackBySymbolId = (_: number, symbol: SymbolResponse): number => symbol.id;
-  readonly trackByIntervalId = (_: number, interval: IntervalResponse): number => interval.id;
-  readonly trackByStrategyId = (_: number, strategy: StrategyResponse): number => strategy.id;
 
   selectedSymbol = '';
   selectedInterval = '';
@@ -98,11 +92,6 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this.cancelStream();
   }
 
-  onSymbolChange(code: string): void {
-    this.selectedSymbol = code;
-    this.isNySessionOnly = isAlpacaSymbol(this.symbols.find(s => s.code === code));
-  }
-
   runBacktest(): void {
     if (!this.selectedSymbol || !this.selectedInterval || !this.fromDate || !this.toDate) return;
     if (!this.quantity || this.quantity <= 0) {
@@ -150,22 +139,6 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
         this.errorMessage = this.extractError(err, 'Failed to create backtest.');
         this.cdr.markForCheck();
       },
-    });
-  }
-
-  get pnlPositive(): boolean {
-    return (this.backtestResult?.pnl ?? 0) >= 0;
-  }
-
-  get streamedCandleDate(): string {
-    if (!this.activePlaybackTime) return '';
-    return new Date(this.activePlaybackTime * 1000).toLocaleString(undefined, {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
     });
   }
 

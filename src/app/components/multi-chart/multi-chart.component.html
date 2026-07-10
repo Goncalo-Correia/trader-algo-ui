@@ -14,11 +14,11 @@
       }
     </div>
     <!-- Single trade panel -->
-    <app-trade-panel
+    <app-chart-trade-panel
       [symbols]="symbols"
       [initialSymbol]="selectedSymbol"
       (symbolChange)="onSymbolChange($event)"
       (tradeChange)="onTradeChange($event)"
-    ></app-trade-panel>
+    ></app-chart-trade-panel>
   </div>
 }

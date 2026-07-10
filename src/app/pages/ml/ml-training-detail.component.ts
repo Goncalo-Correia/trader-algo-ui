@@ -383,14 +383,14 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   jumpNextDecision(): void {
     const current = this.playbackTime ?? 0;
     const next = (this.decisions?.decisions ?? [])
-      .filter(decision => decision.open_time !== null && decision.open_time > current && !decision.action_name.toLowerCase().includes('hold'))
+      .filter(decision => decision.open_time != null && decision.open_time > current && !decision.action_name.toLowerCase().includes('hold'))
       .map(decision => decision.open_time as number)
       .sort((a, b) => a - b)[0];
     if (next !== undefined) this.jumpToTime(next);
   }
 
   jumpToDecision(decision: MlDecision): void {
-    if (decision.open_time !== null) this.jumpToTime(decision.open_time);
+    if (decision.open_time != null) this.jumpToTime(decision.open_time);
   }
 
   setReplaySpeed(value: string): void {
@@ -534,14 +534,14 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         {
           type: 'line',
           name: 'Balance',
-          data: decisions.filter(d => d.open_time !== null).map(d => [d.open_time! * 1000, d.balance]),
+          data: decisions.filter(d => d.open_time != null).map(d => [d.open_time! * 1000, d.balance]),
           color: '#5b9bd5',
           marker: { enabled: false },
         },
         {
           type: 'line',
           name: 'Position',
-          data: decisions.filter(d => d.open_time !== null).map(d => [d.open_time! * 1000, d.position]),
+          data: decisions.filter(d => d.open_time != null).map(d => [d.open_time! * 1000, d.position]),
           color: '#f59e0b',
           marker: { enabled: false },
         },

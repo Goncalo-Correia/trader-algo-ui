@@ -272,7 +272,9 @@ export class TraderAlgoApiService {
   }
 
   getTrainingDecisions(id: number): Observable<MlDecisionLog> {
-    return this.http.get<MlDecisionLog>(`${this.baseUrl}/api/ml/training-runs/${id}/decisions`);
+    return this.http
+      .get<MlDecisionLog>(`${this.baseUrl}/api/ml/training-runs/${id}/decisions`)
+      .pipe(map(value => this.normalizeDecisionLog(value)));
   }
 
   getTrainingTracking(id: number): Observable<MlflowTrackingResponse> {
@@ -483,6 +485,17 @@ export class TraderAlgoApiService {
     };
   }
 
+  private normalizeDecisionLog(value: MlDecisionLog): MlDecisionLog {
+    return {
+      ...value,
+      decisions: value.decisions?.map(decision => ({
+        ...decision,
+        open_time: this.normalizeEpochSeconds(decision.open_time),
+      })) ?? [],
+      trades: value.trades?.map(trade => this.normalizeTrainingTrade(trade)) ?? [],
+    };
+  }
+
   private normalizeTradeResponse(
     value: MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[],
   ): MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[] {
@@ -503,14 +516,31 @@ export class TraderAlgoApiService {
       side: direction,
       direction,
       entry_step: trade.entry_step ?? trade.entryStep ?? null,
-      entry_time: trade.entry_time ?? trade.entryTime ?? null,
+      entry_time: this.normalizeEpochSeconds(trade.entry_time ?? trade.entryTime),
       entry_price: trade.entry_price ?? trade.entryPrice ?? null,
       exit_step: trade.exit_step ?? trade.exitStep ?? null,
-      exit_time: trade.exit_time ?? trade.exitTime ?? null,
+      exit_time: this.normalizeEpochSeconds(trade.exit_time ?? trade.exitTime),
       exit_price: trade.exit_price ?? trade.exitPrice ?? null,
       reason: trade.reason ?? trade.exitReason ?? '',
       rMultiple: trade.rMultiple ?? trade.rMult ?? null,
     };
+  }
+
+  private normalizeEpochSeconds(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') return null;
+
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) return null;
+      return value > 9_999_999_999 ? Math.floor(value / 1000) : value;
+    }
+
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      return numeric > 9_999_999_999 ? Math.floor(numeric / 1000) : numeric;
+    }
+
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
   }
 
   private setMetricAlias(metrics: Record<string, number | null>, key: string, value: number | null | undefined): void {

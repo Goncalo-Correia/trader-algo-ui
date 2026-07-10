@@ -42,6 +42,7 @@ import {
 import { Trade } from '../../structures/trade';
 
 type DetailTab = 'replay' | 'performance' | 'decisions' | 'trades' | 'tracking' | 'raw';
+type TradeSplitFilter = 'all' | 'in_sample' | 'out_of_sample';
 
 interface RewardMetricView {
   id: string;
@@ -122,6 +123,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   deleting = false;
   lastRefresh: Date | null = null;
   activeTab: DetailTab = 'replay';
+  tradeSplitFilter: TradeSplitFilter = 'all';
   endpointErrors: Record<string, string | null> = {};
 
   playbackTime: number | null = null;
@@ -280,6 +282,10 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     return this.telemetryTrades.length ? this.telemetryTrades : (this.decisions?.trades ?? []);
   }
 
+  get filteredTrades(): MlTrainingTrade[] {
+    return this.allTrades.filter(trade => this.matchesTradeSplit(trade, this.tradeSplitFilter));
+  }
+
   get chartDecisions(): MlDecision[] {
     return this.decisions?.decisions ?? [];
   }
@@ -296,7 +302,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     });
     this.loadOptional('decisions', this.api.getTrainingDecisions(run.id), value => {
       this.decisions = value;
-      this.chartTrades = this.toChartTrades(value.trades, value.symbol, value.interval);
+      this.refreshChartTrades();
       this.buildSummaryChart();
       this.buildTradeCharts();
     });
@@ -325,6 +331,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     );
     this.loadOptional('trades', this.api.getTrainingTrades(run.id, { limit: 5000, offset: 0 }), value => {
       this.telemetryTrades = this.pageItems(value);
+      this.refreshChartTrades();
       this.buildTradeCharts();
     });
     this.loadOptional('featureQuality', this.api.getTrainingFeatureQuality(run.id), value => {
@@ -407,7 +414,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
 
   jumpNextTrade(): void {
     const current = this.playbackTime ?? 0;
-    const next = this.allTrades
+    const next = this.filteredTrades
       .map(trade => trade.entry_time)
       .filter((time): time is number => time !== null && time !== undefined && time > current)
       .sort((a, b) => a - b)[0];
@@ -488,6 +495,24 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     return trade.exitReason || trade.reason || '-';
   }
 
+  setTradeSplitFilter(filter: TradeSplitFilter): void {
+    this.tradeSplitFilter = filter;
+    this.refreshChartTrades();
+    this.buildTradeCharts();
+    this.cdr.markForCheck();
+  }
+
+  tradeSplitCount(filter: TradeSplitFilter): number {
+    return this.allTrades.filter(trade => this.matchesTradeSplit(trade, filter)).length;
+  }
+
+  tradeSplitLabel(trade: MlTrainingTrade): string {
+    const split = this.normalizeSplit(trade.split);
+    if (split === 'out_of_sample') return 'OOS';
+    if (split === 'in_sample') return 'In Sample';
+    return trade.split ?? '-';
+  }
+
   private loadServedModels(): void {
     this.api
       .getServedModels()
@@ -527,15 +552,8 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: candles => {
           this.candles = candles;
-          // Trade markers anchor to candles by step when the backend omits entry/exit times, so
-          // rebuild them now that the candle series is available (decisions may have loaded first).
-          if (this.decisions) {
-            this.chartTrades = this.toChartTrades(
-              this.decisions.trades,
-              this.decisions.symbol,
-              this.decisions.interval,
-            );
-          }
+          // Trade markers can fall back to step-indexed candles, so rebuild them once candles arrive.
+          this.refreshChartTrades();
           this.restartReplay();
           this.cdr.markForCheck();
         },
@@ -710,7 +728,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   private buildTradeCharts(): void {
-    const trades = this.allTrades;
+    const trades = this.filteredTrades;
     this.tradePnlOptions = {
       ...chartBase(),
       xAxis: { categories: trades.map((_, index) => String(index + 1)), labels: { style: { color: '#787b86' } } },
@@ -727,6 +745,12 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         { type: 'pie', name: 'Exit Reason', data: [...reasonCounts.entries()].map(([name, y]) => ({ name, y })) },
       ],
     };
+  }
+
+  private refreshChartTrades(): void {
+    const symbol = this.decisions?.symbol ?? this.run?.symbolCode ?? '';
+    const interval = this.decisions?.interval ?? this.run?.intervalCode ?? '';
+    this.chartTrades = this.toChartTrades(this.filteredTrades, symbol, interval);
   }
 
   private buildFeatureQualityChart(): void {
@@ -858,6 +882,19 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private resolveCandleTime(epoch: number | null | undefined, step: number | null | undefined): number | null {
     if (epoch != null && Number.isFinite(epoch) && epoch > 100_000_000) return epoch;
     if (step != null && step >= 0 && step < this.candles.length) return this.candles[step].time;
+    return null;
+  }
+
+  private matchesTradeSplit(trade: MlTrainingTrade, filter: TradeSplitFilter): boolean {
+    if (filter === 'all') return true;
+    return this.normalizeSplit(trade.split) === filter;
+  }
+
+  private normalizeSplit(split: string | null | undefined): TradeSplitFilter | null {
+    if (!split) return null;
+    const value = split.toLowerCase().replace(/[\s-]+/g, '_');
+    if (['oos', 'out_sample', 'out_of_sample', 'outsample', 'test'].includes(value)) return 'out_of_sample';
+    if (['in_sample', 'insample', 'train', 'training', 'val', 'validation'].includes(value)) return 'in_sample';
     return null;
   }
 

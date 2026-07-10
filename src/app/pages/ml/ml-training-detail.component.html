@@ -155,6 +155,32 @@
               <option value="8">8x</option>
             </select>
           </label>
+          <div class="split-filter" role="group" aria-label="Trade split">
+            <button
+              class="split-filter-btn"
+              type="button"
+              [class.active]="tradeSplitFilter === 'all'"
+              (click)="setTradeSplitFilter('all')"
+            >
+              All <span>{{ tradeSplitCount('all') }}</span>
+            </button>
+            <button
+              class="split-filter-btn"
+              type="button"
+              [class.active]="tradeSplitFilter === 'in_sample'"
+              (click)="setTradeSplitFilter('in_sample')"
+            >
+              In Sample <span>{{ tradeSplitCount('in_sample') }}</span>
+            </button>
+            <button
+              class="split-filter-btn"
+              type="button"
+              [class.active]="tradeSplitFilter === 'out_of_sample'"
+              (click)="setTradeSplitFilter('out_of_sample')"
+            >
+              OOS <span>{{ tradeSplitCount('out_of_sample') }}</span>
+            </button>
+          </div>
         </div>
         @if (endpointErrors['stream']) {
           <div class="error-card">{{ endpointErrors['stream'] }}</div>
@@ -203,7 +229,7 @@
           @if (folds.length > 0) {
             <div class="chart-card"><app-highcharts-chart [options]="foldOptions"></app-highcharts-chart></div>
           }
-          @if (allTrades.length > 0) {
+          @if (filteredTrades.length > 0) {
             <div class="chart-card"><app-highcharts-chart [options]="tradePnlOptions"></app-highcharts-chart></div>
             <div class="chart-card"><app-highcharts-chart [options]="tradeExitOptions"></app-highcharts-chart></div>
           }
@@ -287,9 +313,39 @@
 
     @if (activeTab === 'trades') {
       <section class="panel">
-        <div class="section-title">Trades</div>
+        <div class="section-head">
+          <div class="section-title">Trades</div>
+          <div class="split-filter" role="group" aria-label="Trade split">
+            <button
+              class="split-filter-btn"
+              type="button"
+              [class.active]="tradeSplitFilter === 'all'"
+              (click)="setTradeSplitFilter('all')"
+            >
+              All <span>{{ tradeSplitCount('all') }}</span>
+            </button>
+            <button
+              class="split-filter-btn"
+              type="button"
+              [class.active]="tradeSplitFilter === 'in_sample'"
+              (click)="setTradeSplitFilter('in_sample')"
+            >
+              In Sample <span>{{ tradeSplitCount('in_sample') }}</span>
+            </button>
+            <button
+              class="split-filter-btn"
+              type="button"
+              [class.active]="tradeSplitFilter === 'out_of_sample'"
+              (click)="setTradeSplitFilter('out_of_sample')"
+            >
+              OOS <span>{{ tradeSplitCount('out_of_sample') }}</span>
+            </button>
+          </div>
+        </div>
         @if (allTrades.length === 0) {
           <div class="empty-state">No simulated trades are available for this run.</div>
+        } @else if (filteredTrades.length === 0) {
+          <div class="empty-state">No trades are available for the selected split.</div>
         } @else {
           <div class="table-wrap">
             <table class="bt-table">
@@ -309,10 +365,10 @@
                 </tr>
               </thead>
               <tbody>
-                @for (trade of allTrades; track trackByIndex($index)) {
+                @for (trade of filteredTrades; track trackByIndex($index)) {
                   <tr>
                     <td class="td-id">{{ $index + 1 }}</td>
-                    <td class="td-dim">{{ trade.split ?? '-' }}</td>
+                    <td class="td-dim">{{ tradeSplitLabel(trade) }}</td>
                     <td>
                       <span
                         [class]="

@@ -183,6 +183,50 @@ pre {
   font-weight: 700;
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.split-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  background: #111;
+  border: 1px solid #2a2d3a;
+  border-radius: 5px;
+}
+
+.split-filter-btn {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: #a5a8b3;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.split-filter-btn.active {
+  color: #fff;
+  background: #2962ff;
+}
+
+.split-filter-btn span {
+  color: inherit;
+  opacity: 0.75;
+  font-size: 10px;
+}
+
 .status-badge,
 .badge {
   display: inline-flex;

@@ -111,6 +111,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
   private renderedCount = 0;
   private firstRenderedTime: UTCTimestamp | null = null;
   private lastMacdHistValue: number | null = null;
+  private candleTimes: UTCTimestamp[] = [];
 
   ngAfterViewInit(): void {
     this.ngZone.runOutsideAngular(() => {
@@ -171,7 +172,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
       this.rsiMaSeries = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ef5350' }, 2);
       this.rsiOversold = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
-      this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       // Pane 3 — MACD
       const macdOpts = {
@@ -196,7 +197,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
         3,
       );
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: '#4a4d5a' }, 3);
-      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       // Pane 4 — ATR (Average True Range, computed client-side from OHLC; the backend ships no ATR field)
       this.atrSeries = this.chart.addSeries(
@@ -210,7 +211,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
         },
         4,
       );
-      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
     });
 
     if (this._candles.length) {
@@ -425,6 +426,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
     }
 
     this.renderedCount = this._candles.length;
+    this.candleTimes = this._candles.map(c => this.toTime(c.time));
     this.renderAtr(this._candles);
     this.extendReferenceLines();
   }
@@ -450,6 +452,7 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
 
   private applyAllSeries(candles: CandleWithIndicators[]): void {
     const shouldFitInitialContent = candles.length > 0 && !this.hasAppliedInitialViewport;
+    this.candleTimes = candles.map(c => this.toTime(c.time));
 
     this.candleSeries?.setData(
       candles.map(c => ({
@@ -544,12 +547,35 @@ export class MlChartComponent implements AfterViewInit, OnDestroy {
     candleIndex: number | null | undefined,
   ): UTCTimestamp | null {
     if (epoch != null && Number.isFinite(epoch) && epoch > 100_000_000) {
-      return this.toTime(epoch);
+      return this.toSeriesTime(this.toTime(epoch));
     }
     if (candleIndex != null && candleIndex >= 0 && candleIndex < this._candles.length) {
       return this.toTime(this._candles[candleIndex].time);
     }
     return null;
+  }
+
+  private toSeriesTime(time: UTCTimestamp): UTCTimestamp | null {
+    if (this.candleTimes.length === 0) return null;
+    const first = this.candleTimes[0];
+    const last = this.candleTimes[this.candleTimes.length - 1];
+    if (time < first || time > last) return null;
+
+    let low = 0;
+    let high = this.candleTimes.length - 1;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const candidate = this.candleTimes[mid];
+      if (candidate === time) return candidate;
+      if (candidate < time) low = mid + 1;
+      else high = mid - 1;
+    }
+
+    const next = this.candleTimes[low] ?? null;
+    const prev = this.candleTimes[high] ?? null;
+    if (next === null) return prev;
+    if (prev === null) return next;
+    return Math.abs(next - time) < Math.abs(time - prev) ? next : prev;
   }
 
   private toVolumeBar(c: CandleWithIndicators): HistogramData<Time> {

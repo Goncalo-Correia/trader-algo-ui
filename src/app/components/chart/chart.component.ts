@@ -299,7 +299,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       );
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bearish }, 2);
       this.rsiOversold = this.chart.addSeries(LineSeries, { ...rsiOpts, color: CHART_COLORS.bullish }, 2);
-      this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       // Pane 3 — MACD
       const macdOpts = {
@@ -324,7 +324,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         3,
       );
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: CHART_COLORS.zeroLine }, 3);
-      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       // Pane 4 — ATR (Average True Range, computed client-side from OHLC)
       this.atrSeries = this.chart.addSeries(
@@ -338,7 +338,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
         },
         4,
       );
-      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onVisibleRangeChange);
       this.chart.subscribeClick(this.onChartClickHandler);

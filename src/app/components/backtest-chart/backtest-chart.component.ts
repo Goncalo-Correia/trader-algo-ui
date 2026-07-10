@@ -170,7 +170,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       this.rsiMaSeries = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ef5350' }, 2);
       this.rsiOversold = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#26a69a' }, 2);
-      this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       // Pane 3 — MACD
       const macdOpts = {
@@ -195,7 +195,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
         3,
       );
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: '#4a4d5a' }, 3);
-      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.macdLineSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
 
       // Pane 4 — ATR (Average True Range, computed client-side from OHLC; the backend ships no ATR field)
       this.atrSeries = this.chart.addSeries(
@@ -209,7 +209,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
         },
         4,
       );
-      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+      this.atrSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 }, visible: true });
     });
 
     if (this._candles.length) {

@@ -5,12 +5,12 @@
     <!-- 2 × 2 chart grid -->
     <div class="chart-grid">
       @for (pane of panes; track $index) {
-        <app-chart
+        <app-charts-chart
           [symbol]="selectedSymbol"
           [initialInterval]="pane.interval"
           [availableIntervals]="intervals"
           [activeTrade]="activeTrade"
-        ></app-chart>
+        ></app-charts-chart>
       }
     </div>
     <!-- Single trade panel -->

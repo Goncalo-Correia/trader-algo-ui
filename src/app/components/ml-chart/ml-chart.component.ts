@@ -27,18 +27,18 @@ import {
 } from 'lightweight-charts';
 import { CandleWithIndicators } from '../../structures/candle';
 import { ActiveCandlePlugin } from '../../chart-plugins/active-candle.plugin';
-import { SessionMarkersPlugin } from '../../chart-plugins/session-markers.plugin';
+import { MlDecision } from '../../structures/ml-training';
 import { Trade } from '../../structures/trade';
 import { computeAtrValues } from '../../shared/atr';
 import { CHART_COLORS } from '../../shared/chart-theme';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  selector: 'app-backtest-chart',
-  templateUrl: './backtest-chart.component.html',
-  styleUrls: ['./backtest-chart.component.css'],
+  selector: 'app-ml-chart',
+  templateUrl: './ml-chart.component.html',
+  styleUrls: ['./ml-chart.component.css'],
 })
-export class BacktestChartComponent implements AfterViewInit, OnDestroy {
+export class MlChartComponent implements AfterViewInit, OnDestroy {
   private readonly ngZone = inject(NgZone);
 
   @ViewChild('chartContainer', { static: true })
@@ -47,11 +47,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   @Input() set candles(data: CandleWithIndicators[]) {
     this._candles = data;
     if (this.chart) this.ngZone.runOutsideAngular(() => this.renderCandles(data));
-  }
-
-  @Input() set isNySessionOnly(value: boolean) {
-    this._isNySessionOnly = value;
-    if (this.chart) this.ngZone.runOutsideAngular(() => this.applySessionMarkers());
   }
 
   @Input() set playbackTime(unixSeconds: number | null) {
@@ -68,16 +63,24 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       });
   }
 
+  @Input() set mlDecisions(decisions: MlDecision[]) {
+    this._mlDecisions = decisions;
+    if (this.chart) this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
   showVolume = true;
   showRsi = true;
   showMacd = true;
   showAtr = true;
   showTrades = true;
+  showDecisions = true;
+  showHoldMarkers = false;
+  confidenceThreshold = 0;
 
   private _candles: CandleWithIndicators[] = [];
   private _playbackTime: number | null = null;
   private _trades: Trade[] = [];
-  private _isNySessionOnly = false;
+  private _mlDecisions: MlDecision[] = [];
 
   private chart?: IChartApi;
   private candleSeries?: ISeriesApi<'Candlestick'>;
@@ -97,8 +100,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   private readonly atrPeriod = 14;
 
   private activeCandlePlugin?: ActiveCandlePlugin;
-  private sessionMarkersPlugin?: SessionMarkersPlugin;
-  private sessionMarkersBounds: { from: number; to: number } | null = null;
   private tradeMarkersPlugin?: ISeriesMarkersPluginApi<Time>;
   private slPriceLine?: IPriceLine;
   private tpPriceLine?: IPriceLine;
@@ -267,15 +268,51 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this.ngZone.runOutsideAngular(() => this.applyMarkers());
   }
 
+  toggleDecisions(): void {
+    this.showDecisions = !this.showDecisions;
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
+  toggleHoldMarkers(): void {
+    this.showHoldMarkers = !this.showHoldMarkers;
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
+  setConfidenceThreshold(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.confidenceThreshold = Number(input.value);
+    this.ngZone.runOutsideAngular(() => this.applyMarkers());
+  }
+
   private applyMarkers(): void {
     if (!this.candleSeries) return;
     if (!this.tradeMarkersPlugin) {
       this.tradeMarkersPlugin = createSeriesMarkers(this.candleSeries, []);
     }
     const markers: SeriesMarker<Time>[] = [];
+    if (this.showDecisions) {
+      for (const d of this._mlDecisions) {
+        if (d.confidence < this.confidenceThreshold) continue;
+        const action = (d.action_name ?? '').toLowerCase();
+        const isHold = action.includes('hold') || d.action === 0;
+        if (isHold && !this.showHoldMarkers) continue;
+        const time = this.resolveMarkerTime(d.open_time, d.candle_index);
+        if (time === null) continue;
+        const isLong = action.includes('long') || action.includes('buy');
+        const isShort = action.includes('short') || action.includes('sell');
+        markers.push({
+          time: time as Time,
+          position: isLong ? 'belowBar' : 'aboveBar',
+          color: isHold ? '#787b86' : isLong ? '#26a69a' : isShort ? '#ef5350' : '#f59e0b',
+          shape: isHold ? 'circle' : isLong ? 'arrowUp' : 'arrowDown',
+          text: isHold ? '' : `${d.action_name} ${(d.confidence * 100).toFixed(0)}%`,
+          size: Math.max(0.7, Math.min(2, d.confidence * 2)),
+        });
+      }
+    }
     if (this.showTrades) {
       for (const t of this._trades) {
-        const openTime = this.resolveMarkerTime(t.openedAt);
+        const openTime = this.resolveMarkerTime(t.openedAt, null);
         if (openTime !== null && t.entryPrice !== null) {
           const isBuy = t.side === 'Buy';
           markers.push({
@@ -287,7 +324,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
             size: 1,
           });
         }
-        const closeTime = this.resolveMarkerTime(t.closedAt);
+        const closeTime = this.resolveMarkerTime(t.closedAt, null);
         if (closeTime !== null && t.closedPrice !== null) {
           const isBuy = t.side === 'Buy';
           const pnlText = t.pnl !== null ? ` ${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}` : '';
@@ -350,47 +387,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private applySessionMarkers(): void {
-    if (!this.candleSeries) return;
-
-    if (!this._isNySessionOnly || this._candles.length === 0) {
-      this.detachSessionMarkers();
-      return;
-    }
-
-    const first = this._candles[0].time;
-    const last = this._candles[this._candles.length - 1].time;
-    const fromMs = (first > 9_999_999_999 ? first : first * 1000) - 86_400_000;
-    const toMs = (last > 9_999_999_999 ? last : last * 1000) + 86_400_000;
-
-    // The plugin generates one marker per calendar day in [fromMs, toMs]. During
-    // playback only `last` grows, so the marker set is unchanged until the range
-    // crosses into a new day. Rebuild only then — not on every streamed append.
-    const day = 86_400_000;
-    const bounds = { from: Math.floor(fromMs / day), to: Math.floor(toMs / day) };
-    if (
-      this.sessionMarkersPlugin &&
-      this.sessionMarkersBounds &&
-      this.sessionMarkersBounds.from === bounds.from &&
-      this.sessionMarkersBounds.to === bounds.to
-    ) {
-      return;
-    }
-
-    this.detachSessionMarkers();
-    this.sessionMarkersPlugin = new SessionMarkersPlugin(fromMs, toMs);
-    this.sessionMarkersBounds = bounds;
-    this.candleSeries.attachPrimitive(this.sessionMarkersPlugin);
-  }
-
-  private detachSessionMarkers(): void {
-    if (this.sessionMarkersPlugin) {
-      this.candleSeries?.detachPrimitive(this.sessionMarkersPlugin);
-      this.sessionMarkersPlugin = undefined;
-    }
-    this.sessionMarkersBounds = null;
-  }
-
   /**
    * Chooses between a cheap incremental append and a full redraw. During a stream the input
    * array keeps growing with the same prefix, so we only push the newly-arrived tail bars via
@@ -431,7 +427,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this.renderedCount = this._candles.length;
     this.renderAtr(this._candles);
     this.extendReferenceLines();
-    this.applySessionMarkers();
   }
 
   // ATR (Wilder) is derived from OHLC client-side since the backend ships no ATR field. The
@@ -465,7 +460,6 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
         close: c.close,
       })),
     );
-    this.applySessionMarkers();
     this.applyMarkers();
     this.applyBracketLines();
 
@@ -539,13 +533,21 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Resolves the chart time for a trade marker from its absolute epoch (seconds or ms). Returns
-   * null when the value is missing or not a usable timestamp, so the marker is skipped rather than
-   * collapsed onto the first candle.
+   * Resolves the chart time for a decision/trade marker. A valid absolute epoch (seconds or ms)
+   * is authoritative; otherwise fall back to the bar the row indexes into. The decision log now
+   * streams raw stored JSON, so the per-row time fields (`open_time`/`entry_time`/`exit_time`)
+   * may arrive absent (undefined) rather than as a valid epoch — without this fallback every
+   * such marker collapsed onto the first candle. Returns null when neither anchor is usable.
    */
-  private resolveMarkerTime(epoch: number | null | undefined): UTCTimestamp | null {
+  private resolveMarkerTime(
+    epoch: number | null | undefined,
+    candleIndex: number | null | undefined,
+  ): UTCTimestamp | null {
     if (epoch != null && Number.isFinite(epoch) && epoch > 100_000_000) {
       return this.toTime(epoch);
+    }
+    if (candleIndex != null && candleIndex >= 0 && candleIndex < this._candles.length) {
+      return this.toTime(this._candles[candleIndex].time);
     }
     return null;
   }

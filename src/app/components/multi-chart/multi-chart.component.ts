@@ -4,7 +4,7 @@ import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { IntervalResponse } from '../../structures/interval';
 import { SymbolResponse } from '../../structures/symbol';
 import { Trade } from '../../structures/trade';
-import { ChartComponent } from '../chart/chart.component';
+import { ChartsChartComponent } from '../charts-chart/charts-chart.component';
 import { TradePanelComponent } from '../trade-panel/trade-panel.component';
 
 interface PaneConfig {
@@ -16,7 +16,7 @@ interface PaneConfig {
   selector: 'app-multi-chart',
   templateUrl: './multi-chart.component.html',
   styleUrls: ['./multi-chart.component.css'],
-  imports: [ChartComponent, TradePanelComponent],
+  imports: [ChartsChartComponent, TradePanelComponent],
 })
 export class MultiChartComponent implements OnInit {
   private readonly traderAlgoApi = inject(TraderAlgoApiService);

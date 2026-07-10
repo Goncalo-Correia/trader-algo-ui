@@ -1,12 +1,20 @@
 import { DecimalPipe, JsonPipe, KeyValuePipe, LowerCasePipe } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnDestroy,
+  OnInit,
+  inject,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, switchMap, takeUntil, timer } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import type * as Highcharts from 'highcharts/highstock';
-import { BacktestChartComponent } from '../../components/backtest-chart/backtest-chart.component';
+import { MlChartComponent } from '../../components/ml-chart/ml-chart.component';
 import { HighchartsChartComponent } from '../../components/highcharts-chart/highcharts-chart.component';
 import { TraderAlgoApiService } from '../../services/trader-algo-api.service';
 import { CandleWithIndicators } from '../../structures/candle';
@@ -70,7 +78,12 @@ function chartBase(): Highcharts.Options {
       labels: { style: { color: '#787b86', fontSize: '11px' } },
       title: { text: '' },
     },
-    tooltip: { shared: true, backgroundColor: '#1e2130', borderColor: '#2a2d3a', style: { color: '#d1d4dc', fontSize: '12px' } },
+    tooltip: {
+      shared: true,
+      backgroundColor: '#1e2130',
+      borderColor: '#2a2d3a',
+      style: { color: '#d1d4dc', fontSize: '12px' },
+    },
   };
 }
 
@@ -79,7 +92,7 @@ function chartBase(): Highcharts.Options {
   selector: 'app-ml-training-detail',
   templateUrl: './ml-training-detail.component.html',
   styleUrls: ['./ml-training-detail.component.css'],
-  imports: [RouterLink, BacktestChartComponent, HighchartsChartComponent, LowerCasePipe, DecimalPipe, JsonPipe, KeyValuePipe],
+  imports: [RouterLink, MlChartComponent, HighchartsChartComponent, LowerCasePipe, DecimalPipe, JsonPipe, KeyValuePipe],
 })
 export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -181,12 +194,18 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
 
   get servedModel(): MlServedModel | null {
     if (!this.run) return null;
-    return this.servedModels.find(model => model.served !== false && (model.servedTrainingRunId ?? model.trainingRunId) === this.run?.id) ?? null;
+    return (
+      this.servedModels.find(
+        model => model.served !== false && (model.servedTrainingRunId ?? model.trainingRunId) === this.run?.id,
+      ) ?? null
+    );
   }
 
   get policyServedRunId(): number | null {
     if (!this.run) return null;
-    const model = this.servedModels.find(row => row.served !== false && (row.mlPolicyId ?? row.policyId) === this.run?.mlPolicyId);
+    const model = this.servedModels.find(
+      row => row.served !== false && (row.mlPolicyId ?? row.policyId) === this.run?.mlPolicyId,
+    );
     return model?.servedTrainingRunId ?? model?.trainingRunId ?? null;
   }
 
@@ -219,7 +238,11 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   get inSampleFinalBalance(): number | null {
-    return this.run?.inSampleFinalBalance ?? this.run?.finalBalance ?? this.metric('in_sample_final_balance', 'train_final_balance');
+    return (
+      this.run?.inSampleFinalBalance ??
+      this.run?.finalBalance ??
+      this.metric('in_sample_final_balance', 'train_final_balance')
+    );
   }
 
   get oosSharpe(): number | null {
@@ -235,7 +258,14 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   get tradeCount(): number | null {
-    return this.run?.oosTradeCount ?? this.run?.tradeCount ?? this.run?.tracking?.nTrades ?? this.run?.nTrades ?? this.decisions?.n_trades ?? null;
+    return (
+      this.run?.oosTradeCount ??
+      this.run?.tradeCount ??
+      this.run?.tracking?.nTrades ??
+      this.run?.nTrades ??
+      this.decisions?.n_trades ??
+      null
+    );
   }
 
   get foldCount(): number {
@@ -247,7 +277,7 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   get allTrades(): MlTrainingTrade[] {
-    return this.telemetryTrades.length ? this.telemetryTrades : this.decisions?.trades ?? [];
+    return this.telemetryTrades.length ? this.telemetryTrades : (this.decisions?.trades ?? []);
   }
 
   get chartDecisions(): MlDecision[] {
@@ -285,10 +315,14 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     this.loadOptional('metrics', this.api.getTrainingMetrics(run.id), value => {
       this.metrics = value;
     });
-    this.loadOptional('equity', this.api.getTrainingEquity(run.id, { split: 'oos', stitched: true, limit: 5000, offset: 0 }), value => {
-      this.equity = this.pageItems(value);
-      this.buildEquityChart();
-    });
+    this.loadOptional(
+      'equity',
+      this.api.getTrainingEquity(run.id, { split: 'oos', stitched: true, limit: 5000, offset: 0 }),
+      value => {
+        this.equity = this.pageItems(value);
+        this.buildEquityChart();
+      },
+    );
     this.loadOptional('trades', this.api.getTrainingTrades(run.id, { limit: 5000, offset: 0 }), value => {
       this.telemetryTrades = this.pageItems(value);
       this.buildTradeCharts();
@@ -381,16 +415,17 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   jumpNextDecision(): void {
-    const current = this.playbackTime ?? 0;
     const next = (this.decisions?.decisions ?? [])
-      .filter(decision => decision.open_time != null && decision.open_time > current && !decision.action_name.toLowerCase().includes('hold'))
-      .map(decision => decision.open_time as number)
+      .filter(decision => !decision.action_name.toLowerCase().includes('hold'))
+      .map(decision => this.decisionCandleIndex(decision))
+      .filter((index): index is number => index !== null && index > this.replayIndex)
       .sort((a, b) => a - b)[0];
-    if (next !== undefined) this.jumpToTime(next);
+    if (next !== undefined) this.jumpToIndex(next);
   }
 
   jumpToDecision(decision: MlDecision): void {
-    if (decision.open_time != null) this.jumpToTime(decision.open_time);
+    const index = this.decisionCandleIndex(decision);
+    if (index !== null) this.jumpToIndex(index);
   }
 
   setReplaySpeed(value: string): void {
@@ -411,7 +446,11 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   formatDate(unixSeconds: number): string {
-    return new Date(unixSeconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+    return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    });
   }
 
   formatTs(value: number | string | null | undefined): string {
@@ -452,7 +491,10 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private loadServedModels(): void {
     this.api
       .getServedModels()
-      .pipe(catchError(() => of([] as MlServedModel[])), takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        catchError(() => of([] as MlServedModel[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe(models => {
         this.servedModels = models;
         this.cdr.markForCheck();
@@ -485,6 +527,15 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: candles => {
           this.candles = candles;
+          // Trade markers anchor to candles by step when the backend omits entry/exit times, so
+          // rebuild them now that the candle series is available (decisions may have loaded first).
+          if (this.decisions) {
+            this.chartTrades = this.toChartTrades(
+              this.decisions.trades,
+              this.decisions.symbol,
+              this.decisions.interval,
+            );
+          }
           this.restartReplay();
           this.cdr.markForCheck();
         },
@@ -512,6 +563,24 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     const index = this.candles.findIndex(candle => this.toSeconds(candle.time) >= time);
     if (index >= 0) this.replayIndex = index;
     this.cdr.markForCheck();
+  }
+
+  private jumpToIndex(index: number): void {
+    this.replayIndex = index;
+    this.playbackTime = this.candles[index]?.time ?? null;
+    this.cdr.markForCheck();
+  }
+
+  /** Resolve a decision to its candle index, mirroring the chart's candle_index-with-epoch-fallback anchoring. */
+  private decisionCandleIndex(decision: MlDecision): number | null {
+    if (decision.candle_index != null && decision.candle_index >= 0 && decision.candle_index < this.candles.length) {
+      return decision.candle_index;
+    }
+    if (decision.open_time != null) {
+      const index = this.candles.findIndex(candle => this.toSeconds(candle.time) >= decision.open_time!);
+      if (index >= 0) return index;
+    }
+    return null;
   }
 
   private metric(...keys: string[]): number | null {
@@ -573,14 +642,20 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         {
           type: 'line',
           name: 'Mean Reward',
-          data: this.learningCurve.map(point => [point.step ?? point.timestep ?? 0, point.meanEpisodeReward ?? point.rewardMean ?? null]),
+          data: this.learningCurve.map(point => [
+            point.step ?? point.timestep ?? 0,
+            point.meanEpisodeReward ?? point.rewardMean ?? null,
+          ]),
           color: '#5b9bd5',
           marker: { enabled: false },
         },
         {
           type: 'line',
           name: 'Mean Length',
-          data: this.learningCurve.map(point => [point.step ?? point.timestep ?? 0, point.meanEpisodeLength ?? point.episodeLengthMean ?? null]),
+          data: this.learningCurve.map(point => [
+            point.step ?? point.timestep ?? 0,
+            point.meanEpisodeLength ?? point.episodeLengthMean ?? null,
+          ]),
           color: '#f59e0b',
           marker: { enabled: false },
         },
@@ -593,9 +668,27 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
       ...chartBase(),
       xAxis: { ...chartBase().xAxis, type: 'linear' },
       series: [
-        { type: 'line', name: 'Train Reward', data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.trainReward ?? null]), color: '#5b9bd5', marker: { enabled: false } },
-        { type: 'line', name: 'Validation Reward', data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.validationReward ?? null]), color: '#26a69a', marker: { enabled: false } },
-        { type: 'line', name: 'Score', data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.score ?? null]), color: '#f59e0b', marker: { enabled: true } },
+        {
+          type: 'line',
+          name: 'Train Reward',
+          data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.trainReward ?? null]),
+          color: '#5b9bd5',
+          marker: { enabled: false },
+        },
+        {
+          type: 'line',
+          name: 'Validation Reward',
+          data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.validationReward ?? null]),
+          color: '#26a69a',
+          marker: { enabled: false },
+        },
+        {
+          type: 'line',
+          name: 'Score',
+          data: this.checkpointEvals.map(p => [p.step ?? p.timestep ?? 0, p.score ?? null]),
+          color: '#f59e0b',
+          marker: { enabled: true },
+        },
       ],
     };
   }
@@ -603,7 +696,10 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   private buildFoldChart(): void {
     this.foldOptions = {
       ...chartBase(),
-      xAxis: { categories: this.folds.map((fold, index) => String(fold.fold ?? index + 1)), labels: { style: { color: '#787b86' } } },
+      xAxis: {
+        categories: this.folds.map((fold, index) => String(fold.fold ?? index + 1)),
+        labels: { style: { color: '#787b86' } },
+      },
       series: [
         { type: 'column', name: 'Return %', data: this.folds.map(f => f.returnPct ?? null), color: '#26a69a' },
         { type: 'column', name: 'Sharpe', data: this.folds.map(f => f.sharpe ?? null), color: '#5b9bd5' },
@@ -627,15 +723,24 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     }
     this.tradeExitOptions = {
       ...chartBase(),
-      series: [{ type: 'pie', name: 'Exit Reason', data: [...reasonCounts.entries()].map(([name, y]) => ({ name, y })) }],
+      series: [
+        { type: 'pie', name: 'Exit Reason', data: [...reasonCounts.entries()].map(([name, y]) => ({ name, y })) },
+      ],
     };
   }
 
   private buildFeatureQualityChart(): void {
     this.featureQualityOptions = {
       ...chartBase(),
-      xAxis: { title: { text: 'Spearman R 1 Bar', style: { color: '#787b86' } }, labels: { style: { color: '#787b86' } } },
-      yAxis: { title: { text: 'Spearman P 1 Bar', style: { color: '#787b86' } }, labels: { style: { color: '#787b86' } }, gridLineColor: '#1e2130' },
+      xAxis: {
+        title: { text: 'Spearman R 1 Bar', style: { color: '#787b86' } },
+        labels: { style: { color: '#787b86' } },
+      },
+      yAxis: {
+        title: { text: 'Spearman P 1 Bar', style: { color: '#787b86' } },
+        labels: { style: { color: '#787b86' } },
+        gridLineColor: '#1e2130',
+      },
       series: [
         {
           type: 'scatter',
@@ -672,7 +777,9 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     const groups = this.tracking?.rewardMetrics ?? {};
     return Object.entries(groups)
       .map(([groupKey, metrics]) => {
-        const metricViews = Object.entries(metrics ?? {}).map(([metricKey, metric]) => this.toMetricView(groupKey, metricKey, metric));
+        const metricViews = Object.entries(metrics ?? {}).map(([metricKey, metric]) =>
+          this.toMetricView(groupKey, metricKey, metric),
+        );
         return {
           key: groupKey,
           title: this.toTitle(groupKey),
@@ -712,30 +819,46 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
   }
 
   private toChartTrades(trades: MlTrainingTrade[], symbol: string, interval: string): Trade[] {
-    return trades.map((trade, index) => ({
-      id: index + 1,
-      symbolCode: symbol,
-      intervalCode: interval,
-      side: trade.side === 'long' || trade.direction === 'long' ? 'Buy' : 'Sell',
-      orderType: 'Market',
-      quantity: trade.units ?? 1,
-      requestedPrice: null,
-      entryPrice: Number(trade.entry_price),
-      stopLoss: trade.sl ?? null,
-      takeProfit: trade.tp ?? null,
-      status: 'Closed',
-      createdAt: trade.entry_time ?? 0,
-      openedAt: trade.entry_time,
-      closedAt: trade.exit_time,
-      closedPrice: Number(trade.exit_price),
-      closeReason: null,
-      fee: null,
-      pnl: Number(trade.pnl),
-      accountPnl: null,
-      unrealizedPnl: null,
-      tradingAccountId: null,
-      backtestId: null,
-    }));
+    return trades.map((trade, index) => {
+      const openedAt = this.resolveCandleTime(trade.entry_time, trade.entry_step);
+      const closedAt = this.resolveCandleTime(trade.exit_time, trade.exit_step);
+      return {
+        id: index + 1,
+        symbolCode: symbol,
+        intervalCode: interval,
+        side: trade.side === 'long' || trade.direction === 'long' ? 'Buy' : 'Sell',
+        orderType: 'Market',
+        quantity: trade.units ?? 1,
+        requestedPrice: null,
+        entryPrice: Number(trade.entry_price),
+        stopLoss: trade.sl ?? null,
+        takeProfit: trade.tp ?? null,
+        status: 'Closed',
+        createdAt: openedAt ?? 0,
+        openedAt,
+        closedAt,
+        closedPrice: Number(trade.exit_price),
+        closeReason: null,
+        fee: null,
+        pnl: Number(trade.pnl),
+        accountPnl: null,
+        unrealizedPnl: null,
+        tradingAccountId: null,
+        backtestId: null,
+      };
+    });
+  }
+
+  /**
+   * Resolves a trade's chart time. A valid absolute epoch (seconds or ms) is authoritative;
+   * otherwise fall back to the candle the trade indexes into via its step. The decision log now
+   * streams raw stored JSON, so `entry_time`/`exit_time` may arrive absent rather than as a valid
+   * epoch — the step fallback keeps trade markers on the correct candle in that case.
+   */
+  private resolveCandleTime(epoch: number | null | undefined, step: number | null | undefined): number | null {
+    if (epoch != null && Number.isFinite(epoch) && epoch > 100_000_000) return epoch;
+    if (step != null && step >= 0 && step < this.candles.length) return this.candles[step].time;
+    return null;
   }
 
   private appendStreamDecision(decision: MlStreamDecision): void {
@@ -755,7 +878,9 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
         decisions: [],
         trades: [],
       } satisfies MlDecisionLog);
-    const existingIndex = current.decisions.findIndex(row => row.open_time === mapped.open_time && row.action === mapped.action);
+    const existingIndex = current.decisions.findIndex(
+      row => row.open_time === mapped.open_time && row.action === mapped.action,
+    );
     const decisions =
       existingIndex >= 0
         ? current.decisions.map((row, index) => (index === existingIndex ? mapped : row))

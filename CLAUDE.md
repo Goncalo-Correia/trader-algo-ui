@@ -54,8 +54,8 @@ view will not repaint.
 ### Layers
 
 - **`src/app/pages/*`** — routed page components (algo-trader, charts, accounts, backtest(s), tradebots, ml).
-- **`src/app/components/*`** — reusable pieces, chiefly the charts (`chart`, `backtest-chart`, `multi-chart`,
-  `highcharts-chart`) and `trade-panel`.
+- **`src/app/components/*`** — reusable pieces, chiefly the charts (`chart`, `charts-chart`, `backtest-chart`,
+  `ml-chart`, `multi-chart`, `highcharts-chart`) and `trade-panel`.
 - **`src/app/services/`** — `TraderAlgoApiService` (all REST calls, `providedIn: 'root'`) and
   `LiveChartDataService` (all WebSocket streams). Components inject these; they do not build URLs themselves.
 - **`src/app/structures/*`** — domain interfaces + DTO types + mapping functions (see boundary rule below).
@@ -118,6 +118,25 @@ event, **not** a live tradebot event.
 
 Two charting libs: `lightweight-charts` (primary candlestick/indicator charts) and `highcharts` (in
 `highcharts-chart.component`; note `allowedCommonJsDependencies: ["highcharts"]` in `angular.json`).
+
+**One dedicated lightweight-charts component per use case — do not re-share them.** Each of the four
+use cases owns its own chart so a change for one can't regress the others (they used to be shared, which
+caused exactly that):
+
+- **algo-trader** → `ChartComponent` (`app-chart`) — live single chart with click-to-trade, symbol/interval
+  switching, live WebSocket streaming, predictions, and incremental Wilder ATR.
+- **charts** → `ChartsChartComponent` (`app-charts-chart`), tiled 2×2 by `MultiChartComponent`. A sibling of
+  `ChartComponent` (same live-chart feature set) kept separate so the multi-chart grid can evolve on its own.
+- **backtest** → `BacktestChartComponent` (`app-backtest-chart`) — input-driven (candles/trades/playbackTime),
+  NY-session markers, trade entry/exit markers + bracket lines, ATR. **No** ML decision markers.
+- **machine-learning** → `MlChartComponent` (`app-ml-chart`) — input-driven, ML decision markers
+  (Decisions/Holds/confidence toggles), trade markers, ATR. **No** NY-session markers. Marker times anchor to
+  the candle **index** (`candle_index`/`entry_step`/`exit_step`) with an epoch fallback, so markers stay on the
+  right bar even when the decision log omits `open_time`/`entry_time`.
+
+`ChartComponent`/`ChartsChartComponent` are near-identical and `BacktestChartComponent`/`MlChartComponent`
+share a lineage; that duplication is deliberate (decoupling over DRY). When you touch one, decide whether the
+change is use-case-specific (most are) before considering porting it to its sibling.
 
 ## Conventions
 

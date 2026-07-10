@@ -1,0 +1,69 @@
+<div class="chart-root">
+  <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
+  <div class="chart-toolbar">
+    <div class="toolbar-items">
+      @for (interval of availableIntervals; track trackByIntervalId($index, interval)) {
+        <button
+          class="toolbar-btn"
+          [class.active]="interval.code === selectedInterval"
+          (click)="onIntervalChange(interval.code)"
+        >
+          {{ interval.code }}
+        </button>
+      }
+
+      <div class="toolbar-separator"></div>
+
+      <button class="toolbar-btn" [class.active]="showCurrentSession" (click)="toggleCurrentSession()">D-OHLC</button>
+      <button class="toolbar-btn" [class.active]="showPreviousSession" (click)="togglePreviousSession()">P-OHLC</button>
+      <button class="toolbar-btn" [class.active]="showVolumeProfile" (click)="toggleVolumeProfile()">VP</button>
+
+      <div class="toolbar-separator"></div>
+
+      <button class="toolbar-btn" [class.active]="showVolume" (click)="toggleVolume()">Vol</button>
+      <button class="toolbar-btn" [class.active]="showRsi" (click)="toggleRsi()">RSI</button>
+      <button class="toolbar-btn" [class.active]="showMacd" (click)="toggleMacd()">MACD</button>
+      <button class="toolbar-btn" [class.active]="showAtr" (click)="toggleAtr()">ATR</button>
+      <button class="toolbar-btn" [class.active]="showTrades" (click)="toggleTrades()">Trades</button>
+
+      <div class="toolbar-separator"></div>
+
+      <!-- Predict dropdown -->
+      <div class="predict-dropdown">
+        <button
+          class="toolbar-btn predict-btn"
+          [class.predicting]="predictingKey !== null"
+          [disabled]="predictingKey !== null"
+          (click)="togglePredictMenu()"
+        >
+          {{ predictingKey !== null ? 'Predicting…' : 'Predict ▾' }}
+        </button>
+
+        @if (showPredictMenu) {
+          <div class="predict-menu">
+            @for (btn of kronosButtons; track trackByKronosKey($index, btn)) {
+              <button class="predict-menu-item" [disabled]="predictingKey !== null" (click)="runPredict(btn.key)">
+                {{ btn.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (liveStatus) {
+      <div class="live-indicator" [class.connected]="isConnected">
+        <span class="live-dot"></span>
+        {{ liveStatus }}
+      </div>
+    }
+  </div>
+
+  <!-- ── Chart area ──────────────────────────────────────────────────────── -->
+  <div class="chart-wrapper" [class.adjust-mode]="_adjustMode !== null">
+    <div class="chart-container" #chartContainer></div>
+    @if (statusMessage) {
+      <div class="chart-status">{{ statusMessage }}</div>
+    }
+  </div>
+</div>

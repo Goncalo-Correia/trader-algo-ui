@@ -17,7 +17,9 @@
       <div class="header-left">
         <h1 class="detail-title">Training Run #{{ r.id }}</h1>
         <span [class]="'status-badge ' + statusClass(r.status)">{{ r.status }}</span>
-        <span [class]="isServed ? 'status-badge status-completed' : 'status-badge status-muted'">{{ isServed ? 'Served' : 'Candidate' }}</span>
+        <span [class]="isServed ? 'status-badge status-completed' : 'status-badge status-muted'">{{
+          isServed ? 'Served' : 'Candidate'
+        }}</span>
       </div>
       <div class="header-actions">
         <button class="btn-ghost" type="button" (click)="refresh()">Refresh</button>
@@ -31,17 +33,47 @@
 
     <section class="panel">
       <div class="stats-grid">
-        <div class="stat-item"><span class="stat-label">Policy</span><span class="stat-value">#{{ r.mlPolicyId }}</span></div>
-        <div class="stat-item"><span class="stat-label">Market</span><span class="stat-value">{{ r.symbolCode }} {{ r.intervalCode }}</span></div>
-        <div class="stat-item"><span class="stat-label">Range</span><span class="stat-value">{{ formatDate(r.from) }} - {{ formatDate(r.to) }}</span></div>
-        <div class="stat-item"><span class="stat-label">Started</span><span class="stat-value">{{ formatTs(r.startedAt) }}</span></div>
-        <div class="stat-item"><span class="stat-label">Completed</span><span class="stat-value">{{ formatTs(r.completedAt) }}</span></div>
-        <div class="stat-item"><span class="stat-label">Duration</span><span class="stat-value">{{ formatDuration(r) }}</span></div>
-        <div class="stat-item"><span class="stat-label">MLflow</span><span class="stat-value stat-value-code">{{ mlflowRunUuid ?? '-' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Schema</span><span class="stat-value">{{ servedModel?.schemaVersion ?? r.schemaVersion ?? '-' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Obs Dim</span><span class="stat-value">{{ servedModel?.observationDim ?? r.observationDim ?? '-' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Calibrated</span><span class="stat-value">{{ servedModel?.calibrated || servedModel?.calibratedConfidence ? 'Yes' : '-' }}</span></div>
-        <div class="stat-item"><span class="stat-label">Last Refresh</span><span class="stat-value">{{ lastRefresh ? formatTs(lastRefresh.toISOString()) : '-' }}</span></div>
+        <div class="stat-item">
+          <span class="stat-label">Policy</span><span class="stat-value">#{{ r.mlPolicyId }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Market</span><span class="stat-value">{{ r.symbolCode }} {{ r.intervalCode }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Range</span
+          ><span class="stat-value">{{ formatDate(r.from) }} - {{ formatDate(r.to) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Started</span><span class="stat-value">{{ formatTs(r.startedAt) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Completed</span><span class="stat-value">{{ formatTs(r.completedAt) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Duration</span><span class="stat-value">{{ formatDuration(r) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">MLflow</span
+          ><span class="stat-value stat-value-code">{{ mlflowRunUuid ?? '-' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Schema</span
+          ><span class="stat-value">{{ servedModel?.schemaVersion ?? r.schemaVersion ?? '-' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Obs Dim</span
+          ><span class="stat-value">{{ servedModel?.observationDim ?? r.observationDim ?? '-' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Calibrated</span
+          ><span class="stat-value">{{
+            servedModel?.calibrated || servedModel?.calibratedConfidence ? 'Yes' : '-'
+          }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Last Refresh</span
+          ><span class="stat-value">{{ lastRefresh ? formatTs(lastRefresh.toISOString()) : '-' }}</span>
+        </div>
       </div>
     </section>
 
@@ -53,21 +85,50 @@
     }
 
     <section class="summary-tiles">
-      <div class="metric-tile"><span>Out-of-sample PnL</span><strong [class]="pnlClass(oosPnlPct)">{{ formatMetricValue(oosPnlPct, '%') }}</strong></div>
-      <div class="metric-tile"><span>Out-of-sample Balance</span><strong>{{ oosFinalBalance !== null ? '$' + (oosFinalBalance | number: '1.2-2') : 'Unavailable' }}</strong></div>
-      <div class="metric-tile"><span>In-sample PnL</span><strong [class]="pnlClass(inSamplePnlPct)">{{ formatMetricValue(inSamplePnlPct, '%') }}</strong></div>
-      <div class="metric-tile"><span>In-sample Balance</span><strong>{{ inSampleFinalBalance !== null ? '$' + (inSampleFinalBalance | number: '1.2-2') : 'Unavailable' }}</strong></div>
-      <div class="metric-tile"><span>OOS Sharpe</span><strong>{{ formatMetricValue(oosSharpe) }}</strong></div>
-      <div class="metric-tile"><span>OOS Profit Factor</span><strong>{{ formatMetricValue(oosProfitFactor) }}</strong></div>
-      <div class="metric-tile"><span>OOS Max Drawdown</span><strong class="negative">{{ formatMetricValue(oosMaxDrawdownPct, '%') }}</strong></div>
-      <div class="metric-tile"><span>Trades</span><strong>{{ tradeCount ?? 'Unavailable' }}</strong></div>
-      <div class="metric-tile"><span>Folds</span><strong>{{ foldCount || 'Unavailable' }}</strong></div>
-      <div class="metric-tile"><span>Gate Passed</span><strong>{{ promotionGatePassed === null ? 'Unavailable' : promotionGatePassed ? 'Yes' : 'No' }}</strong></div>
+      <div class="metric-tile">
+        <span>Out-of-sample PnL</span
+        ><strong [class]="pnlClass(oosPnlPct)">{{ formatMetricValue(oosPnlPct, '%') }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>Out-of-sample Balance</span
+        ><strong>{{ oosFinalBalance !== null ? '$' + (oosFinalBalance | number: '1.2-2') : 'Unavailable' }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>In-sample PnL</span
+        ><strong [class]="pnlClass(inSamplePnlPct)">{{ formatMetricValue(inSamplePnlPct, '%') }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>In-sample Balance</span
+        ><strong>{{
+          inSampleFinalBalance !== null ? '$' + (inSampleFinalBalance | number: '1.2-2') : 'Unavailable'
+        }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>OOS Sharpe</span><strong>{{ formatMetricValue(oosSharpe) }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>OOS Profit Factor</span><strong>{{ formatMetricValue(oosProfitFactor) }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>OOS Max Drawdown</span><strong class="negative">{{ formatMetricValue(oosMaxDrawdownPct, '%') }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>Trades</span><strong>{{ tradeCount ?? 'Unavailable' }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>Folds</span><strong>{{ foldCount || 'Unavailable' }}</strong>
+      </div>
+      <div class="metric-tile">
+        <span>Gate Passed</span
+        ><strong>{{ promotionGatePassed === null ? 'Unavailable' : promotionGatePassed ? 'Yes' : 'No' }}</strong>
+      </div>
     </section>
 
     <div class="tabs">
       @for (tab of tabs; track tab.key) {
-        <button type="button" [class.active]="activeTab === tab.key" (click)="activeTab = tab.key">{{ tab.label }}</button>
+        <button type="button" [class.active]="activeTab === tab.key" (click)="activeTab = tab.key">
+          {{ tab.label }}
+        </button>
       }
     </div>
 
@@ -81,8 +142,11 @@
           <button class="btn-ghost" type="button" (click)="restartReplay()">Restart</button>
           <button class="btn-ghost" type="button" (click)="jumpNextTrade()">Next Trade</button>
           <button class="btn-ghost" type="button" (click)="jumpNextDecision()">Next Decision</button>
-          <button class="btn-ghost" type="button" (click)="startStreamReplay()">{{ streamActive ? 'Streaming...' : 'WS Replay' }}</button>
-          <label class="speed-control">Speed
+          <button class="btn-ghost" type="button" (click)="startStreamReplay()">
+            {{ streamActive ? 'Streaming...' : 'WS Replay' }}
+          </button>
+          <label class="speed-control"
+            >Speed
             <select class="ctrl" [value]="replaySpeed" (change)="setReplaySpeed($any($event.target).value)">
               <option value="0.5">0.5x</option>
               <option value="1">1x</option>
@@ -100,7 +164,12 @@
         }
         @if (candles.length > 0) {
           <div class="chart-wrap chart-wrap-price">
-            <app-backtest-chart [candles]="candles" [trades]="chartTrades" [mlDecisions]="chartDecisions" [playbackTime]="playbackTime"></app-backtest-chart>
+            <app-ml-chart
+              [candles]="candles"
+              [trades]="chartTrades"
+              [mlDecisions]="chartDecisions"
+              [playbackTime]="playbackTime"
+            ></app-ml-chart>
           </div>
         } @else {
           <div class="empty-state">Candles are not loaded yet.</div>
@@ -139,20 +208,34 @@
             <div class="chart-card"><app-highcharts-chart [options]="tradeExitOptions"></app-highcharts-chart></div>
           }
           @if (featureQuality.length > 0) {
-            <div class="chart-card"><app-highcharts-chart [options]="featureQualityOptions"></app-highcharts-chart></div>
+            <div class="chart-card">
+              <app-highcharts-chart [options]="featureQualityOptions"></app-highcharts-chart>
+            </div>
           }
         </div>
         @if (featureQuality.length > 0) {
           <div class="table-wrap">
             <table class="bt-table">
-              <thead><tr><th>Feature</th><th>Spearman R</th><th>Spearman P</th><th>Signal P05</th><th>Missing</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Spearman R</th>
+                  <th>Spearman P</th>
+                  <th>Signal P05</th>
+                  <th>Missing</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (row of featureQuality; track trackByIndex($index)) {
                   <tr>
                     <td>{{ row.feature ?? row.name ?? '-' }}</td>
                     <td>{{ row.spearmanR1Bar ?? '-' }}</td>
                     <td>{{ row.spearmanP1Bar ?? '-' }}</td>
-                    <td><span [class]="row.signalP05 ? 'badge badge-good' : 'badge badge-muted'">{{ row.signalP05 ? 'Yes' : 'No' }}</span></td>
+                    <td>
+                      <span [class]="row.signalP05 ? 'badge badge-good' : 'badge badge-muted'">{{
+                        row.signalP05 ? 'Yes' : 'No'
+                      }}</span>
+                    </td>
                     <td>{{ row.missingPct ?? '-' }}</td>
                   </tr>
                 }
@@ -172,7 +255,17 @@
         @if (chartDecisions.length) {
           <div class="table-wrap">
             <table class="bt-table">
-              <thead><tr><th>Candle</th><th>Open Time</th><th>Action</th><th>Confidence</th><th>Probabilities</th><th>Position</th><th>Balance</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Candle</th>
+                  <th>Open Time</th>
+                  <th>Action</th>
+                  <th>Confidence</th>
+                  <th>Probabilities</th>
+                  <th>Position</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (decision of chartDecisions; track trackByDecision($index, decision)) {
                   <tr class="clickable-row" (click)="jumpToDecision(decision)">
@@ -200,16 +293,45 @@
         } @else {
           <div class="table-wrap">
             <table class="bt-table">
-              <thead><tr><th>#</th><th>Split</th><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th>R</th><th>Bars</th><th>SL ATR</th><th>TP R</th><th>Reason</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Split</th>
+                  <th>Side</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>PnL</th>
+                  <th>R</th>
+                  <th>Bars</th>
+                  <th>SL ATR</th>
+                  <th>TP R</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (trade of allTrades; track trackByIndex($index)) {
                   <tr>
                     <td class="td-id">{{ $index + 1 }}</td>
                     <td class="td-dim">{{ trade.split ?? '-' }}</td>
-                    <td><span [class]="(trade.side === 'long' || trade.direction === 'long') ? 'badge badge-good' : 'badge badge-bad'">{{ tradeSide(trade) }}</span></td>
-                    <td>{{ trade.entry_price | number: '1.2-5' }} <span class="td-dim">{{ formatTs(trade.entry_time) }}</span></td>
-                    <td>{{ trade.exit_price | number: '1.2-5' }} <span class="td-dim">{{ formatTs(trade.exit_time) }}</span></td>
-                    <td><span [class]="pnlClass(trade.pnl)">{{ trade.pnl | number: '1.2-2' }}</span></td>
+                    <td>
+                      <span
+                        [class]="
+                          trade.side === 'long' || trade.direction === 'long' ? 'badge badge-good' : 'badge badge-bad'
+                        "
+                        >{{ tradeSide(trade) }}</span
+                      >
+                    </td>
+                    <td>
+                      {{ trade.entry_price | number: '1.2-5' }}
+                      <span class="td-dim">{{ formatTs(trade.entry_time) }}</span>
+                    </td>
+                    <td>
+                      {{ trade.exit_price | number: '1.2-5' }}
+                      <span class="td-dim">{{ formatTs(trade.exit_time) }}</span>
+                    </td>
+                    <td>
+                      <span [class]="pnlClass(trade.pnl)">{{ trade.pnl | number: '1.2-2' }}</span>
+                    </td>
                     <td>{{ trade.rMultiple ?? '-' }}</td>
                     <td>{{ trade.barsInTrade ?? '-' }}</td>
                     <td>{{ trade.slAtrMult ?? '-' }}</td>
@@ -228,15 +350,30 @@
       <section class="panel">
         <div class="section-title">MLflow Tracking</div>
         @if (!trackingAvailable) {
-          <div class="empty-state">{{ trackingSummary?.message || endpointErrors['tracking'] || 'Tracking data is not available yet.' }}</div>
+          <div class="empty-state">
+            {{ trackingSummary?.message || endpointErrors['tracking'] || 'Tracking data is not available yet.' }}
+          </div>
         }
         @if (trackingSummary) {
           <div class="stats-grid">
-            <div class="stat-item"><span class="stat-label">Run Name</span><span class="stat-value stat-value-code">{{ trackingSummary.runName ?? '-' }}</span></div>
-            <div class="stat-item"><span class="stat-label">UUID</span><span class="stat-value stat-value-code">{{ trackingSummary.mlflowRunUuid ?? '-' }}</span></div>
-            <div class="stat-item"><span class="stat-label">Status</span><span class="stat-value">{{ trackingSummary.status ?? '-' }}</span></div>
-            <div class="stat-item"><span class="stat-label">Start</span><span class="stat-value">{{ formatTs(trackingSummary.startTime) }}</span></div>
-            <div class="stat-item"><span class="stat-label">End</span><span class="stat-value">{{ formatTs(trackingSummary.endTime) }}</span></div>
+            <div class="stat-item">
+              <span class="stat-label">Run Name</span
+              ><span class="stat-value stat-value-code">{{ trackingSummary.runName ?? '-' }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">UUID</span
+              ><span class="stat-value stat-value-code">{{ trackingSummary.mlflowRunUuid ?? '-' }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Status</span><span class="stat-value">{{ trackingSummary.status ?? '-' }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Start</span
+              ><span class="stat-value">{{ formatTs(trackingSummary.startTime) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">End</span><span class="stat-value">{{ formatTs(trackingSummary.endTime) }}</span>
+            </div>
           </div>
         }
         @if (tracking?.artifactUri) {
@@ -244,35 +381,65 @@
         }
         @if (tracking?.params) {
           <div class="table-wrap">
-            <table class="bt-table"><thead><tr><th>Param</th><th>Value</th></tr></thead><tbody>
-              @for (entry of tracking.params | keyvalue; track entry.key) {
-                <tr><td>{{ entry.key }}</td><td class="td-code">{{ entry.value }}</td></tr>
-              }
-            </tbody></table>
+            <table class="bt-table">
+              <thead>
+                <tr>
+                  <th>Param</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of tracking.params | keyvalue; track entry.key) {
+                  <tr>
+                    <td>{{ entry.key }}</td>
+                    <td class="td-code">{{ entry.value }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
         @if (tracking?.latestMetrics) {
           <div class="table-wrap">
-            <table class="bt-table"><thead><tr><th>Metric</th><th>Latest</th></tr></thead><tbody>
-              @for (entry of tracking.latestMetrics | keyvalue; track entry.key) {
-                <tr><td>{{ entry.key }}</td><td>{{ entry.value ?? '-' }}</td></tr>
-              }
-            </tbody></table>
+            <table class="bt-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Latest</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of tracking.latestMetrics | keyvalue; track entry.key) {
+                  <tr>
+                    <td>{{ entry.key }}</td>
+                    <td>{{ entry.value ?? '-' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
         @if (tracking?.metricHistory && (metricHistoryOptions.series?.length ?? 0) > 0) {
-          <div class="chart-wrap small-chart"><app-highcharts-chart [options]="metricHistoryOptions"></app-highcharts-chart></div>
+          <div class="chart-wrap small-chart">
+            <app-highcharts-chart [options]="metricHistoryOptions"></app-highcharts-chart>
+          </div>
         }
         @for (section of rewardMetricSections; track section.key) {
           <div class="reward-section">
             <div class="section-title">{{ section.title }}</div>
             <div class="metric-list">
               @for (metric of section.metrics; track metric.id) {
-                <div class="metric-row"><span>{{ metric.label }}</span><strong>{{ metricValue(metric) }}</strong><small>{{ metric.description }}</small></div>
+                <div class="metric-row">
+                  <span>{{ metric.label }}</span
+                  ><strong>{{ metricValue(metric) }}</strong
+                  ><small>{{ metric.description }}</small>
+                </div>
               }
             </div>
             @if ((section.chartOptions.series?.length ?? 0) > 0) {
-              <div class="chart-wrap small-chart"><app-highcharts-chart [options]="section.chartOptions"></app-highcharts-chart></div>
+              <div class="chart-wrap small-chart">
+                <app-highcharts-chart [options]="section.chartOptions"></app-highcharts-chart>
+              </div>
             }
           </div>
         }
@@ -282,19 +449,58 @@
     @if (activeTab === 'raw') {
       <section class="panel">
         <div class="section-title">Raw Data</div>
-        <details open><summary>Training run</summary><pre>{{ run | json }}</pre></details>
-        <details><summary>Performance</summary><pre>{{ performance | json }}</pre></details>
-        <details><summary>Tracking</summary><pre>{{ tracking | json }}</pre></details>
-        <details><summary>Decisions</summary><pre>{{ decisions | json }}</pre></details>
-        <details><summary>Learning curve</summary><pre>{{ learningCurve | json }}</pre></details>
-        <details><summary>Checkpoint evals</summary><pre>{{ checkpointEvals | json }}</pre></details>
-        <details><summary>Folds</summary><pre>{{ folds | json }}</pre></details>
-        <details><summary>Metrics</summary><pre>{{ metrics | json }}</pre></details>
-        <details><summary>Equity points</summary><pre>{{ equity | json }}</pre></details>
-        <details><summary>Trades</summary><pre>{{ allTrades | json }}</pre></details>
-        <details><summary>Feature quality</summary><pre>{{ featureQuality | json }}</pre></details>
-        <details><summary>Chart artifacts</summary><pre>{{ chartArtifacts | json }}</pre></details>
-        <details><summary>Endpoint errors</summary><pre>{{ endpointErrors | json }}</pre></details>
+        <details open>
+          <summary>Training run</summary>
+          <pre>{{ run | json }}</pre>
+        </details>
+        <details>
+          <summary>Performance</summary>
+          <pre>{{ performance | json }}</pre>
+        </details>
+        <details>
+          <summary>Tracking</summary>
+          <pre>{{ tracking | json }}</pre>
+        </details>
+        <details>
+          <summary>Decisions</summary>
+          <pre>{{ decisions | json }}</pre>
+        </details>
+        <details>
+          <summary>Learning curve</summary>
+          <pre>{{ learningCurve | json }}</pre>
+        </details>
+        <details>
+          <summary>Checkpoint evals</summary>
+          <pre>{{ checkpointEvals | json }}</pre>
+        </details>
+        <details>
+          <summary>Folds</summary>
+          <pre>{{ folds | json }}</pre>
+        </details>
+        <details>
+          <summary>Metrics</summary>
+          <pre>{{ metrics | json }}</pre>
+        </details>
+        <details>
+          <summary>Equity points</summary>
+          <pre>{{ equity | json }}</pre>
+        </details>
+        <details>
+          <summary>Trades</summary>
+          <pre>{{ allTrades | json }}</pre>
+        </details>
+        <details>
+          <summary>Feature quality</summary>
+          <pre>{{ featureQuality | json }}</pre>
+        </details>
+        <details>
+          <summary>Chart artifacts</summary>
+          <pre>{{ chartArtifacts | json }}</pre>
+        </details>
+        <details>
+          <summary>Endpoint errors</summary>
+          <pre>{{ endpointErrors | json }}</pre>
+        </details>
       </section>
     }
   }

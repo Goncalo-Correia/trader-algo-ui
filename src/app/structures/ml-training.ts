@@ -16,6 +16,8 @@ export interface MlTrainingRun {
   totalTimesteps: number | null;
   finalBalance: number | null;
   pnlPct: number | null;
+  finalBalanceOos?: number | null;
+  pnlPctOos?: number | null;
   nTrades: number | null;
   runId: string | null;
   tracking?: MlflowTrackingSummary | null;
@@ -26,9 +28,11 @@ export interface MlTrainingRun {
   oosPnlPct?: number | null;
   oosSharpe?: number | null;
   oosProfitFactor?: number | null;
+  oosMaxDdPct?: number | null;
   oosMaxDrawdownPct?: number | null;
   oosTradeCount?: number | null;
   tradeCount?: number | null;
+  obsDim?: number | null;
   schemaVersion?: string | number | null;
   observationDim?: number | null;
 }
@@ -175,22 +179,29 @@ export interface MlDecision {
 }
 
 export interface MlTrainingTrade {
-  entry_step: number;
-  entry_time: number | null;
-  entry_price: number;
+  entry_step?: number | null;
+  entry_time?: number | null;
+  entry_price?: number | null;
   side: string;
-  exit_step: number;
-  exit_time: number | null;
-  exit_price: number;
+  exit_step?: number | null;
+  exit_time?: number | null;
+  exit_price?: number | null;
   reason: string;
   pnl: number;
   split?: MlSplit | null;
   direction?: string | null;
+  entryStep?: number | null;
+  entryTime?: number | null;
+  entryPrice?: number | null;
+  exitStep?: number | null;
+  exitTime?: number | null;
+  exitPrice?: number | null;
   sl?: number | null;
   tp?: number | null;
   slAtrMult?: number | null;
   tpRBracket?: number | null;
   units?: number | null;
+  rMult?: number | null;
   rMultiple?: number | null;
   barsInTrade?: number | null;
   exitReason?: string | null;
@@ -199,6 +210,13 @@ export interface MlTrainingTrade {
 export interface MlRunPerformance {
   promotionGatePassed?: boolean | null;
   gatePassed?: boolean | null;
+  inSamplePnlPct?: number | null;
+  oosPnlPct?: number | null;
+  oosSharpe?: number | null;
+  oosProfitFactor?: number | null;
+  oosMaxDdPct?: number | null;
+  oosMaxDrawdownPct?: number | null;
+  nFolds?: number | null;
   metrics?: Record<string, number | null> | null;
   splitMetrics?: Record<string, Record<string, number | null>> | null;
   [key: string]: unknown;
@@ -207,6 +225,10 @@ export interface MlRunPerformance {
 export interface MlLearningCurvePoint {
   step?: number | null;
   timestep?: number | null;
+  timesteps?: number | null;
+  meanEpReward?: number | null;
+  stdEpReward?: number | null;
+  meanEpLength?: number | null;
   meanEpisodeReward?: number | null;
   rewardMean?: number | null;
   rewardStd?: number | null;
@@ -217,6 +239,11 @@ export interface MlLearningCurvePoint {
 export interface MlCheckpointEval {
   step?: number | null;
   timestep?: number | null;
+  timesteps?: number | null;
+  trainEvalR?: number | null;
+  valR?: number | null;
+  trainDdPct?: number | null;
+  valDdPct?: number | null;
   trainReward?: number | null;
   validationReward?: number | null;
   trainDrawdown?: number | null;
@@ -232,7 +259,9 @@ export interface MlFoldMetric {
   sharpe?: number | null;
   profitFactor?: number | null;
   winRatePct?: number | null;
+  maxDdPct?: number | null;
   maxDrawdownPct?: number | null;
+  nTrades?: number | null;
   tradeCount?: number | null;
   [key: string]: unknown;
 }
@@ -245,6 +274,7 @@ export interface MlMetricRow {
 }
 
 export interface MlEquityPoint {
+  ts?: number | string | null;
   time?: number | string | null;
   timestamp?: number | string | null;
   equity?: number | null;
@@ -259,6 +289,8 @@ export interface MlPaginatedResponse<T> {
   items?: T[];
   data?: T[];
   rows?: T[];
+  points?: T[];
+  trades?: T[];
   total?: number | null;
   limit?: number | null;
   offset?: number | null;

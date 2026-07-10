@@ -69,6 +69,7 @@ export interface MlPolicyRunTrend {
   inSamplePnlPct?: number | null;
   oosPnlPct?: number | null;
   oosFinalBalance?: number | null;
+  oosMaxDdPct?: number | null;
   oosMaxDrawdownPct?: number | null;
   oosSharpe?: number | null;
   oosProfitFactor?: number | null;

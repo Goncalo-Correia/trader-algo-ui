@@ -268,8 +268,8 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
     );
   }
 
-  get foldCount(): number {
-    return this.folds.length;
+  get foldCount(): number | null {
+    return this.folds.length > 0 ? this.folds.length : (this.performance?.nFolds ?? null);
   }
 
   get promotionGatePassed(): boolean | null {
@@ -910,11 +910,11 @@ export class MlTrainingDetailComponent implements OnInit, OnDestroy {
 
   private pageItems<T>(value: MlPaginatedResponse<T> | T[]): T[] {
     if (Array.isArray(value)) return value;
-    return value.items ?? value.data ?? value.rows ?? [];
+    return value.items ?? value.data ?? value.rows ?? value.points ?? value.trades ?? [];
   }
 
   private pointTime(point: MlEquityPoint): number {
-    const value = point.time ?? point.timestamp ?? 0;
+    const value = point.time ?? point.timestamp ?? point.ts ?? 0;
     if (typeof value === 'string') return new Date(value).getTime();
     return value > 9_999_999_999 ? value : value * 1000;
   }

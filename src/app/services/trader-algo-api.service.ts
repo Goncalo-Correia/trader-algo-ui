@@ -243,11 +243,15 @@ export class TraderAlgoApiService {
   }
 
   getPolicyRuns(id: number): Observable<MlPolicyRunTrend[]> {
-    return this.http.get<MlPolicyRunTrend[]>(`${this.baseUrl}/api/ml/policies/${id}/runs`);
+    return this.http
+      .get<MlRunPerformance[]>(`${this.baseUrl}/api/ml/policies/${id}/runs`)
+      .pipe(map(rows => rows.map(row => this.normalizePolicyRunTrend(row))));
   }
 
   getPolicyPerformance(id: number): Observable<MlRunPerformance> {
-    return this.http.get<MlRunPerformance>(`${this.baseUrl}/api/ml/policies/${id}/performance`);
+    return this.http
+      .get<MlRunPerformance>(`${this.baseUrl}/api/ml/policies/${id}/performance`)
+      .pipe(map(row => this.normalizePerformance(row)));
   }
 
   decideLatestCandle(payload: MlManualDecisionRequest): Observable<MlManualDecisionResponse> {
@@ -256,11 +260,15 @@ export class TraderAlgoApiService {
 
   getTrainingRuns(mlPolicyId?: number): Observable<MlTrainingRun[]> {
     const options = mlPolicyId === undefined ? {} : { params: new HttpParams().set('mlPolicyId', String(mlPolicyId)) };
-    return this.http.get<MlTrainingRun[]>(`${this.baseUrl}/api/ml/training-runs`, options);
+    return this.http
+      .get<MlTrainingRun[]>(`${this.baseUrl}/api/ml/training-runs`, options)
+      .pipe(map(runs => runs.map(run => this.normalizeTrainingRun(run))));
   }
 
   getTrainingRun(id: number): Observable<MlTrainingRun> {
-    return this.http.get<MlTrainingRun>(`${this.baseUrl}/api/ml/training-runs/${id}`);
+    return this.http
+      .get<MlTrainingRun>(`${this.baseUrl}/api/ml/training-runs/${id}`)
+      .pipe(map(run => this.normalizeTrainingRun(run)));
   }
 
   getTrainingDecisions(id: number): Observable<MlDecisionLog> {
@@ -272,19 +280,27 @@ export class TraderAlgoApiService {
   }
 
   getTrainingPerformance(id: number): Observable<MlRunPerformance> {
-    return this.http.get<MlRunPerformance>(`${this.baseUrl}/api/ml/training-runs/${id}/performance`);
+    return this.http
+      .get<MlRunPerformance>(`${this.baseUrl}/api/ml/training-runs/${id}/performance`)
+      .pipe(map(row => this.normalizePerformance(row)));
   }
 
   getTrainingLearningCurve(id: number): Observable<MlLearningCurvePoint[]> {
-    return this.http.get<MlLearningCurvePoint[]>(`${this.baseUrl}/api/ml/training-runs/${id}/learning-curve`);
+    return this.http
+      .get<MlLearningCurvePoint[]>(`${this.baseUrl}/api/ml/training-runs/${id}/learning-curve`)
+      .pipe(map(rows => rows.map(row => this.normalizeLearningCurvePoint(row))));
   }
 
   getTrainingCheckpointEvals(id: number): Observable<MlCheckpointEval[]> {
-    return this.http.get<MlCheckpointEval[]>(`${this.baseUrl}/api/ml/training-runs/${id}/checkpoint-evals`);
+    return this.http
+      .get<MlCheckpointEval[]>(`${this.baseUrl}/api/ml/training-runs/${id}/checkpoint-evals`)
+      .pipe(map(rows => rows.map(row => this.normalizeCheckpointEval(row))));
   }
 
   getTrainingFolds(id: number): Observable<MlFoldMetric[]> {
-    return this.http.get<MlFoldMetric[]>(`${this.baseUrl}/api/ml/training-runs/${id}/folds`);
+    return this.http
+      .get<MlFoldMetric[]>(`${this.baseUrl}/api/ml/training-runs/${id}/folds`)
+      .pipe(map(rows => rows.map(row => this.normalizeFoldMetric(row))));
   }
 
   getTrainingMetrics(id: number, split?: string): Observable<MlMetricRow[] | Record<string, unknown>> {
@@ -296,20 +312,22 @@ export class TraderAlgoApiService {
     id: number,
     options: { split?: string; stitched?: boolean; limit?: number; offset?: number } = {},
   ): Observable<MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[]> {
-    return this.http.get<MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[]>(
-      `${this.baseUrl}/api/ml/training-runs/${id}/equity`,
-      { params: this.toHttpParams(options) },
-    );
+    return this.http
+      .get<MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[]>(`${this.baseUrl}/api/ml/training-runs/${id}/equity`, {
+        params: this.toHttpParams(options),
+      })
+      .pipe(map(value => this.normalizeEquityResponse(value)));
   }
 
   getTrainingTrades(
     id: number,
     options: { split?: string; limit?: number; offset?: number } = {},
   ): Observable<MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[]> {
-    return this.http.get<MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[]>(
-      `${this.baseUrl}/api/ml/training-runs/${id}/trades`,
-      { params: this.toHttpParams(options) },
-    );
+    return this.http
+      .get<MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[]>(`${this.baseUrl}/api/ml/training-runs/${id}/trades`, {
+        params: this.toHttpParams(options),
+      })
+      .pipe(map(value => this.normalizeTradeResponse(value)));
   }
 
   getTrainingFeatureQuality(id: number): Observable<MlFeatureQualityRow[]> {
@@ -353,6 +371,150 @@ export class TraderAlgoApiService {
         return [];
       },
     });
+  }
+
+  private normalizeTrainingRun(run: MlTrainingRun): MlTrainingRun {
+    return {
+      ...run,
+      inSampleFinalBalance: run.inSampleFinalBalance ?? run.finalBalance ?? null,
+      inSamplePnlPct: run.inSamplePnlPct ?? run.pnlPct ?? null,
+      oosFinalBalance: run.oosFinalBalance ?? run.finalBalanceOos ?? null,
+      oosPnlPct: run.oosPnlPct ?? run.pnlPctOos ?? null,
+      oosMaxDrawdownPct: run.oosMaxDrawdownPct ?? run.oosMaxDdPct ?? null,
+      observationDim: run.observationDim ?? run.obsDim ?? null,
+    };
+  }
+
+  private normalizePerformance(row: MlRunPerformance): MlRunPerformance {
+    const oosMaxDrawdownPct = row.oosMaxDrawdownPct ?? row.oosMaxDdPct ?? null;
+    const metrics = { ...(row.metrics ?? {}) };
+    this.setMetricAlias(metrics, 'in_sample_pnl_pct', row.inSamplePnlPct);
+    this.setMetricAlias(metrics, 'inSamplePnlPct', row.inSamplePnlPct);
+    this.setMetricAlias(metrics, 'oos_pnl_pct', row.oosPnlPct);
+    this.setMetricAlias(metrics, 'oosPnlPct', row.oosPnlPct);
+    this.setMetricAlias(metrics, 'oos_sharpe', row.oosSharpe);
+    this.setMetricAlias(metrics, 'oosSharpe', row.oosSharpe);
+    this.setMetricAlias(metrics, 'oos_profit_factor', row.oosProfitFactor);
+    this.setMetricAlias(metrics, 'oosProfitFactor', row.oosProfitFactor);
+    this.setMetricAlias(metrics, 'oos_max_drawdown_pct', oosMaxDrawdownPct);
+    this.setMetricAlias(metrics, 'oosMaxDrawdownPct', oosMaxDrawdownPct);
+    this.setMetricAlias(metrics, 'oosMaxDdPct', row.oosMaxDdPct);
+
+    return {
+      ...row,
+      promotionGatePassed: row.promotionGatePassed ?? row.gatePassed ?? null,
+      oosMaxDrawdownPct,
+      metrics,
+    };
+  }
+
+  private normalizePolicyRunTrend(row: MlRunPerformance): MlPolicyRunTrend {
+    const normalized = this.normalizePerformance(row);
+    const rawRunId = normalized['runId'];
+    const trainingRunId = typeof rawRunId === 'number' ? rawRunId : Number(rawRunId);
+    const createdAt = typeof normalized['createdAt'] === 'string' ? Date.parse(normalized['createdAt']) : null;
+    const timestamp = createdAt !== null && Number.isFinite(createdAt) ? createdAt : null;
+
+    return {
+      id: Number.isFinite(trainingRunId) ? trainingRunId : 0,
+      trainingRunId: Number.isFinite(trainingRunId) ? trainingRunId : null,
+      status: typeof normalized['status'] === 'string' ? normalized['status'] : null,
+      startedAt: timestamp,
+      completedAt: timestamp,
+      inSamplePnlPct: normalized.inSamplePnlPct ?? null,
+      oosPnlPct: normalized.oosPnlPct ?? null,
+      oosMaxDrawdownPct: normalized.oosMaxDrawdownPct ?? null,
+      oosSharpe: normalized.oosSharpe ?? null,
+      oosProfitFactor: normalized.oosProfitFactor ?? null,
+    };
+  }
+
+  private normalizeLearningCurvePoint(row: MlLearningCurvePoint): MlLearningCurvePoint {
+    return {
+      ...row,
+      step: row.step ?? row.timesteps ?? row.timestep ?? null,
+      timestep: row.timestep ?? row.timesteps ?? row.step ?? null,
+      meanEpisodeReward: row.meanEpisodeReward ?? row.meanEpReward ?? row.rewardMean ?? null,
+      rewardMean: row.rewardMean ?? row.meanEpReward ?? row.meanEpisodeReward ?? null,
+      rewardStd: row.rewardStd ?? row.stdEpReward ?? null,
+      meanEpisodeLength: row.meanEpisodeLength ?? row.meanEpLength ?? row.episodeLengthMean ?? null,
+      episodeLengthMean: row.episodeLengthMean ?? row.meanEpLength ?? row.meanEpisodeLength ?? null,
+    };
+  }
+
+  private normalizeCheckpointEval(row: MlCheckpointEval): MlCheckpointEval {
+    return {
+      ...row,
+      step: row.step ?? row.timesteps ?? row.timestep ?? null,
+      timestep: row.timestep ?? row.timesteps ?? row.step ?? null,
+      trainReward: row.trainReward ?? row.trainEvalR ?? null,
+      validationReward: row.validationReward ?? row.valR ?? null,
+      trainDrawdown: row.trainDrawdown ?? row.trainDdPct ?? null,
+      validationDrawdown: row.validationDrawdown ?? row.valDdPct ?? null,
+    };
+  }
+
+  private normalizeFoldMetric(row: MlFoldMetric): MlFoldMetric {
+    return {
+      ...row,
+      maxDrawdownPct: row.maxDrawdownPct ?? row.maxDdPct ?? null,
+      tradeCount: row.tradeCount ?? row.nTrades ?? null,
+    };
+  }
+
+  private normalizeEquityResponse(
+    value: MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[],
+  ): MlPaginatedResponse<MlEquityPoint> | MlEquityPoint[] {
+    if (Array.isArray(value)) return value.map(point => this.normalizeEquityPoint(point));
+    return {
+      ...value,
+      points: value.points?.map(point => this.normalizeEquityPoint(point)),
+      items: value.items?.map(point => this.normalizeEquityPoint(point)),
+      data: value.data?.map(point => this.normalizeEquityPoint(point)),
+      rows: value.rows?.map(point => this.normalizeEquityPoint(point)),
+    };
+  }
+
+  private normalizeEquityPoint(point: MlEquityPoint): MlEquityPoint {
+    return {
+      ...point,
+      time: point.time ?? point.ts ?? point.timestamp ?? null,
+      timestamp: point.timestamp ?? point.ts ?? point.time ?? null,
+    };
+  }
+
+  private normalizeTradeResponse(
+    value: MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[],
+  ): MlPaginatedResponse<MlTrainingTrade> | MlTrainingTrade[] {
+    if (Array.isArray(value)) return value.map(trade => this.normalizeTrainingTrade(trade));
+    return {
+      ...value,
+      trades: value.trades?.map(trade => this.normalizeTrainingTrade(trade)),
+      items: value.items?.map(trade => this.normalizeTrainingTrade(trade)),
+      data: value.data?.map(trade => this.normalizeTrainingTrade(trade)),
+      rows: value.rows?.map(trade => this.normalizeTrainingTrade(trade)),
+    };
+  }
+
+  private normalizeTrainingTrade(trade: MlTrainingTrade): MlTrainingTrade {
+    const direction = trade.side ?? trade.direction ?? '';
+    return {
+      ...trade,
+      side: direction,
+      direction,
+      entry_step: trade.entry_step ?? trade.entryStep ?? null,
+      entry_time: trade.entry_time ?? trade.entryTime ?? null,
+      entry_price: trade.entry_price ?? trade.entryPrice ?? null,
+      exit_step: trade.exit_step ?? trade.exitStep ?? null,
+      exit_time: trade.exit_time ?? trade.exitTime ?? null,
+      exit_price: trade.exit_price ?? trade.exitPrice ?? null,
+      reason: trade.reason ?? trade.exitReason ?? '',
+      rMultiple: trade.rMultiple ?? trade.rMult ?? null,
+    };
+  }
+
+  private setMetricAlias(metrics: Record<string, number | null>, key: string, value: number | null | undefined): void {
+    if (metrics[key] === undefined && value !== undefined) metrics[key] = value;
   }
 
   private kronosGet(path: string, symbol: string, interval: string): Observable<CandleResponse[]> {

@@ -83,6 +83,14 @@ only — **not** candles (they moved to the replay stream in the compute/replay 
 candles for its price chart separately from `GET /api/charts/candles/indicators/date-interval`
 (`getCandlesWithIndicatorsByDateInterval`). Don't reintroduce a `candles` field on the detail response.
 
+**ML training/policy endpoints send inconsistent field aliases** across backend revisions (e.g. `oosMaxDdPct` vs
+`oosMaxDrawdownPct`, `entryStep` vs `entry_step`, `ts` vs `time`/`timestamp`, paginated envelopes keyed `points`/
+`trades` as well as `items`/`data`/`rows`). Rather than adding optional fields everywhere downstream,
+`TraderAlgoApiService` normalizes each ML response in a private `normalizeX()` method (e.g. `normalizeTrainingRun`,
+`normalizePerformance`, `normalizeEquityPoint`, `normalizeTrainingTrade`) piped onto the HTTP call, coalescing every
+known alias onto the canonical field before the domain model reaches components. When the backend adds another
+alias for an existing field, extend the matching `normalizeX()` rather than teaching consumers about the new key.
+
 ### HTTP interceptors (DI order in `main.ts`)
 
 1. `ApiKeyInterceptor` — adds `X-Api-Key` header, but only to requests whose URL starts with the configured

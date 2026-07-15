@@ -1,0 +1,15 @@
+/* Global styles.
+ *
+ * lightweight-charts draws a pane separator that is only 1px tall (its height is a
+ * hardcoded library constant with no public option), so even with
+ * `layout.panes.separatorColor: '#ffffff'` the divider between indicator panes is a
+ * near-invisible hairline. The separator's resize handle is an inline-styled
+ * `div[style*='row-resize']` inside each pane cell; widen and colour it here to render
+ * a clearly visible white line between every pane (candles / volume / RSI / MACD / ATR)
+ * across all four lightweight-charts components. Emulated component styles cannot reach
+ * this dynamically-created DOM, which is why the rule lives in the global stylesheet. */
+.tv-lightweight-charts td div[style*='row-resize'] {
+  background-color: #ffffff !important;
+  top: -1px !important;
+  height: 3px !important;
+}

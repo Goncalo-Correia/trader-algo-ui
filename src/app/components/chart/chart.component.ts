@@ -213,7 +213,12 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
     this.ngZone.runOutsideAngular(() => {
       this.chart = createChart(this.chartContainer.nativeElement, {
         autoSize: true,
-        layout: { background: { color: CHART_COLORS.background }, textColor: CHART_COLORS.text },
+        layout: {
+          background: { color: CHART_COLORS.background },
+          textColor: CHART_COLORS.text,
+          // White separator lines between panes (candles / volume / RSI / MACD / ATR).
+          panes: { separatorColor: '#ffffff' },
+        },
         grid: { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
         rightPriceScale: { borderColor: CHART_COLORS.border },
         timeScale: {
@@ -290,7 +295,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.buyVolumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
 
       // Pane 2 — RSI
-      const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
+      // Attach to the pane's built-in right scale (not an overlay id) so the vertical scale is visible —
+      // overlay price scales ignore `visible: true`.
+      const rsiOpts = { priceScaleId: 'right', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
       this.rsiSeries = this.chart.addSeries(
         LineSeries,
         { ...rsiOpts, color: CHART_COLORS.rsi, lastValueVisible: true },
@@ -307,7 +314,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
 
       // Pane 3 — MACD
       const macdOpts = {
-        priceScaleId: 'macd',
+        priceScaleId: 'right',
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
@@ -324,7 +331,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       );
       this.macdHistSeries = this.chart.addSeries(
         HistogramSeries,
-        { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false },
+        { priceScaleId: 'right', priceLineVisible: false, lastValueVisible: false },
         3,
       );
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: CHART_COLORS.zeroLine }, 3);
@@ -334,7 +341,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy {
       this.atrSeries = this.chart.addSeries(
         LineSeries,
         {
-          priceScaleId: 'atr',
+          priceScaleId: 'right',
           color: CHART_COLORS.atr,
           lineWidth: 1,
           priceLineVisible: false,

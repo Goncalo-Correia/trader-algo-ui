@@ -114,7 +114,12 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
     this.ngZone.runOutsideAngular(() => {
       this.chart = createChart(this.chartContainer.nativeElement, {
         autoSize: true,
-        layout: { background: { color: '#000000' }, textColor: '#d1d4dc' },
+        layout: {
+          background: { color: '#000000' },
+          textColor: '#d1d4dc',
+          // White separator lines between panes (candles / volume / RSI / MACD / ATR).
+          panes: { separatorColor: '#ffffff' },
+        },
         grid: { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
         rightPriceScale: { borderColor: '#2a2d3a' },
         timeScale: { borderColor: '#2a2d3a', timeVisible: true, secondsVisible: false },
@@ -177,7 +182,9 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       this.buyVolumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.7 }, visible: true });
 
       // Pane 2 — RSI
-      const rsiOpts = { priceScaleId: 'rsi', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
+      // Attach to the pane's built-in right scale (not an overlay id) so the vertical scale is visible —
+      // overlay price scales ignore `visible: true`.
+      const rsiOpts = { priceScaleId: 'right', lineWidth: 1, priceLineVisible: false, lastValueVisible: false } as const;
       this.rsiSeries = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#9c27b0', lastValueVisible: true }, 2);
       this.rsiMaSeries = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ffd600', lastValueVisible: true }, 2);
       this.rsiOverbought = this.chart.addSeries(LineSeries, { ...rsiOpts, color: '#ef5350' }, 2);
@@ -186,7 +193,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
 
       // Pane 3 — MACD
       const macdOpts = {
-        priceScaleId: 'macd',
+        priceScaleId: 'right',
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
@@ -203,7 +210,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       );
       this.macdHistSeries = this.chart.addSeries(
         HistogramSeries,
-        { priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false },
+        { priceScaleId: 'right', priceLineVisible: false, lastValueVisible: false },
         3,
       );
       this.macdZeroSeries = this.chart.addSeries(LineSeries, { ...macdOpts, color: '#4a4d5a' }, 3);
@@ -213,7 +220,7 @@ export class BacktestChartComponent implements AfterViewInit, OnDestroy {
       this.atrSeries = this.chart.addSeries(
         LineSeries,
         {
-          priceScaleId: 'atr',
+          priceScaleId: 'right',
           color: CHART_COLORS.atr,
           lineWidth: 1,
           priceLineVisible: false,

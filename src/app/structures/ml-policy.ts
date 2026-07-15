@@ -97,4 +97,7 @@ export interface MlManualDecisionResponse {
   sl_atr_mult?: number | null;
   tpRMultiple?: number | null;
   tp_r_multiple?: number | null;
+  tpRMult?: number | null;
+  tp_r_mult?: number | null;
+  quantity?: number | null;
 }

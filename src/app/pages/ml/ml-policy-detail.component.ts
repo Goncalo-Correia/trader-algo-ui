@@ -270,7 +270,11 @@ export class MlPolicyDetailComponent implements OnInit {
   }
 
   tpRMultiple(result: MlManualDecisionResponse): number | null {
-    return result.tpRMultiple ?? result.tp_r_multiple ?? null;
+    return result.tpRMultiple ?? result.tp_r_multiple ?? result.tpRMult ?? result.tp_r_mult ?? null;
+  }
+
+  quantity(result: MlManualDecisionResponse): number | null {
+    return result.quantity ?? null;
   }
 
   metric(label: string): number | null {

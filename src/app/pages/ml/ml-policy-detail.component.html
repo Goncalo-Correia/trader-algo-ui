@@ -161,6 +161,9 @@
           <div class="stat-item"><span class="stat-label">TP Bracket</span><span class="stat-value">{{ tpBracket(probe) }}</span></div>
           <div class="stat-item"><span class="stat-label">SL ATR Mult</span><span class="stat-value">{{ slAtrMult(probe) ?? '-' }}</span></div>
           <div class="stat-item"><span class="stat-label">TP R Multiple</span><span class="stat-value">{{ tpRMultiple(probe) ?? '-' }}</span></div>
+          @if (quantity(probe) !== null) {
+            <div class="stat-item"><span class="stat-label">Quantity</span><span class="stat-value">{{ quantity(probe) | number: '1.0-4' }}</span></div>
+          }
         </div>
       }
     </section>

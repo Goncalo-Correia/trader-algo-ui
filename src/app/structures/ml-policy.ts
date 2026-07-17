@@ -3,14 +3,13 @@
  * Fold counts, window sizes, embargo bars, and promotion thresholds are engine-owned
  * defaults in the Python sidecar and are intentionally not exposed here.
  */
-export type ValidationScheme = 'single' | 'block' | 'sliding';
+export type ValidationScheme = 'single' | 'block';
 
-export const VALIDATION_SCHEMES: readonly ValidationScheme[] = ['single', 'block', 'sliding'];
+export const VALIDATION_SCHEMES: readonly ValidationScheme[] = ['single', 'block'];
 
 export const VALIDATION_SCHEME_LABELS: Record<ValidationScheme, string> = {
   single: 'Single split',
   block: 'Block walk-forward',
-  sliding: 'Sliding walk-forward',
 };
 
 /** Map a (possibly unknown/legacy) wire value to a friendly label, defaulting to Single split. */
